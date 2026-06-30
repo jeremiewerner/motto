@@ -1,10 +1,13 @@
 ---
 gsd_state_version: 1.0
 milestone: v0.0.2
-milestone_name: Self-Hosting
+milestone_name: — Self-Hosting
+current_phase: 4
 status: planning
-last_updated: "2026-06-30T13:27:29.527Z"
+stopped_at: v0.0.2 roadmap created — Phases 4-5 defined, 9/9 requirements mapped
+last_updated: "2026-06-30T13:59:37.490Z"
 last_activity: 2026-06-30
+last_activity_desc: v0.0.2 roadmap created (Phases 4-5, 9 requirements mapped)
 progress:
   total_phases: 2
   completed_phases: 0
@@ -26,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-06-30)
 
 Phase: Phase 4 — Self-Hosted Skill Tree + Gap Fixes (not started)
 Plan: —
-Status: Roadmap created — ready to plan Phase 4
+Status: planning
 Last activity: 2026-06-30 — v0.0.2 roadmap created (Phases 4-5, 9 requirements mapped)
 
 ## Performance Metrics
