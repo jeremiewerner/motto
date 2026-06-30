@@ -111,8 +111,13 @@ export function validateSkill(skill, sharedRefs = new Set()) {
         `description must not exceed 1024 characters (got ${data.description.length})`
       );
     }
-    if (/<[^>]+>/.test(data.description)) {
-      // D-05: description must not contain XML-tag patterns
+    // D-05: description must not contain XML-tag shapes. Pattern matches only
+    // real tag-like constructs (optional leading /, letter-led tag name,
+    // optional trailing whitespace + optional self-close /, then >) so that
+    // ordinary comparison/math prose like "a<b and b>c" is NOT flagged.
+    // Adjacent quantifiers cover disjoint character classes ([a-zA-Z0-9-] vs \s)
+    // — no catastrophic backtracking (T-Q-01). (REVIEW-04)
+    if (/<\/?[a-zA-Z][a-zA-Z0-9-]*\s*\/?>/.test(data.description)) {
       err("description must not contain XML tags (e.g. <example>)");
     }
   }

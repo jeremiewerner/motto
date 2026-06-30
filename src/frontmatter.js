@@ -71,10 +71,24 @@ export function parseFrontmatter(text) {
 
   // (4) STRAY DETECTION (PARSE-04, D-06): a valid file has exactly one opening
   // and one closing bare "---". If the region immediately following the close —
-  // up to the next bare "---" — parses cleanly as a YAML mapping, it is leaked
-  // frontmatter split by a stray delimiter, not body. A "---" that introduces
-  // ordinary Markdown body (a horizontal rule) resolves to a scalar/null, not a
-  // mapping, and is therefore NOT flagged (B7).
+  // up to the next bare "---" — has a node shape consistent with a leaked YAML
+  // mapping, it is leaked frontmatter split by a stray delimiter, not body.
+  //
+  // Node-shape detection (REVIEW-05): instead of calling toJS() (which throws on
+  // unresolved aliases such as `key: *foo` or `**Role:**` alias nodes — D-01),
+  // we inspect the PARSED NODE TREE directly. The region is treated as a leaked
+  // mapping iff:
+  //   - regionDoc.errors.length === 0  (clean parse — not a syntax error)
+  //   - YAML.isMap(regionDoc.contents) (top-level node is a mapping, not a scalar)
+  //   - regionDoc.contents.items.length > 0 (at least one key-value pair present)
+  //
+  // This catches `key: *foo` (alias value — errors.length 0, isMap true) while
+  // leaving body text (Scalar) and horizontal rules (Scalar/null) unflagged (B7).
+  // The B8 region ("**Role:** Guide.\n\n") resolves to an Alias node with
+  // errors.length > 0, so it stays correctly unflagged (B8).
+  //
+  // Zero unguarded toJS() calls remain in this file; safeToJS() owns the guard
+  // for the main block parse (step 5b above).
   let nextDelim = -1;
   for (let i = close + 1; i < lines.length; i++) {
     if (lines[i] === "---") {
@@ -85,21 +99,11 @@ export function parseFrontmatter(text) {
   if (nextDelim !== -1) {
     const region = lines.slice(close + 1, nextDelim).join("\n");
     const regionDoc = YAML.parseDocument(region);
-    // toJS() can throw for unresolved YAML aliases (e.g. "**Role:**" in body text
-    // is parsed as a `*name` alias node). Treat any toJS() exception as a
-    // non-mapping result so the stray-delimiter check is skipped gracefully (D-01).
-    let regionValue;
-    try {
-      regionValue = regionDoc.toJS();
-    } catch (_) {
-      regionValue = null;
-    }
-    const isMapping =
-      regionValue !== null &&
-      typeof regionValue === "object" &&
-      !Array.isArray(regionValue) &&
-      Object.keys(regionValue).length > 0;
-    if (regionDoc.errors.length === 0 && isMapping) {
+    const isLeakedMapping =
+      regionDoc.errors.length === 0 &&
+      YAML.isMap(regionDoc.contents) &&
+      regionDoc.contents.items.length > 0;
+    if (isLeakedMapping) {
       errors.push({
         message:
           "stray '---' delimiter in frontmatter: the block must contain exactly one closing '---'",
