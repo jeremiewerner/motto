@@ -16,11 +16,11 @@ Requirements for the initial release (the core `lint` + `build` CLI). Each maps 
 
 ### Linting / Schema (LINT)
 
-- [ ] **LINT-01**: Required frontmatter fields validated — `name`, `description`, `audience`
-- [ ] **LINT-02**: `name` is letter-start kebab-case (`/^[a-z][a-z0-9]*(-[a-z0-9]+)*$/`), equals its folder name, and contains neither "anthropic" nor "claude"
-- [ ] **LINT-03**: `audience` is exactly `public` or `private`
-- [ ] **LINT-04**: Body spine enforced — first non-blank line is an `# ` H1 (Title) and the body contains a `**Role:**` line
-- [ ] **LINT-05**: Each `shared_references` entry is a safe basename (no `/` or `.`) and resolves to `shared/references/<name>.md`
+- [x] **LINT-01**: Required frontmatter fields validated — `name`, `description`, `audience`
+- [x] **LINT-02**: `name` is letter-start kebab-case (`/^[a-z][a-z0-9]*(-[a-z0-9]+)*$/`), equals its folder name, and contains neither "anthropic" nor "claude"
+- [x] **LINT-03**: `audience` is exactly `public` or `private`
+- [x] **LINT-04**: Body spine enforced — first non-blank line is an `# ` H1 (Title) and the body contains a `**Role:**` line
+- [x] **LINT-05**: Each `shared_references` entry is a safe basename (no `/` or `.`) and resolves to `shared/references/<name>.md`
 - [ ] **LINT-06**: All errors across all skills are collected and reported as `skill: message`; `motto lint` exits 0 (clean) or 1 (errors)
 - [ ] **LINT-07**: Skill discovery is deterministic (sorted by name) and per-file error-isolated (one bad skill doesn't abort the scan)
 
@@ -80,11 +80,11 @@ Explicitly excluded. Documented to prevent scope creep.
 | PARSE-02 | Phase 1 | Complete |
 | PARSE-03 | Phase 1 | Complete |
 | PARSE-04 | Phase 1 | Complete |
-| LINT-01 | Phase 1 | Pending |
-| LINT-02 | Phase 1 | Pending |
-| LINT-03 | Phase 1 | Pending |
-| LINT-04 | Phase 1 | Pending |
-| LINT-05 | Phase 1 | Pending |
+| LINT-01 | Phase 1 | Complete |
+| LINT-02 | Phase 1 | Complete |
+| LINT-03 | Phase 1 | Complete |
+| LINT-04 | Phase 1 | Complete |
+| LINT-05 | Phase 1 | Complete |
 | LINT-06 | Phase 2 | Pending |
 | LINT-07 | Phase 2 | Pending |
 | CONF-01 | Phase 1 | Pending |
