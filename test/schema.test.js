@@ -272,6 +272,116 @@ describe("validateSkill", () => {
     assert.deepEqual(errors, []);
   });
 
+  // B14: description exactly 1024 chars — boundary value is valid (D-03)
+  it("B14: description exactly 1024 characters is valid (boundary — D-03)", () => {
+    const skill = {
+      dirName: "my-skill",
+      data: { name: "my-skill", description: "x".repeat(1024), audience: "public" },
+      body: VALID_BODY,
+    };
+    const errors = validateSkill(skill);
+    assert.deepEqual(errors, []);
+  });
+
+  // B15: description 1025 chars — one over the limit reports a length error (D-03)
+  it("B15: description 1025 characters reports a length error referencing 1024 (D-03)", () => {
+    const skill = {
+      dirName: "my-skill",
+      data: { name: "my-skill", description: "x".repeat(1025), audience: "public" },
+      body: VALID_BODY,
+    };
+    const errors = validateSkill(skill);
+    assert.equal(errors.length, 1, `expected 1 error, got: ${JSON.stringify(errors)}`);
+    assert.ok(
+      /1024/i.test(errors[0].message),
+      `expected message to reference the 1024 limit, got: "${errors[0].message}"`
+    );
+  });
+
+  // B16: description containing <example> tag — reports an XML-tags error (D-05)
+  it("B16: description containing <example> reports an XML-tags error (D-05)", () => {
+    const skill = {
+      dirName: "my-skill",
+      data: {
+        name: "my-skill",
+        description: "Use this skill to format <example> output",
+        audience: "public",
+      },
+      body: VALID_BODY,
+    };
+    const errors = validateSkill(skill);
+    assert.equal(errors.length, 1, `expected 1 error, got: ${JSON.stringify(errors)}`);
+    assert.ok(
+      /xml|tag/i.test(errors[0].message),
+      `expected XML-tags error, got: "${errors[0].message}"`
+    );
+  });
+
+  // B17: name exactly 64 chars, valid kebab — boundary value is valid (D-03)
+  it("B17: name exactly 64 characters is valid (boundary — D-03)", () => {
+    const name64 = "a".repeat(64);
+    const skill = {
+      dirName: name64,
+      data: { name: name64, description: "use when X", audience: "public" },
+      body: VALID_BODY,
+    };
+    const errors = validateSkill(skill);
+    assert.deepEqual(errors, []);
+  });
+
+  // B18: name 65 chars, valid kebab — max-length error; cascade stops (no reserved/folder error)
+  it("B18: name 65 characters reports max-length error; cascade stops (D-03, D-13)", () => {
+    const name65 = "a".repeat(65);
+    const skill = {
+      dirName: name65,
+      data: { name: name65, description: "use when X", audience: "public" },
+      body: VALID_BODY,
+    };
+    const errors = validateSkill(skill);
+    assert.equal(errors.length, 1, `expected 1 error, got: ${JSON.stringify(errors)}`);
+    assert.ok(
+      /64/i.test(errors[0].message),
+      `expected max-length error referencing 64, got: "${errors[0].message}"`
+    );
+    // Cascade stopped — downstream checks (reserved-word, folder-mismatch) must not fire
+    assert.ok(
+      !errors.some((e) => /reserved/i.test(e.message)),
+      "cascade must stop: no reserved-word error expected"
+    );
+    assert.ok(
+      !errors.some((e) => /folder|equal/i.test(e.message)),
+      "cascade must stop: no folder-mismatch error expected"
+    );
+  });
+
+  // B19: description over-length AND contains XML — both errors reported independently (D-13)
+  it("B19: description over-length AND containing XML tags reports 2 errors independently (D-13)", () => {
+    // 1025 chars total, starts with <x> — trips both the length check and the XML check
+    const skill = {
+      dirName: "my-skill",
+      data: {
+        name: "my-skill",
+        description: "<x>" + "y".repeat(1022),
+        audience: "public",
+      },
+      body: VALID_BODY,
+    };
+    const errors = validateSkill(skill);
+    assert.equal(
+      errors.length,
+      2,
+      `expected exactly 2 description errors (length + XML), got: ${JSON.stringify(errors)}`
+    );
+    assert.ok(
+      errors.some((e) => /1024/i.test(e.message)),
+      `expected length error among: ${JSON.stringify(errors)}`
+    );
+    assert.ok(
+      errors.some((e) => /xml|tag/i.test(e.message)),
+      `expected XML-tags error among: ${JSON.stringify(errors)}`
+    );
+  });
+
   // NAME_KEBAB export — letter-start kebab regex (D-08, D-16)
   it("NAME_KEBAB is exported and is the letter-start kebab regex (D-08, D-16)", () => {
     assert.ok(NAME_KEBAB instanceof RegExp, "NAME_KEBAB should be a RegExp");
