@@ -1,0 +1,295 @@
+import { describe, it } from "node:test";
+import assert from "node:assert/strict";
+
+import { validateSkill, NAME_KEBAB } from "../src/schema.js";
+
+// validateSkill(skill, sharedRefs?) -> Array<{ skill: string, message: string }>
+// - Never throws (D-01).
+// - Name checks CASCADE (D-13): missing -> non-kebab -> reserved-word -> !=folder.
+//   The chain stops at the first name failure; downstream name checks are skipped.
+// - All other checks (description, audience, body Title, body Role, each
+//   shared_references entry) are INDEPENDENT and collected together (D-13).
+
+const VALID_BODY = "# My Skill\n\n**Role:** You are a helper.\n\nDo things.\n";
+
+describe("validateSkill", () => {
+  // B1: happy path — valid skill returns []
+  it("B1: valid skill returns empty errors array", () => {
+    const skill = {
+      dirName: "my-skill",
+      data: { name: "my-skill", description: "use when X", audience: "public" },
+      body: VALID_BODY,
+    };
+    const errors = validateSkill(skill);
+    assert.deepEqual(errors, []);
+  });
+
+  // B2: missing name — cascade stops; no further name errors (D-13)
+  it("B2: missing name reports missing-name error and stops the name cascade (D-13)", () => {
+    const skill = {
+      dirName: "my-skill",
+      data: { description: "use when X", audience: "public" },
+      body: VALID_BODY,
+    };
+    const errors = validateSkill(skill);
+    assert.equal(errors.length, 1, `expected 1 error, got: ${JSON.stringify(errors)}`);
+    assert.equal(errors[0].skill, "my-skill");
+    assert.ok(
+      /name/i.test(errors[0].message),
+      `expected name error, got: "${errors[0].message}"`
+    );
+    // Cascade stopped — no non-kebab, reserved-word, or folder errors
+    assert.ok(!errors.some((e) => /kebab|letter/i.test(e.message)), "no kebab error");
+    assert.ok(!errors.some((e) => /reserved/i.test(e.message)), "no reserved error");
+    assert.ok(!errors.some((e) => /folder|equal/i.test(e.message)), "no folder error");
+  });
+
+  // B3: leading-digit name (D-08 regression guard) — cascade stops at non-kebab
+  it("B3: leading-digit name '0bad' reports non-kebab error; no downstream name errors", () => {
+    const skill = {
+      dirName: "0bad",
+      data: { name: "0bad", description: "use when X", audience: "public" },
+      body: "# Title\n\n**Role:** helper.\n",
+    };
+    const errors = validateSkill(skill);
+    assert.equal(errors.length, 1, `expected 1 error, got: ${JSON.stringify(errors)}`);
+    assert.ok(
+      /kebab|letter/i.test(errors[0].message),
+      `expected non-kebab error, got: "${errors[0].message}"`
+    );
+    assert.ok(!errors.some((e) => /reserved/i.test(e.message)), "no reserved error");
+    assert.ok(!errors.some((e) => /folder|equal/i.test(e.message)), "no folder error");
+  });
+
+  // B4: underscore name — cascade stops at non-kebab
+  it("B4: underscore name 'My_Skill' reports non-kebab error", () => {
+    const skill = {
+      dirName: "My_Skill",
+      data: { name: "My_Skill", description: "use when X", audience: "public" },
+      body: "# Title\n\n**Role:** helper.\n",
+    };
+    const errors = validateSkill(skill);
+    assert.ok(errors.length >= 1, "should report at least 1 error");
+    assert.ok(
+      errors.some((e) => /kebab|letter/i.test(e.message)),
+      `expected non-kebab error in: ${JSON.stringify(errors)}`
+    );
+  });
+
+  // B5: reserved-word name — cascade stops at reserved-word; no folder error (D-09)
+  it("B5: reserved-word name 'claude-helper' reports reserved-word error; no folder error", () => {
+    const skill = {
+      dirName: "claude-helper",
+      data: { name: "claude-helper", description: "use when X", audience: "public" },
+      body: "# Title\n\n**Role:** helper.\n",
+    };
+    const errors = validateSkill(skill);
+    assert.equal(errors.length, 1, `expected 1 error, got: ${JSON.stringify(errors)}`);
+    assert.ok(
+      /reserved|anthropic|claude/i.test(errors[0].message),
+      `expected reserved-word error, got: "${errors[0].message}"`
+    );
+    assert.ok(!errors.some((e) => /folder|equal/i.test(e.message)), "no folder error");
+  });
+
+  // B6: name != folder — cascade stops at folder-mismatch check
+  it("B6: name 'other' with dirName 'my-skill' reports name-not-equal-folder error", () => {
+    const skill = {
+      dirName: "my-skill",
+      data: { name: "other", description: "use when X", audience: "public" },
+      body: "# Title\n\n**Role:** helper.\n",
+    };
+    const errors = validateSkill(skill);
+    assert.equal(errors.length, 1, `expected 1 error, got: ${JSON.stringify(errors)}`);
+    assert.equal(errors[0].skill, "my-skill");
+    assert.ok(
+      /folder|equal|match/i.test(errors[0].message),
+      `expected folder-mismatch error, got: "${errors[0].message}"`
+    );
+  });
+
+  // B7: missing description (independent)
+  it("B7: missing description reports missing-description error", () => {
+    const skill = {
+      dirName: "my-skill",
+      data: { name: "my-skill", audience: "public" },
+      body: VALID_BODY,
+    };
+    const errors = validateSkill(skill);
+    assert.equal(errors.length, 1, `expected 1 error, got: ${JSON.stringify(errors)}`);
+    assert.equal(errors[0].skill, "my-skill");
+    assert.ok(
+      /description/i.test(errors[0].message),
+      `expected description error, got: "${errors[0].message}"`
+    );
+  });
+
+  // B8: audience — invalid and absent both produce the SAME message (D-11)
+  it("B8: audience 'both' and absent audience produce the same public|private error (D-11)", () => {
+    const base = { name: "my-skill", description: "use when X" };
+    const errsBoth = validateSkill({
+      dirName: "my-skill",
+      data: { ...base, audience: "both" },
+      body: VALID_BODY,
+    });
+    const errsAbsent = validateSkill({
+      dirName: "my-skill",
+      data: { ...base },
+      body: VALID_BODY,
+    });
+
+    const audienceMsg = (errors) =>
+      errors.find((e) => /public.*private|private.*public/i.test(e.message))?.message;
+
+    const msgBoth = audienceMsg(errsBoth);
+    const msgAbsent = audienceMsg(errsAbsent);
+    assert.ok(
+      msgBoth,
+      `expected audience error for "both", got: ${JSON.stringify(errsBoth)}`
+    );
+    assert.ok(
+      msgAbsent,
+      `expected audience error when absent, got: ${JSON.stringify(errsAbsent)}`
+    );
+    assert.equal(msgBoth, msgAbsent, "same message for invalid and absent audience (D-11)");
+  });
+
+  // B9: body missing H1 title AND Role — both reported INDEPENDENTLY (D-12)
+  it("B9: body without H1 title or Role line reports both errors independently (D-12)", () => {
+    const skill = {
+      dirName: "my-skill",
+      data: { name: "my-skill", description: "use when X", audience: "public" },
+      body: "no title\nno role\n",
+    };
+    const errors = validateSkill(skill);
+    assert.equal(
+      errors.length,
+      2,
+      `expected exactly 2 errors (Title + Role), got: ${JSON.stringify(errors)}`
+    );
+    assert.ok(
+      errors.some((e) => /title|H1/i.test(e.message)),
+      `expected Title error in: ${JSON.stringify(errors)}`
+    );
+    assert.ok(
+      errors.some((e) => /role/i.test(e.message)),
+      `expected Role error in: ${JSON.stringify(errors)}`
+    );
+  });
+
+  // B10: resolved shared_references not reported; unresolved entry is reported
+  it("B10: resolved shared_references entry is not reported; unresolved is", () => {
+    const skill = {
+      dirName: "my-skill",
+      data: {
+        name: "my-skill",
+        description: "use when X",
+        audience: "public",
+        shared_references: ["voice", "missing"],
+      },
+      body: VALID_BODY,
+    };
+    const errors = validateSkill(skill, new Set(["voice"]));
+    assert.equal(errors.length, 1, `expected 1 error, got: ${JSON.stringify(errors)}`);
+    assert.ok(
+      errors[0].message.includes("missing"),
+      `expected "missing" in error, got: "${errors[0].message}"`
+    );
+    assert.ok(
+      !errors[0].message.toLowerCase().includes("voice"),
+      "voice should not appear in the error"
+    );
+  });
+
+  // B11: unsafe basenames — safe-basename check precedes membership check (D-10)
+  it("B11: unsafe shared_references basenames get unsafe errors; no 'not found' for them (D-10)", () => {
+    const skill = {
+      dirName: "my-skill",
+      data: {
+        name: "my-skill",
+        description: "use when X",
+        audience: "public",
+        shared_references: ["../secret", "a.md", "ok/x"],
+      },
+      body: VALID_BODY,
+    };
+    const errors = validateSkill(skill, new Set());
+    assert.equal(
+      errors.length,
+      3,
+      `expected 3 unsafe-basename errors, got: ${JSON.stringify(errors)}`
+    );
+    assert.ok(
+      errors.every((e) => /unsafe|basename/i.test(e.message)),
+      `all errors should indicate unsafe basename, got: ${JSON.stringify(errors)}`
+    );
+    assert.ok(
+      !errors.some((e) => /not found|unresolved/i.test(e.message)),
+      "should not report 'not found' for unsafe entries"
+    );
+  });
+
+  // B12: aggregation — multiple independent checks all reported together (D-13)
+  it("B12: audience 'both' + missing description + body missing Role all reported together (D-13)", () => {
+    const skill = {
+      dirName: "my-skill",
+      data: { name: "my-skill", audience: "both" },
+      body: "# My Title\n\nno role here.\n",
+    };
+    const errors = validateSkill(skill);
+    assert.ok(
+      errors.length >= 3,
+      `expected at least 3 errors, got: ${JSON.stringify(errors)}`
+    );
+    assert.ok(
+      errors.some((e) => /public.*private|private.*public/i.test(e.message)),
+      `audience error missing from: ${JSON.stringify(errors)}`
+    );
+    assert.ok(
+      errors.some((e) => /description/i.test(e.message)),
+      `description error missing from: ${JSON.stringify(errors)}`
+    );
+    assert.ok(
+      errors.some((e) => /role/i.test(e.message)),
+      `role error missing from: ${JSON.stringify(errors)}`
+    );
+  });
+
+  // B13: template and dependencies keys are IGNORED (D-14)
+  it("B13: template and dependencies keys in data cause no errors (D-14)", () => {
+    const skill = {
+      dirName: "my-skill",
+      data: {
+        name: "my-skill",
+        description: "use when X",
+        audience: "public",
+        template: "standard",
+        dependencies: ["some-dep"],
+      },
+      body: VALID_BODY,
+    };
+    const errors = validateSkill(skill);
+    assert.deepEqual(errors, []);
+  });
+
+  // NAME_KEBAB export — letter-start kebab regex (D-08, D-16)
+  it("NAME_KEBAB is exported and is the letter-start kebab regex (D-08, D-16)", () => {
+    assert.ok(NAME_KEBAB instanceof RegExp, "NAME_KEBAB should be a RegExp");
+    // Valid cases
+    assert.ok(NAME_KEBAB.test("my-skill"), "'my-skill' is valid");
+    assert.ok(NAME_KEBAB.test("abc"), "'abc' is valid");
+    assert.ok(NAME_KEBAB.test("a1"), "'a1' is valid");
+    assert.ok(NAME_KEBAB.test("abc-def-123"), "'abc-def-123' is valid");
+    // Invalid: leading digit (D-08 regression guard)
+    assert.ok(!NAME_KEBAB.test("0bad"), "'0bad' is invalid (leading digit)");
+    assert.ok(!NAME_KEBAB.test("1abc"), "'1abc' is invalid (leading digit)");
+    // Invalid: uppercase or underscore
+    assert.ok(!NAME_KEBAB.test("My_Skill"), "'My_Skill' is invalid");
+    assert.ok(!NAME_KEBAB.test("MySkill"), "'MySkill' is invalid");
+    // Invalid: structural issues
+    assert.ok(!NAME_KEBAB.test("my--skill"), "'my--skill' is invalid (double dash)");
+    assert.ok(!NAME_KEBAB.test("-bad"), "'-bad' is invalid (leading dash)");
+    assert.ok(!NAME_KEBAB.test("bad-"), "'bad-' is invalid (trailing dash)");
+    assert.ok(!NAME_KEBAB.test(""), "empty string is invalid");
+  });
+});
