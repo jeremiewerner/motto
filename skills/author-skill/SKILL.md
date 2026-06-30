@@ -1,5 +1,5 @@
 ---
-name: authoring-a-skill
+name: author-skill
 description: Teaches how to write a conforming SKILL.md for the Motto framework. Use this skill when authoring a new Motto skill or investigating a lint error.
 audience: public
 shared_references:

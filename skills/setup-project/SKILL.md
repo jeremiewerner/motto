@@ -1,5 +1,5 @@
 ---
-name: motto-project-setup
+name: setup-project
 description: Walks through initializing a Motto project — directory layout, motto.yaml configuration, and running lint and build. Use this skill when starting a new Motto project.
 audience: public
 shared_references:

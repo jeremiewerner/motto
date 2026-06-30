@@ -1,5 +1,5 @@
 ---
-name: motto-release
+name: release
 description: Maintainer release checklist for Motto — run tests, bump version, dogfood lint and build, tag, and publish. Use this skill when releasing a new Motto version.
 audience: private
 ---
