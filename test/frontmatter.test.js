@@ -82,4 +82,19 @@ describe("parseFrontmatter", () => {
     assert.deepEqual(errors, []);
     assert.ok(body.includes("\n---\n"), "body should retain the --- horizontal rule");
   });
+
+  // B8 (D-01 backstop) — **Role:** before a body --- must not throw
+  // Regression guard for the toJS() alias-throw bug: YAML parses "**Role:**"
+  // as a *name alias reference; toJS() throws for unresolved aliases. The
+  // stray-check must catch that and treat the region as non-mapping (not stray).
+  it("B8: body with **Role:** line before a --- does not throw and returns no stray error", () => {
+    const input =
+      "---\nname: my-skill\naudience: public\n---\n# Title\n\n**Role:** Guide.\n\n---\n\nmore body\n";
+    let result;
+    assert.doesNotThrow(() => {
+      result = parseFrontmatter(input);
+    });
+    assert.deepEqual(result.errors, []);
+    assert.ok(result.body.includes("---"), "body should retain the --- delimiter");
+  });
 });
