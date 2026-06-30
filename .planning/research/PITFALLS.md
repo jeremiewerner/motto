@@ -1,6 +1,6 @@
 # Pitfalls Research
 
-**Domain:** Dogfooding a lint/build CLI on its own repo (Motto v0.1.0 Self-Hosting)
+**Domain:** Dogfooding a lint/build CLI on its own repo (Motto v0.0.2 Self-Hosting)
 **Researched:** 2026-06-30
 **Confidence:** HIGH — all pitfalls are grounded in the actual v0.0.1 source code and the specific mechanics of the milestone goal
 
@@ -164,7 +164,7 @@ The `**Role:**` line is syntactically valid but semantically forced. For agent-i
 A related trap: authors trying to "fill in" the role requirement with a single-word line like `**Role:** Reference` — which technically passes the regex `/^\*\*Role:/m` — but produces content that looks like incomplete authoring.
 
 **Why it happens:**
-The spine is intentionally mandatory (no template-waiver for v0.1.0). The decision was made in v0.0.1 to enforce the spine universally, with template-waiver deferred. Self-hosting is the first real exercise of this constraint against non-instructional content.
+The spine is intentionally mandatory (no template-waiver for v0.0.2). The decision was made in v0.0.1 to enforce the spine universally, with template-waiver deferred. Self-hosting is the first real exercise of this constraint against non-instructional content.
 
 **How to avoid:**
 Write natural, honest role lines for reference content:
@@ -173,7 +173,7 @@ Write natural, honest role lines for reference content:
 
 Do not fight the spine. A short but honest role line is correct. The real author value: it forces a sentence about HOW the agent should use this skill, which is actually useful even for reference material.
 
-Do NOT add a template-waiver mechanism for v0.1.0. The milestone explicitly defers concrete templates. The self-hosted skills should demonstrate that the spine works for reference content.
+Do NOT add a template-waiver mechanism for v0.0.2. The milestone explicitly defers concrete templates. The self-hosted skills should demonstrate that the spine works for reference content.
 
 **Warning signs:**
 - LINT-04 error: `body must contain a **Role:** line`
@@ -391,8 +391,8 @@ Write descriptions and body content freely. The restriction is ONLY on the `name
 - Motto `.husky/pre-commit` — `npm test` (single line). Verified 2026-06-30.
 - Motto `package.json` — `"test": "node --test"` (discovers all `*.test.js` recursively). Verified 2026-06-30.
 - Motto `.planning/milestones/v0.0.1-ROADMAP.md` — tech debt section: NAME_KEBAB duplication identified as manual sync point. Verified 2026-06-30.
-- Motto `.planning/PROJECT.md` — v0.1.0 milestone goal: ≥1 public skill, ≥1 private skill, ≥1 shared_reference; dogfood test wired into node:test. Verified 2026-06-30.
+- Motto `.planning/PROJECT.md` — v0.0.2 milestone goal: ≥1 public skill, ≥1 private skill, ≥1 shared_reference; dogfood test wired into node:test. Verified 2026-06-30.
 
 ---
-*Pitfalls research for: Motto v0.1.0 Self-Hosting (Dogfood)*
+*Pitfalls research for: Motto v0.0.2 Self-Hosting (Dogfood)*
 *Researched: 2026-06-30*

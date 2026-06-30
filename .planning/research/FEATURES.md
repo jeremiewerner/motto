@@ -1,6 +1,6 @@
 # Feature Research
 
-**Domain:** Meta-skills — Motto authoring its own skill tree (v0.1.0 dogfood)
+**Domain:** Meta-skills — Motto authoring its own skill tree (v0.0.2 dogfood)
 **Researched:** 2026-06-30
 **Confidence:** HIGH (primary source: the shipped v0.0.1 source code, schema rules, and design spec; no external research needed — the schema is definitional)
 
@@ -194,7 +194,7 @@ Skill ideas that seem obvious but should not be written yet.
 2. **`description` field** — max 1024 chars; must not contain XML tags (`<`, `>`); must state both what the skill does and when Claude should trigger it
 3. **`audience` field** — must be exactly `public` or `private`; nothing else is valid
 4. **`shared_references` field** — array of strings; each entry must be a safe basename (no `.` or `/`); the file must exist at `shared/references/<entry>.md`; the linter reports the entry if the file is missing
-5. **`template` and `dependencies` fields** — accepted and passed through; not validated in v0.1.0
+5. **`template` and `dependencies` fields** — accepted and passed through; not validated in v0.0.2
 6. **Body spine** — first non-blank line must match `^# \S`; body must contain at least one line starting with `**Role:`; both checks are independent (both errors reported even if both fail)
 7. **Frontmatter envelope** — must open with a bare `---` on the first line; must have a matching closing `---`; YAML 1.2 core schema (no `yes`/`no` boolean surprises); stray `---` inside the frontmatter block is detected and reported
 
@@ -225,7 +225,7 @@ private bucket exists ──requires──> plugins.private in motto.yaml AND �
 
 ## MVP Definition
 
-### Launch With (v0.1.0)
+### Launch With (v0.0.2)
 
 Minimum skill set to satisfy the dogfood goal and exercise the full schema surface.
 
@@ -298,5 +298,5 @@ A skill that documents its own tool is useful when it:
 
 ---
 
-*Feature research for: Motto v0.1.0 self-hosting — what skills to author*
+*Feature research for: Motto v0.0.2 self-hosting — what skills to author*
 *Researched: 2026-06-30*

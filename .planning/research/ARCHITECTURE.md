@@ -1,6 +1,6 @@
 # Architecture Research
 
-**Domain:** Node.js lint/build CLI — self-hosting integration (v0.1.0)
+**Domain:** Node.js lint/build CLI — self-hosting integration (v0.0.2)
 **Researched:** 2026-06-30
 **Confidence:** HIGH (all decisions derived by reading the live source tree; no speculation)
 
@@ -42,13 +42,13 @@
 
 ---
 
-## Part 2 — v0.1.0 Self-Hosting Integration Architecture
+## Part 2 — v0.0.2 Self-Hosting Integration Architecture
 
 ### The Integration Question
 
-Motto has no skills of its own. v0.1.0 adds a real `skills/` tree + `motto.yaml` to the repo and wires a dogfood test into `node --test`. The key tension: `buildProject(projectRoot)` **wipes and rewrites `dist/`**. If the dogfood test passes the repo root as `projectRoot`, every `npm test` / pre-commit hook destroys the repo's `dist/`.
+Motto has no skills of its own. v0.0.2 adds a real `skills/` tree + `motto.yaml` to the repo and wires a dogfood test into `node --test`. The key tension: `buildProject(projectRoot)` **wipes and rewrites `dist/`**. If the dogfood test passes the repo root as `projectRoot`, every `npm test` / pre-commit hook destroys the repo's `dist/`.
 
-### Repo Layout After v0.1.0
+### Repo Layout After v0.0.2
 
 ```
 motto/                              ← repo root (REPO_ROOT)
@@ -335,8 +335,8 @@ Two sub-phases within Phase 4 (content-first, then wire test).
 - `/Users/jeremie/Projects/motto/.gitignore` — confirms `dist/` already gitignored
 - `/Users/jeremie/Projects/motto/.husky/pre-commit` — confirms `npm test` runs on every commit
 - `/Users/jeremie/Projects/motto/package.json` — confirms `"test": "node --test"` (auto-discovery); no existing test glob config
-- `/Users/jeremie/Projects/motto/.planning/PROJECT.md` — v0.1.0 goals: ≥1 public + ≥1 private + ≥1 shared ref; Phase numbering continues from 4
+- `/Users/jeremie/Projects/motto/.planning/PROJECT.md` — v0.0.2 goals: ≥1 public + ≥1 private + ≥1 shared ref; Phase numbering continues from 4
 
 ---
-*Architecture research for: Motto v0.1.0 Self-Hosting Integration*
+*Architecture research for: Motto v0.0.2 Self-Hosting Integration*
 *Researched: 2026-06-30*

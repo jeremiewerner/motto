@@ -1,7 +1,7 @@
-# Research Summary: Motto v0.1.0 Self-Hosting (Dogfood)
+# Research Summary: Motto v0.0.2 Self-Hosting (Dogfood)
 
 **Project:** Motto CLI — Node.js skill authoring & plugin packaging framework
-**Milestone:** v0.1.0 — Self-hosting dogfood milestone
+**Milestone:** v0.0.2 — Self-hosting dogfood milestone
 **Domain:** Meta-tooling — framework validating itself on its own project
 **Researched:** 2026-06-30
 **Confidence:** HIGH (all findings grounded in shipped v0.0.1 code + explicit milestone spec)
@@ -10,7 +10,7 @@
 
 ## Executive Summary
 
-Motto v0.1.0 is a self-hosting milestone: the CLI authors and packages real skills about itself (how to author a skill, how to set up a Motto project, and a private maintainer release checklist), bundling them with a shared schema reference. This exercises the full feature surface — public + private skill buckets, shared references, build packaging — and wires a permanent regression guard (dogfood test) into the pre-commit hook.
+Motto v0.0.2 is a self-hosting milestone: the CLI authors and packages real skills about itself (how to author a skill, how to set up a Motto project, and a private maintainer release checklist), bundling them with a shared schema reference. This exercises the full feature surface — public + private skill buckets, shared references, build packaging — and wires a permanent regression guard (dogfood test) into the pre-commit hook.
 
 The technical approach is proven and low-risk: **zero new dependencies**. The existing `lintProject` and `buildProject` need only be called from a test file. The core risk is **not** technical scope but **naming discipline**: Motto's skills document Claude Code, yet any skill `name` containing the substring "claude" or "anthropic" fails the reserved-word check. Use Motto-centric names (`authoring-a-skill`, `motto-project-setup`), not platform-centric ones.
 
@@ -112,7 +112,7 @@ dist/                  (gitignored)
 ### Primary (HIGH)
 - `src/` (all modules) — RESERVED check, build wipe, config validation, frontmatter/schema. Verified 2026-06-30.
 - `test/` (all modules) — mkdtemp + fs-assertion patterns. Verified 2026-06-30.
-- `.planning/PROJECT.md` — v0.1.0 scope, out-of-scope. Verified 2026-06-30.
+- `.planning/PROJECT.md` — v0.0.2 scope, out-of-scope. Verified 2026-06-30.
 - Official Node.js docs (util.parseArgs, test runner, url.fileURLToPath). Verified 2026-06-30.
 - Official Claude Code docs (agent-skills overview, plugins-reference). Verified 2026-06-30.
 

@@ -14,7 +14,7 @@ The **strict schema + linter**. Skills that always conform to one rigid-yet-crea
 
 **Not yet validated:** Motto authors zero skills of its own — the tool has not been dogfooded on a real `skills/` tree. Top candidate for the next milestone.
 
-## Current Milestone: v0.1.0 Self-Hosting (Dogfood)
+## Current Milestone: v0.0.2 Self-Hosting (Dogfood)
 
 **Goal:** Motto authors and validates its own skills tree — proving the lint→build pipeline on real input, with a permanent regression guard in the test suite.
 

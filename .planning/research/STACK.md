@@ -6,11 +6,11 @@
 
 ---
 
-## v0.1.0 Dogfood Addendum
+## v0.0.2 Dogfood Addendum
 
 **Verdict: Zero new dependencies. Zero new dev tools. No dist/ handling changes.**
 
-This section answers the three v0.1.0 dogfood questions directly; the base stack below is unchanged from v0.0.1.
+This section answers the three v0.0.2 dogfood questions directly; the base stack below is unchanged from v0.0.1.
 
 ### New Dependencies
 
@@ -122,7 +122,7 @@ These are content authoring tasks, not stack changes. No new tooling needed.
 
 ## Verdict on Chosen Stack
 
-The project's chosen stack (Node ≥ 20, plain ESM, `node --test`, single dep `yaml`) is correct and defensible. No changes recommended for v0.1.0. Three gaps discovered in v0.0.1 research are documented below.
+The project's chosen stack (Node ≥ 20, plain ESM, `node --test`, single dep `yaml`) is correct and defensible. No changes recommended for v0.0.2. Three gaps discovered in v0.0.1 research are documented below.
 
 ---
 
@@ -356,4 +356,4 @@ const [subcommand] = positionals;
 ---
 
 *Stack research for: Motto CLI (Node ESM, YAML linter, Claude Code plugin packager)*
-*Researched: 2026-06-30 (v0.1.0 dogfood addendum)*
+*Researched: 2026-06-30 (v0.0.2 dogfood addendum)*

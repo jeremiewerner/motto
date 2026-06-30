@@ -1,9 +1,9 @@
 ---
 gsd_state_version: 1.0
-milestone: v0.1.0
+milestone: v0.0.2
 milestone_name: Self-Hosting
 status: planning
-last_updated: "2026-06-30T13:12:32.268Z"
+last_updated: "2026-06-30T13:27:29.527Z"
 last_activity: 2026-06-30
 progress:
   total_phases: 0
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-06-30)
 Phase: Not started (defining requirements)
 Plan: —
 Status: Defining requirements
-Last activity: 2026-06-30 — Milestone v0.1.0 started
+Last activity: 2026-06-30 — Milestone v0.0.2 started
 
 ## Performance Metrics
 
