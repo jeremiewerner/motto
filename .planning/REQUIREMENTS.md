@@ -9,10 +9,10 @@ Requirements for the initial release (the core `lint` + `build` CLI). Each maps 
 
 ### Parsing (PARSE)
 
-- [ ] **PARSE-01**: `parseFrontmatter` extracts YAML `data` + Markdown `body` from a `SKILL.md`, and throws a clear error when the `--- ... ---` block is missing
-- [ ] **PARSE-02**: Input is normalized (CRLF→LF, UTF-8 BOM stripped) before any regex or YAML parse, so Windows/BOM-authored files parse correctly
-- [ ] **PARSE-03**: YAML parse errors surface as lint errors (a malformed skill is reported, never silently dropped)
-- [ ] **PARSE-04**: A stray `---` inside the frontmatter YAML is detected and reported, not silently misparsed
+- [x] **PARSE-01**: `parseFrontmatter` extracts YAML `data` + Markdown `body` from a `SKILL.md`, and throws a clear error when the `--- ... ---` block is missing
+- [x] **PARSE-02**: Input is normalized (CRLF→LF, UTF-8 BOM stripped) before any regex or YAML parse, so Windows/BOM-authored files parse correctly
+- [x] **PARSE-03**: YAML parse errors surface as lint errors (a malformed skill is reported, never silently dropped)
+- [x] **PARSE-04**: A stray `---` inside the frontmatter YAML is detected and reported, not silently misparsed
 
 ### Linting / Schema (LINT)
 
@@ -76,10 +76,10 @@ Explicitly excluded. Documented to prevent scope creep.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| PARSE-01 | Phase 1 | Pending |
-| PARSE-02 | Phase 1 | Pending |
-| PARSE-03 | Phase 1 | Pending |
-| PARSE-04 | Phase 1 | Pending |
+| PARSE-01 | Phase 1 | Complete |
+| PARSE-02 | Phase 1 | Complete |
+| PARSE-03 | Phase 1 | Complete |
+| PARSE-04 | Phase 1 | Complete |
 | LINT-01 | Phase 1 | Pending |
 | LINT-02 | Phase 1 | Pending |
 | LINT-03 | Phase 1 | Pending |
@@ -100,6 +100,7 @@ Explicitly excluded. Documented to prevent scope creep.
 | CLI-02 | Phase 3 | Pending |
 
 **Coverage:**
+
 - v1 requirements: 22 total
 - Mapped to phases: 22
 - Unmapped: 0 ✓
