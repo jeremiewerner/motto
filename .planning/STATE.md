@@ -96,8 +96,14 @@ None yet.
 |----------|------|--------|-------------|
 | *(none)* | | | |
 
+## Quick Tasks Completed
+
+| Date | Task ID | Description | Commits |
+|------|---------|-------------|---------|
+| 2026-06-30 | 260630-uxc-standardize-skill-names | Renamed skills to verb-first names (author-skill, setup-project, release); updated dogfood test | fc1f553, 3d7972d |
+
 ## Session Continuity
 
 Last session: 2026-06-30T20:06:09.630Z
-Stopped at: Phase 6 context gathered
+Stopped at: Phase 6 context gathered; quick task UXC-STANDARDIZE-NAMES complete
 Resume file: .planning/phases/06-address-tech-debt-schema-strictness-summary-frontmatter/06-CONTEXT.md
