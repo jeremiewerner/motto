@@ -6,9 +6,123 @@
 
 ---
 
+## v0.1.0 Dogfood Addendum
+
+**Verdict: Zero new dependencies. Zero new dev tools. No dist/ handling changes.**
+
+This section answers the three v0.1.0 dogfood questions directly; the base stack below is unchanged from v0.0.1.
+
+### New Dependencies
+
+None. Every capability needed by the dogfood milestone is already present:
+
+| Needed for | How to get it | New dep? |
+|------------|---------------|----------|
+| Run `lintProject` / `buildProject` on real tree | `import` from `../src/lint.js` and `../src/build.js` | No |
+| Resolve repo root inside an ESM test file | `dirname(fileURLToPath(import.meta.url))` + `resolve` | No — `node:url` and `node:path` already used |
+| Assert on `dist/` output | `node:fs/promises` (`stat`, `readFile`) | No — already imported in existing tests |
+| Clean up `dist/` after dogfood test run | `fs.rm(dir, { recursive: true, force: true })` | No — already used in `build.js` |
+| Run dogfood test on every commit | Husky pre-commit already runs `node --test` | No change needed |
+
+**Do not add:** Any test helper library (`tape`, `ava`, `chai`), any fixture library, any snapshot library, any temp-copy utility. The existing `node:test` + `node:assert/strict` pattern is sufficient.
+
+### How the Dogfood Test Should Invoke Build
+
+**Run `buildProject` in-place on the real repo root. Do not copy to a temp dir.**
+
+Rationale:
+- The purpose of the dogfood test is to validate the REAL `skills/` tree, not a synthetic copy. Copying defeats the point.
+- `buildProject` is already idempotent: it wipes `dist/` and rebuilds from scratch on every invocation. There is no stale-state risk.
+- `dist/` is already gitignored — in-place writes leave no tracked-file side effects.
+- Copying the full source tree to a temp dir adds ~15 lines of setup and a dependency on `fs.cp` semantics that are already exercised in `build.test.js`. YAGNI.
+
+**Pattern for resolving repo root in an ESM test file:**
+
+```js
+// test/dogfood.test.js
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+```
+
+`fileURLToPath` and `node:path` are already used in the existing codebase. No new stdlib surface.
+
+**Test structure:**
+
+```js
+import { describe, it, after } from 'node:test';
+import assert from 'node:assert/strict';
+import { stat, readFile, rm } from 'node:fs/promises';
+import { join, dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { lintProject } from '../src/lint.js';
+import { buildProject } from '../src/build.js';
+
+const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+
+describe('dogfood: Motto lints and builds its own skills tree', () => {
+  after(async () => {
+    // Wipe dist/ after the dogfood suite so the repo stays clean between test
+    // invocations. Not strictly required (dist/ is gitignored), but removes
+    // confusion when inspecting the working tree.
+    await rm(join(REPO_ROOT, 'dist'), { recursive: true, force: true });
+  });
+
+  it('lintProject returns ok:true on the real skills/ tree', async () => {
+    const result = await lintProject(REPO_ROOT);
+    assert.strictEqual(result.ok, true,
+      `lint failed:\n${result.errors.map(e => `  ${e.skill}: ${e.message}`).join('\n')}`);
+  });
+
+  it('buildProject returns ok:true and produces dist/', async () => {
+    const result = await buildProject(REPO_ROOT);
+    assert.strictEqual(result.ok, true,
+      `build failed:\n${result.errors.map(e => `  ${e.skill}: ${e.message}`).join('\n')}`);
+    const distStat = await stat(join(REPO_ROOT, 'dist'));
+    assert.ok(distStat.isDirectory(), 'dist/ must exist after a successful build');
+  });
+});
+```
+
+The `after()` hook is the right cleanup site — it runs once after all tests in the `describe`, regardless of pass/fail. Individual tests should NOT clean up between themselves because `buildProject` needs `lintProject` to have run (via its internal lint gate) and the second test needs the dist/ written by `buildProject`.
+
+### dist/ Handling
+
+**Keep `dist/` gitignored. Never commit it.**
+
+`.gitignore` already contains `dist/`. This is correct and requires no change:
+- `dist/` is a build artifact regenerated deterministically from `skills/` + `motto.yaml`
+- Committing it creates noise in diffs and creates a second source of truth for content that is already in `skills/`
+- The dogfood test verifies structure at test time; permanent artifact tracking is not needed
+- Downstream users of Motto's plugin will run `motto build` themselves; they do not need a pre-built artifact in the repo
+
+### What NOT to Add for the Dogfood
+
+| Temptation | Why to Reject |
+|------------|---------------|
+| Copy tree to `os.tmpdir()` before testing | Defeats the dogfood premise; adds complexity; no benefit given `buildProject`'s idempotency |
+| Snapshot `dist/` layout to a fixture file | Over-engineering; the live `stat` + `readFile` assertions in the test are the ground truth |
+| A `motto.yaml` `test` command or watch mode | Out of scope; `node --test --watch` works if desired but is not a dependency |
+| `sinon` / `testdouble` for mocking | Not needed; the dogfood test is an integration test, not a unit test |
+| A separate test script in `package.json` | `npm test` (`node --test`) auto-discovers `test/dogfood.test.js` — no script change needed |
+| Committing `dist/` to verify output | The test asserts on it at runtime; static fixtures would drift |
+
+### Required Authoring for the Dogfood to Pass
+
+`lintProject` returns `ok: false` with "no skills found" when `skills/` is missing or empty. The dogfood test will fail until at least one valid SKILL.md exists. Required before the dogfood test can pass:
+
+1. `motto.yaml` at repo root with `name`, `version`, `description`, `plugins.public`
+2. At least one `skills/<name>/SKILL.md` with valid `name`, `description`, `audience` frontmatter and `# Title` + `**Role:**` spine
+3. At least one shared reference in `shared/references/*.md` if any skill declares `shared_references`
+
+These are content authoring tasks, not stack changes. No new tooling needed.
+
+---
+
 ## Verdict on Chosen Stack
 
-The project's chosen stack (Node ≥ 20, plain ESM, `node --test`, single dep `yaml`) is correct and defensible. No changes recommended. Three gaps are documented below.
+The project's chosen stack (Node ≥ 20, plain ESM, `node --test`, single dep `yaml`) is correct and defensible. No changes recommended for v0.1.0. Three gaps discovered in v0.0.1 research are documented below.
 
 ---
 
@@ -33,6 +147,7 @@ The project's chosen stack (Node ≥ 20, plain ESM, `node --test`, single dep `y
 | `node:process` | Exit codes, argv | `process.exit(1)` on lint failure; `process.argv` fed to `parseArgs` |
 | `node:assert` | Assertions in tests | `assert.strictEqual`, `assert.deepStrictEqual`, `assert.throws` — enough for all unit assertions |
 | `node:url` | `fileURLToPath` | Needed for `__dirname` equivalent in ESM: `path.dirname(fileURLToPath(import.meta.url))` |
+| `node:os` | `tmpdir()` | Used in unit tests for `mkdtemp`-based temp fixture directories |
 
 ### Development Tools
 
@@ -41,6 +156,7 @@ The project's chosen stack (Node ≥ 20, plain ESM, `node --test`, single dep `y
 | `node --test` | Run tests | `node --test` discovers all `*.test.js` recursively from cwd; `--test-reporter=spec` for readable output |
 | `node --test --experimental-test-coverage` | Coverage | Built-in; available in Node 20+; marks `--experimental` but reliable enough for CI |
 | `claude plugin validate` | Validate output | Run against `dist/` to verify plugin structure before shipping; built into Claude Code CLI |
+| `husky` | Pre-commit hook | Runs `npm test` (= `node --test`) before every commit; catches dogfood regressions automatically |
 
 ---
 
@@ -50,7 +166,10 @@ The project's chosen stack (Node ≥ 20, plain ESM, `node --test`, single dep `y
 # One runtime dependency
 npm install yaml
 
-# No dev dependencies needed
+# One dev dependency (pre-commit hook runner)
+npm install -D husky
+
+# No other dependencies needed
 ```
 
 ---
@@ -144,13 +263,13 @@ function parseFrontmatter(source) {
 // package.json
 {
   "type": "module",
-  "bin": { "motto": "./src/cli.js" },
+  "bin": { "motto": "./bin/motto.js" },
   "engines": { "node": ">=20" }
 }
 ```
 
 ```js
-// src/cli.js
+// bin/motto.js
 #!/usr/bin/env node
 import { parseArgs } from 'node:util';
 
@@ -181,6 +300,7 @@ const [subcommand] = positionals;
 | `node:fs/promises` | `glob` / `fast-glob` | Motto's directory structure is shallow and well-defined (`skills/<name>/`, `shared/references/`). A `readdir` + filter loop is 5 lines. `glob` adds a dependency for zero benefit on a known-shape tree. |
 | Plain JS (ESM) | TypeScript | TypeScript requires a build step, contradicting the project's "no build step" constraint. For a ~500-line CLI, JSDoc types on exported functions are sufficient for IDE support. |
 | Manual validation | `zod` / `ajv` | A YAML schema validator with custom error messages for two required fields is 20 lines. `zod`/`ajv` add a dependency and return generic error messages that would need custom formatting anyway. |
+| In-place dogfood test | Copy tree to `tmpdir` | Copying adds complexity, adds nothing (buildProject is already idempotent), and defeats the dogfood premise. Run against the real tree. |
 
 ---
 
@@ -197,6 +317,7 @@ const [subcommand] = positionals;
 | `jest` / `vitest` | Require install + ESM config; not needed when `node:test` is stable and sufficient | `node:test` + `node:assert` |
 | `glob` / `fast-glob` | Overkill for a fixed-shape source tree | `node:fs/promises readdir` with `recursive: true` option (Node 18.17+) |
 | `mkdirp` / `rimraf` | Both superseded by Node stdlib | `fs.mkdir(path, {recursive:true})` and `fs.rm(path, {recursive:true,force:true})` |
+| Snapshot libraries | Over-engineering; live assertions on the real dist/ are the ground truth | `node:assert/strict` + `fs.stat` / `fs.readFile` |
 
 ---
 
@@ -230,8 +351,9 @@ const [subcommand] = positionals;
 - `registry.npmjs.org/yaml/latest` — confirmed yaml@2.9.0 as current latest. Verified 2026-06-30. Confidence: HIGH.
 - `nodejs.org/api/util.html#utilparseargsconfig` — parseArgs stable since Node v20.0.0, full option schema. Verified 2026-06-30. Confidence: HIGH (official Node.js docs).
 - `nodejs.org/learn/test-runner/using-test-runner` — node:test stable in Node 20, ESM support, describe/it/mock/coverage. Confidence: HIGH (official Node.js docs).
+- Direct codebase inspection — `src/build.js`, `src/lint.js`, `test/build.test.js`, `package.json`, `.gitignore`. Verified 2026-06-30. Confidence: HIGH.
 
 ---
 
 *Stack research for: Motto CLI (Node ESM, YAML linter, Claude Code plugin packager)*
-*Researched: 2026-06-30*
+*Researched: 2026-06-30 (v0.1.0 dogfood addendum)*
