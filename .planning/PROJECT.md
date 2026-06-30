@@ -8,6 +8,16 @@ Motto is a framework for **authoring, validating, and packaging Claude Code Agen
 
 The **strict schema + linter**. Skills that always conform to one rigid-yet-creative structure, validated before they ship. The rigor is the product; the build is plumbing.
 
+## Current State
+
+**Shipped: v0.0.1 (2026-06-30)** — the core `motto lint` + `motto build` CLI is complete and verified (22/22 requirements, 53 tests, single dep `yaml`). `src/` holds the pure validation core (`frontmatter.js`, `schema.js`, `config.js`) plus `lint.js` and `build.js`; `bin/motto.js` is the CLI. Output is portable standard Agent Skill plugins. See `milestones/v0.0.1-ROADMAP.md`.
+
+**Not yet validated:** Motto authors zero skills of its own — the tool has not been dogfooded on a real `skills/` tree. Top candidate for the next milestone.
+
+## Next Milestone Goals
+
+_To be defined via `/gsd-new-milestone`._ Likely candidates (from v0.0.1 backlog): dogfood Motto on its own skills; CLI ergonomics (`--quiet`, `--format json`, `--zip`); the template mechanism against a first concrete template; the distribution layer.
+
 ## Requirements
 
 ### Validated
