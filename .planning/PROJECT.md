@@ -14,9 +14,17 @@ The **strict schema + linter**. Skills that always conform to one rigid-yet-crea
 
 **Not yet validated:** Motto authors zero skills of its own — the tool has not been dogfooded on a real `skills/` tree. Top candidate for the next milestone.
 
-## Next Milestone Goals
+## Current Milestone: v0.1.0 Self-Hosting (Dogfood)
 
-_To be defined via `/gsd-new-milestone`._ Likely candidates (from v0.0.1 backlog): dogfood Motto on its own skills; CLI ergonomics (`--quiet`, `--format json`, `--zip`); the template mechanism against a first concrete template; the distribution layer.
+**Goal:** Motto authors and validates its own skills tree — proving the lint→build pipeline on real input, with a permanent regression guard in the test suite.
+
+**Target features:**
+- A real `skills/` tree in Motto's own structure: skills *documenting Motto* (≥1 `public`, ≥1 `private`) + ≥1 `shared_reference`
+- A `motto.yaml` for the Motto project (`plugins.public` + `plugins.private`)
+- A dogfood test wired into `node:test` that runs `lintProject` + `buildProject` on the real tree and asserts clean lint + expected `dist/` output (husky catches regressions)
+- Fix any schema/tool gaps the real tree surfaces (in scope)
+
+**Key context:** Full schema surface exercised (public + private + shared ref). Gap-fixes in scope — discovering and closing schema holes is the point of dogfooding. CI deferred (no git remote yet). Phase numbering continues from v0.0.1 (next phase = 4).
 
 ## Requirements
 
