@@ -100,6 +100,7 @@ None yet.
 | Date | Task ID | Description | Commits |
 |------|---------|-------------|---------|
 | 2026-06-30 | 260630-uxc-standardize-skill-names | Renamed skills to verb-first names (author-skill, setup-project, release); updated dogfood test | fc1f553, 3d7972d |
+| 2026-06-30 | 260630-vzh-review-fixes | Closed REVIEW-01..11: never-throw hardening (safeToJS + name-type guard), XML regex tightened, node-shape stray detection, B18 cascade-stop proof, NAME_KEBAB single-sourced from schema.js, skill-schema.md corrected (75 tests pass, lint clean) | 7e740c8, 3fa2c6f, 1b3f4a2, ddcc45d |
 
 ## Session Continuity
 
