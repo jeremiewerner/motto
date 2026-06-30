@@ -5,6 +5,9 @@
   "engines": {
     "node": ">=20"
   },
+  "bin": {
+    "motto": "./bin/motto.js"
+  },
   "scripts": {
     "prepare": "husky",
     "test": "node --test"
