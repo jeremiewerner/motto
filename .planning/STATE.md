@@ -1,6 +1,6 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
+milestone: v0.0.1
 milestone_name: milestone
 current_phase: 03
 current_phase_name: motto-build

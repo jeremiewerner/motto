@@ -1,7 +1,7 @@
 # Motto Roadmap
 
 **Project:** Motto
-**Version:** 1.0.0
+**Version:** 0.0.1
 **Core Value:** A strict schema + linter that guarantees authored skills conform before they ship, then packages them into self-contained standard Agent Skill plugins.
 **Granularity:** Coarse
 **Total v1 Requirements:** 22
