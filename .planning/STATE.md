@@ -6,7 +6,7 @@ status: planning
 last_updated: "2026-06-30T13:27:29.527Z"
 last_activity: 2026-06-30
 progress:
-  total_phases: 0
+  total_phases: 2
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -20,14 +20,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-30)
 
 **Core value:** A strict schema + linter that guarantees authored skills conform before they ship, then packages them into self-contained standard Agent Skill plugins.
-**Current focus:** Phase 03 — motto-build
+**Current focus:** Phase 4 — Self-Hosted Skill Tree + Gap Fixes
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: Phase 4 — Self-Hosted Skill Tree + Gap Fixes (not started)
 Plan: —
-Status: Defining requirements
-Last activity: 2026-06-30 — Milestone v0.0.2 started
+Status: Roadmap created — ready to plan Phase 4
+Last activity: 2026-06-30 — v0.0.2 roadmap created (Phases 4-5, 9 requirements mapped)
 
 ## Performance Metrics
 
@@ -41,9 +41,8 @@ Last activity: 2026-06-30 — Milestone v0.0.2 started
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 1. Pure Core | 0 | - | - |
-| 2. motto lint | 0 | - | - |
-| 3. motto build | 0 | - | - |
+| 4. Self-Hosted Skill Tree + Gap Fixes | 0 | - | - |
+| 5. Dogfood Regression Guard | 0 | - | - |
 
 **Recent Trend:**
 
@@ -51,10 +50,6 @@ Last activity: 2026-06-30 — Milestone v0.0.2 started
 - Trend: -
 
 *Updated after each plan completion*
-| Phase 01 P01 | 14 | 3 tasks | 5 files |
-| Phase 01 P02 | 10min | - tasks | - files |
-| Phase 01-pure-core P03 | 5min | 1 tasks | 2 files |
-| Phase 02-motto-lint P01 | 3 | - tasks | - files |
 
 ## Accumulated Context
 
@@ -67,14 +62,11 @@ Recent decisions affecting current work:
 - Build = lint-first; throws on failure, writes nothing
 - `audience` binary (public|private); private plugin emitted only when private skills exist and `plugins.private` is set
 - Zero concrete templates in v1; template mechanism accepted but not validated
-- [Phase ?]: parseFrontmatter uses the uniform never-throw errors[] model (D-01); YAML.parseDocument with doc.errors[] mapped (D-02)
-- [Phase ?]: Stray --- detection is structural: region after the close is flagged only if it parses as a non-empty YAML mapping (D-06); body horizontal rules preserved
-- [Phase ?]: TDD RED+GREEN committed together because the husky pre-commit hook runs the full node --test suite; RED verified locally first
-- [Phase 01-02]: NAME_KEBAB = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/ (letter-start, D-08); exported from schema.js for config.js reuse (D-16)
-- [Phase 01-02]: validateSkill name cascade (missing->non-kebab->reserved->folder) with independent collection for all other fields (D-13)
-- [Phase 01-02]: safe-basename check (/ or . in entry) precedes sharedRefs.has() per D-10; unsafe entries skip membership check
-- [Phase ?]: lintProject returns count field
-- [Phase ?]: test+impl committed together due to husky; RED verified locally first before GREEN commit
+- [Phase 01-02]: NAME_KEBAB = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/ (letter-start, D-08); exported from schema.js for config.js reuse (D-16) — manual sync point, DOG-04 closes it
+- [Phase 01-02]: validateSkill name cascade (missing->non-kebab->reserved->folder); reserved-substring ban (`claude`/`anthropic`) applies to `name` ONLY
+- [v0.0.2 roadmap]: content-first ordering — author tree + lint + build + gap fixes (Phase 4) BEFORE writing the dogfood test (Phase 5), since the test's count assertions depend on the now-known skill/bucket counts
+- [v0.0.2 roadmap]: dogfood test lints REPO_ROOT in-place (read-only) but builds a `mkdtemp` COPY — `buildProject` destructively wipes `<root>/dist`; anchor via `import.meta.url`, not `process.cwd()`
+- [v0.0.2 roadmap]: zero new dependencies — all dogfood tooling is stdlib + existing `yaml`
 
 ### Pending Todos
 
@@ -92,6 +84,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-06-30T12:31:00.463Z
-Stopped at: Completed 01-02-PLAN.md
+Last session: 2026-06-30
+Stopped at: v0.0.2 roadmap created — Phases 4-5 defined, 9/9 requirements mapped
 Resume file: None

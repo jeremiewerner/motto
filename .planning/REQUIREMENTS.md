@@ -43,20 +43,20 @@ This milestone proves the shipped v0.0.1 `motto lint` + `motto build` pipeline b
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SELF-01 | TBD | Pending |
-| SELF-02 | TBD | Pending |
-| SELF-03 | TBD | Pending |
-| SELF-04 | TBD | Pending |
-| SELF-05 | TBD | Pending |
-| DOG-01 | TBD | Pending |
-| DOG-02 | TBD | Pending |
-| DOG-03 | TBD | Pending |
-| DOG-04 | TBD | Pending |
+| SELF-01 | Phase 4 | Pending |
+| SELF-02 | Phase 4 | Pending |
+| SELF-03 | Phase 4 | Pending |
+| SELF-04 | Phase 4 | Pending |
+| SELF-05 | Phase 4 | Pending |
+| DOG-01 | Phase 4 | Pending |
+| DOG-02 | Phase 4 | Pending |
+| DOG-03 | Phase 5 | Pending |
+| DOG-04 | Phase 5 | Pending |
 
 **Coverage:**
 - v0.0.2 requirements: 9 total
-- Mapped to phases: filled by roadmap
-- Unmapped: TBD
+- Mapped to phases: 9/9 (Phase 4: 7 · Phase 5: 2)
+- Unmapped: 0
 
 ---
-*Requirements defined: 2026-06-30 for milestone v0.0.2.*
+*Requirements defined: 2026-06-30 for milestone v0.0.2. Mapped to phases by roadmap 2026-06-30.*
