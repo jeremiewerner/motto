@@ -9,7 +9,7 @@
 ## Phases
 
 - [x] **Phase 1: Pure Core** - Build the parsing, schema validation, and config loading foundation (no I/O dependencies) (completed 2026-06-30)
-- [ ] **Phase 2: motto lint** - Compose discovery and validation into a working `motto lint` command
+- [x] **Phase 2: motto lint** - Compose discovery and validation into a working `motto lint` command (completed 2026-06-30)
 - [ ] **Phase 3: motto build** - Add build orchestration to produce self-contained plugin distributions via `motto build`
 
 ## Phase Details
@@ -47,9 +47,9 @@
   3. Skills are always discovered and reported in alphabetical order regardless of filesystem ordering
   4. A single SKILL.md with malformed YAML frontmatter is reported as an error while all other skills continue to be linted normally
 
-**Plans**: 1 plan
+**Plans**: 1/1 plans complete
 
-- [ ] 02-01-PLAN.md — lintProject orchestrator + motto CLI binary (LINT-06, LINT-07, CLI-01)
+- [x] 02-01-PLAN.md — lintProject orchestrator + motto CLI binary (LINT-06, LINT-07, CLI-01)
 
 ### Phase 3: motto build
 
@@ -72,5 +72,5 @@
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Pure Core | 3/3 | Complete   | 2026-06-30 |
-| 2. motto lint | 0/? | Not started | - |
+| 2. motto lint | 1/1 | Complete   | 2026-06-30 |
 | 3. motto build | 0/? | Not started | - |

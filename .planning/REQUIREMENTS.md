@@ -21,8 +21,8 @@ Requirements for the initial release (the core `lint` + `build` CLI). Each maps 
 - [x] **LINT-03**: `audience` is exactly `public` or `private`
 - [x] **LINT-04**: Body spine enforced — first non-blank line is an `# ` H1 (Title) and the body contains a `**Role:**` line
 - [x] **LINT-05**: Each `shared_references` entry is a safe basename (no `/` or `.`) and resolves to `shared/references/<name>.md`
-- [ ] **LINT-06**: All errors across all skills are collected and reported as `skill: message`; `motto lint` exits 0 (clean) or 1 (errors)
-- [ ] **LINT-07**: Skill discovery is deterministic (sorted by name) and per-file error-isolated (one bad skill doesn't abort the scan)
+- [x] **LINT-06**: All errors across all skills are collected and reported as `skill: message`; `motto lint` exits 0 (clean) or 1 (errors)
+- [x] **LINT-07**: Skill discovery is deterministic (sorted by name) and per-file error-isolated (one bad skill doesn't abort the scan)
 
 ### Config (CONF)
 
@@ -41,7 +41,7 @@ Requirements for the initial release (the core `lint` + `build` CLI). Each maps 
 
 ### CLI (CLI)
 
-- [ ] **CLI-01**: `motto lint` validates the current project and prints per-error output with the correct exit code
+- [x] **CLI-01**: `motto lint` validates the current project and prints per-error output with the correct exit code
 - [ ] **CLI-02**: `motto build` builds the current project, reports the output dir, and reuses lint diagnostics on failure
 
 ## v2 Requirements
@@ -85,8 +85,8 @@ Explicitly excluded. Documented to prevent scope creep.
 | LINT-03 | Phase 1 | Complete |
 | LINT-04 | Phase 1 | Complete |
 | LINT-05 | Phase 1 | Complete |
-| LINT-06 | Phase 2 | Pending |
-| LINT-07 | Phase 2 | Pending |
+| LINT-06 | Phase 2 | Complete |
+| LINT-07 | Phase 2 | Complete |
 | CONF-01 | Phase 1 | Complete |
 | CONF-02 | Phase 1 | Complete |
 | CONF-03 | Phase 1 | Complete |
@@ -96,7 +96,7 @@ Explicitly excluded. Documented to prevent scope creep.
 | BUILD-04 | Phase 3 | Pending |
 | BUILD-05 | Phase 3 | Pending |
 | BUILD-06 | Phase 3 | Pending |
-| CLI-01 | Phase 2 | Pending |
+| CLI-01 | Phase 2 | Complete |
 | CLI-02 | Phase 3 | Pending |
 
 **Coverage:**
