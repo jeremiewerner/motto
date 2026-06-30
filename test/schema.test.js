@@ -329,21 +329,31 @@ describe("validateSkill", () => {
     assert.deepEqual(errors, []);
   });
 
-  // B18: name 65 chars, valid kebab — max-length error; cascade stops (no reserved/folder error)
-  it("B18: name 65 characters reports max-length error; cascade stops (D-03, D-13)", () => {
-    const name65 = "a".repeat(65);
+  // B18: cascade-stop proof for max-64 (REVIEW-06).
+  //
+  // The name "claude-" + "a"×58 is 65 chars, valid kebab, contains the reserved
+  // substring "claude", and is given dirName "different-folder". If the max-64
+  // check is a cascading else-if (correct), EXACTLY one error fires. If the
+  // max-64 check is ever regressed to an independent `if`, the reserved and
+  // folder checks also fire, producing 3 errors — this test catches that regression.
+  it("B18: name 65-char with reserved+folder triggers — cascade stops at max-64 (REVIEW-06, D-03, D-13)", () => {
+    const name65 = "claude-" + "a".repeat(58); // length 65; contains 'claude'; valid kebab
     const skill = {
-      dirName: name65,
+      dirName: "different-folder", // would trigger folder-mismatch if cascade broke
       data: { name: name65, description: "use when X", audience: "public" },
       body: VALID_BODY,
     };
     const errors = validateSkill(skill);
-    assert.equal(errors.length, 1, `expected 1 error, got: ${JSON.stringify(errors)}`);
+    assert.equal(
+      errors.length,
+      1,
+      `cascade-stop proof: expected exactly 1 error (max-64), got: ${JSON.stringify(errors)}`
+    );
     assert.ok(
       /64/i.test(errors[0].message),
       `expected max-length error referencing 64, got: "${errors[0].message}"`
     );
-    // Cascade stopped — downstream checks (reserved-word, folder-mismatch) must not fire
+    // Cascade stopped — reserved-word and folder checks must not have fired
     assert.ok(
       !errors.some((e) => /reserved/i.test(e.message)),
       "cascade must stop: no reserved-word error expected"
@@ -382,15 +392,38 @@ describe("validateSkill", () => {
     );
   });
 
-  // B20: validateSkill must not throw for a non-string truthy name (D-01 regression)
-  it("B20: validateSkill does not throw and returns an error array for name: true (D-01)", () => {
+  // B20: validateSkill must not throw for any non-string name (D-01 regression, REVIEW-01)
+  //
+  // Truthy non-strings (true, 123, [], {}): must return errors[] with a "name must be
+  // a string" error and NOT throw. This guards the RESERVED.includes() call which
+  // throws for booleans (name.includes is not a function).
+  //
+  // Falsy non-strings (false, 0, ""): covered by step 1 ("name is required").
+  it("B20: validateSkill does not throw for truthy non-string names; returns non-string-name error (D-01, REVIEW-01)", () => {
     const base = { description: "use when X", audience: "public" };
-    const skill = { dirName: "d", data: { ...base, name: true }, body: VALID_BODY };
-    assert.doesNotThrow(() => validateSkill(skill), "must not throw for name: true");
-    const result = validateSkill(skill);
-    assert.ok(Array.isArray(result), "result must be an array");
-    assert.ok(result.length > 0, "must return at least one name error");
-    assert.ok(result.some((e) => /name/i.test(e.message)), "error must mention name");
+    for (const name of [true, 123, [], {}]) {
+      const skill = { dirName: "d", data: { ...base, name }, body: VALID_BODY };
+      assert.doesNotThrow(
+        () => validateSkill(skill),
+        `must not throw for name: ${JSON.stringify(name)}`
+      );
+      const result = validateSkill(skill);
+      assert.ok(Array.isArray(result), `result must be an array for name ${JSON.stringify(name)}`);
+      assert.ok(
+        result.length > 0,
+        `must return at least one error for name ${JSON.stringify(name)}`
+      );
+      assert.ok(
+        result.some((e) => /string/i.test(e.message)),
+        `error must mention "string" for name ${JSON.stringify(name)}: ${JSON.stringify(result)}`
+      );
+    }
+    // false falls into step 1 (falsy → "name is required"), not the type guard
+    const falseResult = validateSkill({ dirName: "d", data: { ...base, name: false }, body: VALID_BODY });
+    assert.ok(
+      falseResult.some((e) => /required/i.test(e.message)),
+      `name: false must produce "name is required", got: ${JSON.stringify(falseResult)}`
+    );
   });
 
   // NAME_KEBAB export — letter-start kebab regex (D-08, D-16)
