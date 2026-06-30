@@ -25,7 +25,10 @@
   3. A YAML parse error in a skill's frontmatter surfaces as a named lint error — the skill is reported, never silently skipped or crashed
   4. A stray `---` embedded inside a frontmatter YAML block produces a clear lint error naming the affected skill
   5. `validateSkill` returns errors for any of: missing required fields; non-letter-start, non-kebab, or reserved-word (`anthropic`/`claude`) name; invalid audience value; missing `# Title` or `**Role:**` body spine; unresolved `shared_references` entry; and `loadConfig` rejects a `motto.yaml` missing `name`, `version`, `description`, or `plugins.public`, or using a non-letter-start plugin name
-**Plans**: TBD
+**Plans**: 3 plans
+- [ ] 01-01-PLAN.md — Scaffold (package.json + yaml) and parseFrontmatter (PARSE-01..04)
+- [ ] 01-02-PLAN.md — validateSkill skill-schema validator (LINT-01..05)
+- [ ] 01-03-PLAN.md — loadConfig core config validator (CONF-01..03)
 
 ### Phase 2: motto lint
 **Goal**: Developers can run `motto lint` against a project and get a complete, deterministic error report or a clean exit.
@@ -56,6 +59,6 @@
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Pure Core | 0/? | Not started | - |
+| 1. Pure Core | 0/3 | Not started | - |
 | 2. motto lint | 0/? | Not started | - |
 | 3. motto build | 0/? | Not started | - |
