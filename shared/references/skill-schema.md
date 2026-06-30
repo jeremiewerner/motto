@@ -17,17 +17,19 @@ Pattern: `^[a-z][a-z0-9]*(-[a-z0-9]+)*$`
 
 **Additional constraints:**
 - Must equal the skill's folder name exactly. If the folder is `my-skill`, the `name` field must be `my-skill`.
-- Max 64 characters (Claude Code platform limit; not enforced by Motto validator v0.0.2).
+- Max 64 characters (Claude Code platform limit; enforced by the Motto validator as a cascade step).
 - Must not contain the substrings `anthropic` or `claude` (substring match, not word boundary).
 
 **Name validation cascades — it stops at the first failure:**
 
 | Step | Check | Lint error emitted |
 |------|-------|--------------------|
-| 1 | `name` is missing or empty | `name is required` |
-| 2 | `name` fails the kebab regex | `name must be letter-start kebab-case (/^[a-z][a-z0-9]*(-[a-z0-9]+)*$/): "X"` |
-| 3 | `name` contains a reserved substring | `name must not contain the reserved substrings "anthropic" or "claude": "X"` |
-| 4 | `name` does not match the folder | `name "X" must equal its folder name "Y"` |
+| 1 | `name` is missing, empty, or falsy (also covers non-string falsy values) | `name is required` |
+| 2 | `name` is a truthy non-string (boolean, number, array, object) | `name must be a string (got <typeof>)` |
+| 3 | `name` fails the kebab regex | `name must be letter-start kebab-case (/^[a-z][a-z0-9]*(-[a-z0-9]+)*$/): "X"` |
+| 4 | `name` exceeds 64 characters | `name must not exceed 64 characters (got N): "X"` |
+| 5 | `name` contains a reserved substring | `name must not contain the reserved substrings "anthropic" or "claude": "X"` |
+| 6 | `name` does not match the folder | `name "X" must equal its folder name "Y"` |
 
 Valid examples: `my-skill`, `abc`, `a1`, `abc-def-123`
 Invalid examples: `0bad` (leading digit), `My_Skill` (uppercase/underscore), `my--skill` (double dash), `-bad` (leading dash)
@@ -44,10 +46,14 @@ description: A concise description of what this skill does and when to use it.
 
 **Authoring guidance:**
 - State both what the skill does AND when an agent should trigger it.
-- Max 1024 characters (Claude Code platform limit; not enforced by Motto validator v0.0.2).
-- Must not contain XML-like tags (`<`, `>`).
+- Max 1024 characters (enforced by the Motto validator).
+- Must not contain XML-tag shapes (e.g. `<example>`, `</p>`, `<br/>`). Plain comparison/math
+  text such as `a<b` is not flagged; only strings matching the tag-shape regex are rejected.
 
-**Lint error if missing:** `description is required`
+**Lint errors:**
+- `description is required`
+- `description must not exceed 1024 characters (got N)`
+- `description must not contain XML tags (e.g. <example>)`
 
 ---
 
