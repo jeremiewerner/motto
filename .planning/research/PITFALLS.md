@@ -1,261 +1,328 @@
 # Pitfalls Research
 
-**Domain:** CLI linter + static packager for structured Markdown/YAML skill files
+**Domain:** Dogfooding a lint/build CLI on its own repo (Motto v0.1.0 Self-Hosting)
 **Researched:** 2026-06-30
-**Confidence:** MEDIUM (core pitfalls confirmed by multiple real-world issues in analogous tools; some Motto-specific analysis is design-time reasoning)
+**Confidence:** HIGH — all pitfalls are grounded in the actual v0.0.1 source code and the specific mechanics of the milestone goal
 
 ---
 
 ## Critical Pitfalls
 
-### Pitfall 1: CRLF Line Endings Break the Frontmatter Extraction Regex
+### Pitfall 1: "claude" / "anthropic" in Skill `name` — LINT-02 Fires on Your Own Skills
+
+> **THIS IS THE HIGHEST-PRIORITY TRAP FOR THIS MILESTONE. Read before naming any skill.**
 
 **What goes wrong:**
-The plan's frontmatter regex `/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/` uses literal `\n`. Node.js `readFileSync(file, 'utf8')` preserves `\r` bytes on every platform — it does not normalize line endings. A SKILL.md authored on Windows and committed without `.gitattributes` enforcement will contain `\r\n` throughout. The regex fails to match `---\r\n`, returning `null`, and `parseFrontmatter` throws "missing frontmatter block" for a perfectly valid file.
+`validateSkill` enforces `RESERVED = ["anthropic", "claude"]` on the `name` field. Any skill whose folder name — which MUST equal its `name` frontmatter value — contains the substring `claude` or `anthropic` fails with LINT-02. Motto's skills document "how to author Claude Code Agent Skills." The most natural naming instinct produces exactly forbidden names.
+
+Forbidden names an author will reach for first:
+- `claude-code-guide` — contains `claude`
+- `for-claude` — contains `claude`
+- `claude-skill-format` — contains `claude`
+- `anthropic-conventions` — contains `anthropic`
+
+The check is a substring match, not a word-boundary match. `include-clause` would pass; `claudecode` would fail. The constraint lives in `src/schema.js` line 39 and runs at Step 3 of the name cascade in `validateSkill`.
+
+Critical asymmetry: LINT-02 applies ONLY to the `name` field. The `description` field and the Markdown body can freely mention "Claude", "Claude Code", "Anthropic" — no restriction. A skill describing Claude Code's plugin format can say "Claude Code" a hundred times in its body and pass lint cleanly.
 
 **Why it happens:**
-Developers on macOS/Linux write and test the regex against `\n`-only strings. They assume the OS or Node will normalize. Node does not. The bug only surfaces when a Windows author or a repository with no `eol` config is involved.
+Motto documents a Claude-specific toolchain. Naming skills after the platform being documented is natural. The constraint exists because Claude Code itself enforces it on plugin names loaded into its namespace — Motto propagates the rule to skill names so the rule is consistent throughout. But the author of Motto's OWN skills is the first person to hit this trap.
 
 **How to avoid:**
-Strip carriage returns immediately after reading, before any regex or YAML parsing:
+Use Motto-centric or action-centric names that describe WHAT the skill does, not the platform it targets:
+
+| Natural (forbidden) | Correct alternative |
+|---------------------|---------------------|
+| `claude-code-skills` | `skill-authoring` |
+| `for-claude` | `motto-build` |
+| `claude-plugin-format` | `plugin-format` |
+| `anthropic-conventions` | `naming-conventions` |
+| `claude-skill-linter` | `lint-guide` |
+
+Before creating any skill folder, run this mental check: does the folder name contain the six-letter sequence `c-l-a-u-d-e` or the ten-letter sequence `a-n-t-h-r-o-p-i-c`? If yes, rename before creating.
+
+**Warning signs:**
+- LINT-02 error: `name must not contain the reserved substrings "anthropic" or "claude": "<name>"`
+- The dogfood lint step fails on your own skills, not on external input
+- You rename a folder but forget to update the `name:` frontmatter field (which then fails the name≠folder check instead)
+
+**Phase to address:** Phase 4 — skill tree authoring. Name every skill before writing SKILL.md. Use a naming checklist.
+
+---
+
+### Pitfall 2: Dogfood Build Wipes `./dist/` During `npm test` — Pre-Commit Hook Destroys Manual Build
+
+**What goes wrong:**
+`buildProject(repoRoot)` wipes `dist/` at Step 4 (`rm(distDir, { recursive: true, force: true })`) before repacking. When the dogfood test calls `buildProject(REPO_ROOT)`, this wipe happens as part of every `npm test` run, including every pre-commit hook invocation.
+
+Consequences:
+1. A developer runs `motto build` manually to produce `./dist/` for local testing. They then stage a source file and commit. The husky pre-commit hook fires `npm test`. The dogfood test calls `buildProject(REPO_ROOT)`, wipes their `./dist/`, rebuilds it. If the build succeeds, `./dist/` is regenerated with the new code — may differ from what they tested. If the build fails (e.g., a skill has a lint error), `./dist/` is wiped and left empty. Either way, the developer did not expect `npm test` to mutate `./dist/`.
+2. If the dogfood test asserts something mid-way and throws before the test's `try/finally`, `./dist/` may be left in a partially-written state: wipe has run, some skills are packed, plugin.json may or may not exist.
+
+Note: `./dist/` is already in `.gitignore` (confirmed), so git does not see the wipe as a dirty working tree. The concern is practical, not git-cleanliness: repeated wipe-rebuild during test can mask a bug where the build produces wrong output that lint didn't catch, because the test immediately checks the freshly-built dist rather than a separately-built one.
+
+**Why it happens:**
+`buildProject` is designed as a production build command. Using it in a test that runs on every commit causes its side-effect (wipe + rebuild) to run on every commit. The `buildProject` API has no `dryRun` option or `outDir` override — it always writes to `<projectRoot>/dist`.
+
+**How to avoid:**
+1. Accept the wipe behavior and document it clearly in the dogfood test's header comment: "This test writes and rewrites `./dist/`. This is intentional — it validates the real build output. `./dist/` is gitignored."
+2. The test must use `try/finally` to handle assertion failures gracefully — NOT to clean up `./dist/` (leaving the dist present is correct), but to ensure the test itself does not leave the process in a bad state.
+3. Do NOT add `outDir` option to `buildProject` to avoid wipe — that adds API surface without a real consumer need. Accept the current behavior.
+4. If the developer needs a stable `./dist/` across test runs, they must run `motto build` manually after the test suite completes.
+
+**Warning signs:**
+- `./dist/` contents change unexpectedly after `git commit`
+- Pre-commit hook takes longer than expected (it's rebuilding the full dist)
+- A post-commit `motto build` produces different output than what the test verified (indicating the test ran against stale source state)
+
+**Phase to address:** Phase 4 — dogfood test authoring. Add the wipe-behavior comment. Phase 5 — verify the pre-commit hook timing is acceptable.
+
+---
+
+### Pitfall 3: `process.cwd()` in Dogfood Test — Wrong Root When Run Outside Repo Root
+
+**What goes wrong:**
+`node --test` discovers `*.test.js` recursively from wherever it is invoked. When invoked as `npm test` from the repo root, `process.cwd()` = repo root — correct. But if a developer runs `node --test test/dogfood.test.js` from inside `test/`, `process.cwd()` = `<repo>/test/`. The dogfood test then calls `lintProject('/path/to/motto/test/')`, which looks for:
+- `test/motto.yaml` — ENOENT → lint error "motto.yaml: file not found"
+- `test/skills/` — ENOENT → "no skills found"
+
+The dogfood test fails with config errors, not a meaningful assertion failure. The error message "motto.yaml: file not found" gives no hint that the root path is wrong.
+
+A second form of the same bug: a test helper imported by another test file calls `lintProject(process.cwd())` as a side effect. If test files share a helper that computes root via `process.cwd()`, any test run from a non-root directory causes silent root miscalculation.
+
+**Why it happens:**
+`process.cwd()` is a global process property, not a module property. It changes depending on how `node` is invoked. Every other test in the suite uses `mkdtemp` (explicit temp root) — none rely on `process.cwd()`. The dogfood test is the first test that needs to reference the actual repo root.
+
+**How to avoid:**
+Compute the repo root from `import.meta.url` inside the dogfood test file:
+
 ```js
-const text = readFileSync(file, 'utf8').replace(/\r\n/g, '\n').replace(/\r/g, '\n')
+import { fileURLToPath } from 'node:url'
+import { dirname, resolve } from 'node:path'
+
+const __dirname = dirname(fileURLToPath(import.meta.url))
+const REPO_ROOT = resolve(__dirname, '..') // test/ → repo root
 ```
-Add this normalization at the top of `parseFrontmatter`. Add a dedicated CRLF test case to `test/frontmatter.test.js`.
+
+This resolves to the same absolute path regardless of cwd. Verify the computed path with a `stat` check in the test's `before()` hook so a miscalculation fails loudly.
+
+Never pass `process.cwd()` to `lintProject` or `buildProject` in any test. The dogfood test is the only test that references the real source tree — keep that clearly isolated.
 
 **Warning signs:**
-- `parseFrontmatter` throws on files that display correctly in editors
-- Tests pass on macOS CI but fail when a Windows contributor sends a PR
-- `git log --show-notes` shows `CRLF` in file attributes
+- Dogfood test fails with `motto.yaml: file not found` or `no skills found` despite the file existing at the project root
+- Test passes on `npm test` but fails on `node --test test/dogfood.test.js`
+- Lint output shows zero skills where you expect N skills
 
-**Phase to address:** Task 1 — frontmatter parser. Add CRLF test case alongside the existing three tests.
+**Phase to address:** Phase 4 — dogfood test authoring. Use `import.meta.url`-based root resolution from the first line.
 
 ---
 
-### Pitfall 2: UTF-8 BOM Breaks the Frontmatter Regex at File Start
+### Pitfall 4: `lintProject` Picks Up Fixture `skills/` If One Is Ever Created at Repo Root
 
 **What goes wrong:**
-Windows editors (Notepad, some VS Code configurations) save UTF-8 files with a three-byte BOM (`﻿`) prepended. The BOM sits before `---`, so `^---` never matches. `parseFrontmatter` throws "missing frontmatter block." This is confirmed by Codex issue #13918 and similar reports across multiple agent-skill loaders.
+`lintProject(REPO_ROOT)` looks for skills at exactly `<repoRoot>/skills/`. Currently, all test fixtures use `mkdtemp` (temp dirs), so there is no `skills/` directory at the repo root until the dogfood milestone adds one. Once `skills/` is created for self-hosting, it becomes the canonical source. But if a future developer creates `skills/fixtures/` or a top-level `skills/bad-skill/` as a test fixture (instead of using mkdtemp), that directory gets linted as a real skill and may produce unexpected failures.
+
+The symmetrical risk: if a developer checks the behavior of `lintProject` on malformed skills by creating a folder under `skills/` rather than a temp dir, the dogfood test will pick it up and fail.
 
 **Why it happens:**
-BOM is invisible in most editors and in terminal `cat` output. The author sees a correct `---` header but the parser sees `﻿---`.
+`discoverSkillNames` uses one-level `readdir` on `<root>/skills/`, filtering for non-hidden directories. Any folder there is treated as a skill. There is no "fixture" or "example" marker in the directory structure.
 
 **How to avoid:**
-Strip BOM after reading, before parsing:
+- ALL test fixtures for lint/build tests must continue using `mkdtemp`. Document this as a firm convention in test file headers: "Never create fixtures under the real `skills/` directory."
+- If a real example or template skill must live in the repo for documentation purposes, prefix its folder with `.` (hidden) — `discoverSkillNames` filters out dotfiles.
+- The dogfood test's `before()` hook can assert that `skillNames.length` equals the exact expected count, catching accidental fixture pollution immediately.
+
+**Warning signs:**
+- Dogfood test reports more skills than expected
+- A malformed skill folder appears in lint output that you did not author
+- `count` in `lintResult` is higher than the number of skills in `skills/`
+
+**Phase to address:** Phase 4 — add count assertion to dogfood test; add convention note to test files.
+
+---
+
+### Pitfall 5: Body-Spine Requirement Forces Awkward `**Role:**` on Reference-Card Content
+
+**What goes wrong:**
+`validateSkill` enforces two independent body checks:
+1. First non-blank line must be `# Title` (H1)
+2. Body must contain at least one `**Role:**` line
+
+Motto's own skills are likely to be reference material — schema field tables, command references, authoring guides. Pure reference cards do not naturally have a role statement. The requirement forces content that reads awkwardly:
+
+```markdown
+# Skill Schema Reference
+
+**Role:** Reference — consult this skill to look up Motto frontmatter field rules.
+
+| Field | Required | Rules |
+...
+```
+
+The `**Role:**` line is syntactically valid but semantically forced. For agent-instruction skills, the role statement is natural ("You are an expert who..."). For reference cards consumed by an agent as context, the role statement is just metadata.
+
+A related trap: authors trying to "fill in" the role requirement with a single-word line like `**Role:** Reference` — which technically passes the regex `/^\*\*Role:/m` — but produces content that looks like incomplete authoring.
+
+**Why it happens:**
+The spine is intentionally mandatory (no template-waiver for v0.1.0). The decision was made in v0.0.1 to enforce the spine universally, with template-waiver deferred. Self-hosting is the first real exercise of this constraint against non-instructional content.
+
+**How to avoid:**
+Write natural, honest role lines for reference content:
+- `**Role:** Reference — use the table below to look up required frontmatter fields.`
+- `**Role:** Command reference — invoke this skill to recall the exact `motto lint` / `motto build` flags.`
+
+Do not fight the spine. A short but honest role line is correct. The real author value: it forces a sentence about HOW the agent should use this skill, which is actually useful even for reference material.
+
+Do NOT add a template-waiver mechanism for v0.1.0. The milestone explicitly defers concrete templates. The self-hosted skills should demonstrate that the spine works for reference content.
+
+**Warning signs:**
+- LINT-04 error: `body must contain a **Role:** line`
+- Role line is `**Role:**` with nothing after it (fails the schema check? No — `validateSkill` only checks for `^\*\*Role:` prefix, not for content after the colon. But it produces unusable content for the agent.)
+- Authors try to hide the Role line at the bottom of a long document to "get it out of the way" — this passes lint but defeats the purpose
+
+**Phase to address:** Phase 4 — write role lines for each skill before writing the body. Accept the awkwardness for reference cards.
+
+---
+
+### Pitfall 6: `motto.yaml` Config Errors Block Skill Lint — Bad Config Silences the Whole Tree
+
+**What goes wrong:**
+`lintProject` processes config first (step 1), then skills (step 4). If `motto.yaml` is missing or has a LINT error, config errors are pushed to the errors array but skill scanning still runs (per the `processConfig` implementation at `lint.js:54`). However, if `motto.yaml` is missing, `loadSharedRefs` still runs (returns empty set), and `discoverSkillNames` still runs. The final result is: config error + all skill errors (shared_references unresolvable because the Set is empty).
+
+In the dogfood context, Motto's own `motto.yaml` must be correct for the dogfood test to produce a meaningful clean result. If the `motto.yaml` is authored AFTER the `skills/` tree, the test will run on a partially-configured project and produce a cascade of errors — some real, some artifacts of the empty config.
+
+`buildProject` has a harder constraint: lint must pass entirely (`lintResult.ok`) before any build step runs. A config error blocks build completely.
+
+**Why it happens:**
+Config and skill authoring are decoupled but order-dependent at test time. A developer might create skills first and write `motto.yaml` last, assuming they can iterate.
+
+**How to avoid:**
+Author `motto.yaml` FIRST before any `skills/` content. The dogfood test's `before()` hook should explicitly verify `lintResult` and assert no config errors separately from skill errors. If config is broken, fail with a clear message: "motto.yaml has errors — fix config before running skill lint."
+
+Structure the dogfood test to check:
+1. `lintResult.errors.filter(e => e.skill === 'motto.yaml')` is empty (config clean)
+2. `lintResult.ok` is true (full tree clean)
+3. `buildProject` returns `ok: true`
+
+**Warning signs:**
+- Dogfood test fails with `motto.yaml: missing plugins.public` or similar
+- `lintResult.count` is 0 even though `skills/` has folders
+- Build returns `ok: false` with a `motto.yaml` error, not a skill error
+
+**Phase to address:** Phase 4 — author `motto.yaml` first; dogfood test assertions are layered (config first, then skills).
+
+---
+
+### Pitfall 7: `buildProject` Calls `lintProject` Internally — Double Lint in Dogfood Test
+
+**What goes wrong:**
+`buildProject` calls `lintProject` at step 1 as a gate. A dogfood test that calls BOTH `lintProject(REPO_ROOT)` and `buildProject(REPO_ROOT)` runs lint twice: once explicitly, once inside build. This is harmless in terms of correctness (both see the same source tree) but creates two failure surfaces with different error shapes.
+
+When lint fails:
+- Explicit `lintProject` call returns `{ ok: false, errors: [...] }`
+- `buildProject` also returns `{ ok: false, errors: [...] }` (same errors)
+
+The test must assert on both if called, or choose one. Calling both in sequence to "verify lint is clean, then verify build succeeds" is valid but means lint I/O runs twice on the real tree.
+
+If the dogfood test only calls `buildProject`, it gets lint results embedded in the build result but doesn't get the lint `count` (number of skills found), which is useful for the "expected N skills" assertion.
+
+**Why it happens:**
+`buildProject`'s internal `lintProject` call is the lint gate, not the lint report surface. The architecture correctly makes lint a precondition of build, but test code treating them as a pipeline must account for the double invocation.
+
+**How to avoid:**
+Structure the dogfood test to call `lintProject` first for its count/error assertions, then call `buildProject` separately and assert on dist structure. Do not try to short-circuit by checking `buildResult.errors` to infer lint status — `buildResult.errors` on a lint failure returns lint errors, but on a build failure (post-lint) returns build-specific errors. Keep the two assertions separate.
+
+Alternatively: call only `buildProject` and infer lint cleanliness from `buildResult.ok`. Simpler test, but loses `skillCount` assertion.
+
+**Warning signs:**
+- Disk I/O on the skills tree happens twice per dogfood test run
+- A lint error appears in BOTH `lintResult.errors` and `buildResult.errors` (this is correct behavior, not a bug — but can look like a duplicate)
+- Test assertion on `buildResult.errors` misses a lint error because the error object shape is `{ skill: '...', message: '...' }` in both, and the test only checked message content
+
+**Phase to address:** Phase 4 — dogfood test design. Decide upfront: call lint + build separately (rich assertions) or build only (simpler, fewer assertions).
+
+---
+
+### Pitfall 8: `NAME_KEBAB` Duplication — Config and Schema Can Silently Diverge
+
+**What goes wrong:**
+`NAME_KEBAB` is defined in `src/schema.js` (exported) and manually duplicated in `src/config.js` (private copy). The v0.0.1 tech debt list identifies this explicitly. A future edit to one file that doesn't update the other creates a divergence where:
+- A skill name passes `validateSkill` but fails `loadConfig` (or vice versa for plugin names)
+- Plugin names in `motto.yaml` are accepted/rejected differently from skill names
+
+The dogfood test does NOT surface this gap because it runs lint on a validly-authored tree — if both regexes happen to agree on all test inputs, the divergence is invisible.
+
+**Why it happens:**
+`src/config.js` intentionally avoids importing from `src/schema.js` to keep the validator pure (no cross-module dependency). The `// Intentional duplicate... Source of truth: src/schema.js export NAME_KEBAB.` comment is the only protection. Future contributors may not see the comment or may update one file without searching for duplicates.
+
+**How to avoid:**
+Add an equality self-test in the test suite:
+
 ```js
-const text = readFileSync(file, 'utf8').replace(/^﻿/, '')
+import { NAME_KEBAB } from '../src/schema.js'
+// config.js's private regex, extracted via a test-only export or literal comparison:
+const CONFIG_KEBAB = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/
+assert.strictEqual(NAME_KEBAB.source, CONFIG_KEBAB.source, 'NAME_KEBAB must be identical in schema.js and config.js')
 ```
-Combine with the CRLF strip from Pitfall 1 into a single `normalizeText(raw)` helper. Add a BOM test case to `test/frontmatter.test.js`.
+
+This is the "equality self-test" referenced in the v0.0.1 tech debt log. Alternatively, export `NAME_KEBAB` from `schema.js` and import it in `config.js` — this removes the duplication entirely. The pure-validator argument is weaker than the sync guarantee. Dogfood milestone is the right time to close this gap.
 
 **Warning signs:**
-- Skill file appears valid in editor, `motto lint` reports "missing frontmatter"
-- `hexdump -C skill.md | head -1` shows `ef bb bf` as first three bytes
-- Error disappears when the file is re-saved with "UTF-8 without BOM"
+- A plugin name passes config validation but fails a skill name check (or vice versa) for a name that should behave identically under both
+- No lint error at add-regex-change time because no test compares the two regexes
+- The divergence only surfaces when a user's project uses a name that falls in the gap (e.g., the regex in config.js accidentally allows double-dash while schema.js doesn't)
 
-**Phase to address:** Task 1 — frontmatter parser. One extra test: `parseFrontmatter('﻿---\nname: x\n---\nbody')` must not throw.
+**Phase to address:** Phase 4 — add the NAME_KEBAB equality self-test to the existing `config.test.js` or `schema.test.js`. This is a one-assertion fix.
 
 ---
 
-### Pitfall 3: `---` Inside a Multiline YAML Value Poisons the Closing-Fence Detection
+### Pitfall 9: Private Skill Without `plugins.private` — Build Fails After Lint Passes
 
 **What goes wrong:**
-The non-greedy regex `\n---\n?` terminates at the FIRST occurrence of `\n---` in the file. If a YAML value (most commonly `description`) contains a literal `---` on its own line — inside a literal block scalar (`|`) or simply as part of a multi-paragraph description — the regex extracts the wrong frontmatter slice and silently produces a nonsensical `data` object with an incorrect `body`.
+A private skill (audience: private) passes `lintProject` cleanly because the private-contradiction check runs only in `buildProject` (step 3, D3-12), not in `validateSkill`. Lint is schema validation; build is packaging validation. The sequence:
+1. Lint passes: `ok: true`
+2. Build fails: `"audience private but plugins.private not set in motto.yaml"`
 
-Example that breaks the plan's regex:
-```
----
-description: |
-  Best practices guide.
-  ---
-  See references.
-name: my-skill
-audience: public
----
-# My Skill
-```
-The regex captures `description: |\n  Best practices guide.` as frontmatter and `  See references.\nname: my-skill\n...` as body. No error is thrown; the skill silently fails lint for unrelated reasons.
+For a developer iterating on the skills tree, this is surprising: lint said clean, but build rejected it. The error message correctly identifies the fix, but the developer expected a clean build after a clean lint.
+
+In the dogfood context, if Motto authors ≥1 private skill but forgets to add `plugins.private` to `motto.yaml`, the dogfood test's `lintProject` assertion passes and the `buildProject` assertion fails. The test needs separate assertions for each stage to make this failure obvious.
 
 **Why it happens:**
-Frontmatter delimiters and YAML block scalars are context-sensitive; a single regex cannot know when `---` is content vs. delimiter. This is well-documented in the `markdownlint` issue tracker (issue #153).
+The lint/build separation is intentional: lint validates each skill independently; build validates the whole project as a packaging unit. Cross-skill and cross-config constraints that only matter at packaging time belong in build. The private-contradiction is a packaging constraint, not a schema constraint.
 
 **How to avoid:**
-Option A (simplest): Prohibit `---` in frontmatter values by scanning the extracted YAML string before parsing, and emit a clear lint error if found. Document this in the skill-authoring guide.
-Option B: Walk the raw text line-by-line to find the closing `---` only at column 0 with no leading content on that line, ignoring lines that have indentation (block scalar context).
-Option C: Require all multiline descriptions to use `>` (folded scalar) which does not produce bare `---` lines.
+Author `motto.yaml` with BOTH `plugins.public` and `plugins.private` set BEFORE adding any private skill, even if `plugins.private` is not yet used. The cost: build always emits a `dist/private/` placeholder — no, wait, build only emits `dist/private/` when `bucketsUsed.has('private')`, which only happens when at least one private skill exists. So having `plugins.private` set with zero private skills is harmless.
 
-Recommend Option A for v1: detect it and error loudly rather than silently misparse.
+Set `plugins.private` early; remove it only if you never author private skills.
 
 **Warning signs:**
-- `description` field contains a pipe (`|`) or a horizontal rule in the content
-- Lint reports "missing name" or "audience must be public|private" for a skill whose frontmatter looks correct in the editor
-- The parsed `data.name` is `undefined` even though `name:` is present in the file
+- `lintResult.ok === true` but `buildResult.ok === false`
+- `buildResult.errors[0].message` includes `"plugins.private not set"`
+- The failing skill has `audience: private` in its frontmatter
 
-**Phase to address:** Task 1 — frontmatter parser; or Task 3 — schema validator (add a check that the raw frontmatter string does not contain `\n---` after the first line).
+**Phase to address:** Phase 4 — author `motto.yaml` with `plugins.private` set if the milestone requires a private skill. The milestone spec says "≥1 private" — so `plugins.private` is required.
 
 ---
 
-### Pitfall 4: Unquoted Colon-Space in Frontmatter Values Silently Invalidates the YAML
+### Pitfall 10: `description` Mentions "Claude" — Authors Assume LINT-02 Bans It
 
 **What goes wrong:**
-YAML treats `: ` (colon followed by space) as a key-value separator. A description like `use when: the user asks for help` is parsed as `description` mapping to the nested mapping `{ when: 'the user asks for help' }` rather than a string. The `yaml` library may throw `"mapping values are not allowed here"` or silently produce a structured object instead of a string. `validateSkill` then fails with "missing description" — true in a sense, but the error message gives no hint that the YAML itself is malformed.
+Not a code bug, but a common misreading of LINT-02. Authors who read "name must not contain the reserved substrings 'anthropic' or 'claude'" assume the same restriction applies to `description` and the body. It does not. The `RESERVED` check at `schema.js:84` runs ONLY on `data.name`. No check is performed on `data.description` or `body`.
 
-This is confirmed as a real pattern: `autoresearch` issue #69 shows four SKILL.md files across multiple agent tools failing exactly this way.
-
-**Why it happens:**
-Skill descriptions naturally contain colons: "Use when: user asks for X", "NOT for: batch processing", "Iterations: 3". Authors write prose, not YAML-aware prose.
-
-**How to avoid:**
-Two defences:
-
-1. In `parseFrontmatter`, wrap `YAML.parse(match[1])` in a try/catch and re-throw with the YAML error message included: `throw new Error('frontmatter YAML parse error: ' + e.message)`. This makes the root cause visible.
-2. In the authoring guide and/or `motto lint` output, add a hint: "if description contains `: `, quote the entire value".
-
-Do NOT silently drop the skill. Always surface parse errors as `lint` failures.
-
-**Warning signs:**
-- Lint reports "missing description" for a file that visibly has `description:` in it
-- The YAML library throws `"unexpected token"` or `"mapping values are not allowed here"` during build
-- Description contains `:`  followed by a space anywhere in its text
-
-**Phase to address:** Task 1 — `parseFrontmatter` error handling; Task 3 — clear error messages from `validateSkill`.
-
----
-
-### Pitfall 5: H1 Title Check Fails on Body Lines with Trailing `\r` (CRLF)
-
-**What goes wrong:**
-If Pitfall 1 (CRLF normalization) is addressed in `parseFrontmatter` but the body is passed to `validateSkill` still containing `\r\n`, then `body.split('\n')` produces lines ending in `\r`. The `firstLine` becomes `# My Skill\r`. The regex `/^#\s+\S/.test('# My Skill\r')` still passes (because `\S` matches `M` before `\r`). So H1 detection survives CRLF. However, the ROLE regex `/^\*\*Role:\*\*\s+\S/m` also survives because multiline `^` matches after `\r\n` per ECMAScript spec.
-
-The actual risk: if normalization is done in `parseFrontmatter` (as recommended), the body is already clean. The pitfall arises if normalization is NOT done there, and body validation is added to `schema.js` later by a different contributor who doesn't know about the upstream gap.
+Motto's own skill descriptions and bodies will naturally and correctly mention "Claude Code", "Anthropic", "Claude Code Agent Skills" throughout. Authors may self-censor their descriptions unnecessarily, producing weaker descriptions.
 
 **Why it happens:**
-The line-ending contract between modules is implicit. `schema.js` assumes clean `\n`-only body but this is not documented or asserted.
+The error message for LINT-02 says "name must not contain..." — the word "name" specifies the field. But authors skimming the rule assume it's a global content filter, not a field-specific name constraint.
 
 **How to avoid:**
-Make the contract explicit: document in `src/frontmatter.js` that the returned `body` is always LF-normalized. Add an assertion or comment. This prevents a future contributor from calling `validateSkill` with a raw, un-normalized string.
+Write descriptions and body content freely. The restriction is ONLY on the `name` field (= folder name). Confirm by checking `src/schema.js:84`: the `RESERVED` check runs on `name` only, inside the NAME cascade block. The description check at line 95 only verifies non-empty.
 
 **Warning signs:**
-- H1 check unexpectedly fails only on Windows-authored skill files
-- `firstLine` in a debugger shows a trailing `\r` character
+- A developer asks "can I mention Claude Code in the description?" — they've misread LINT-02
+- Skills descriptions are vague ("A skill for agent use") when they could be precise ("Author Claude Code Agent Skills using Motto's schema")
+- No warning sign from the linter — this is a human misreading, not a code issue
 
-**Phase to address:** Task 1 (normalization contract); Task 3 (comment in validateSkill documenting the expected input contract).
-
----
-
-### Pitfall 6: Regex-Based Title Check Too Loose — Matches `#` in Code Blocks or Comments
-
-**What goes wrong:**
-The current plan checks the body's first non-blank line with `/^#\s+\S/`. This is correct for the happy path. However, if the first non-blank line in the body is a code block delimiter (` ```bash` — wait, that doesn't start with `#`) or an HTML comment (`<!-- #tag -->`), the regex won't falsely match. The real risk is the opposite: the check is too strict if a legitimate Title includes Unicode, emoji, or begins with a special char counted as whitespace.
-
-More dangerous: the `ROLE` check `/^\*\*Role:\*\*\s+\S/m` would false-positive match a line inside a fenced code block that happens to contain `**Role:**`. A skill could pass lint with the Role line buried in a code example, not in the actual prose.
-
-**Why it happens:**
-Regex-based Markdown structure checks have no concept of parsing context. The regex doesn't know whether it's inside a code block, a blockquote, or prose.
-
-**How to avoid:**
-For v1 with simple skill files this is acceptable. Document the known limitation. If a future skill type needs nested code examples, consider stripping fenced code blocks from the body before running structural checks — but do not add this complexity until a real skill triggers the false positive.
-
-Do not make the regex stricter (requiring `## ` or specific casing) as that would create false negatives for legitimate titles.
-
-**Warning signs:**
-- A skill passes lint but has no prose Role statement — the `**Role:**` is inside a `\`\`\`` block
-- This is unlikely in real skills but is a known regex limitation
-
-**Phase to address:** Task 3 — schema validator. Add a comment noting the code-block limitation; not a bug for v1 scope.
-
----
-
-### Pitfall 7: `plugin.json` `name` Field — Claude Code Requires Letter Start, Motto Accepts Digit Start
-
-**What goes wrong:**
-Motto's kebab-case regex is `/^[a-z0-9]+(-[a-z0-9]+)*$/`, which accepts names starting with a digit (e.g., `2fa-skills`). Claude Code's plugin name regex is `/^[a-z][a-z0-9]*(-[a-z0-9]+)*$/`, which requires a lowercase letter as the first character. Motto will accept `plugins.public: 2fa` in `motto.yaml`, build a `plugin.json` with `"name": "2fa"`, and the plugin will fail to load in Claude Code.
-
-**Why it happens:**
-The two validators are defined independently; Claude Code's exact validation rule wasn't checked against Motto's regex during design.
-
-**How to avoid:**
-Use the stricter regex for `plugins.public` and `plugins.private` validation in `loadConfig`:
-```js
-const PLUGIN_NAME = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/
-```
-This is also the correct regex for skill `name` validation (skill names follow the same convention).
-
-Note: it's fine to use the current plan's regex for skill `name` if you want to allow numeric-start skills, since skill names are not the plugin namespace — but align them to avoid confusion.
-
-**Warning signs:**
-- Plugin builds successfully with `motto build` but fails to appear in Claude Code's plugin list
-- `motto lint` passes for a skill named `2fa-login`
-- No error at build time; error only surfaces at install time
-
-**Phase to address:** Task 2 (config loader) — validate `plugins.public` and `plugins.private` with the stricter regex. Document in `motto.yaml` comments.
-
----
-
-### Pitfall 8: `plugin.json` Component Placement — Skills at Plugin Root, Not Inside `.claude-plugin/`
-
-**What goes wrong:**
-Motto emits `dist/public/.claude-plugin/plugin.json` and `dist/public/<skill-name>/SKILL.md`. This structure is correct: the `.claude-plugin/` folder holds only the manifest, while skills sit as sibling directories at the plugin root. The pitfall is a future contributor "cleaning up" the dist structure by moving skills inside `.claude-plugin/` to co-locate them with the manifest. Claude Code will then load the plugin (finds `plugin.json`) but no skills will be discovered because it does not look inside `.claude-plugin/` for SKILL.md files.
-
-This is confirmed by the official plugin reference: "a common mistake lives: the plugin loads, but nothing works, because the components are nested inside `.claude-plugin/`."
-
-**Why it happens:**
-The directory structure is non-obvious. The manifest is in `.claude-plugin/` but content is NOT. New contributors assume co-location.
-
-**How to avoid:**
-Add a `README` or comment in the generated `dist/public/` directory explaining the structure. In Task 6 build tests, assert that `SKILL.md` is at `dist/public/<name>/SKILL.md` (not inside `.claude-plugin/`). This test acts as a regression guard.
-
-**Warning signs:**
-- Plugin appears in Claude Code's installed plugins list but `/pluginname:*` skills are not available
-- No error from Claude Code — skills are simply absent
-
-**Phase to address:** Task 6 — build. The current plan's structure is correct; the guard is a test assertion and documentation note.
-
----
-
-### Pitfall 9: Symlinks in Skill Source Tree Copy Sensitive Content Into `dist/`
-
-**What goes wrong:**
-`cpSync(skill.dir, dest, { recursive: true })` with the default `verbatimSymlinks: false` follows symlinks. If a skill's `references/` directory contains a symlink to a file outside the project (intentional or from a compromised dependency), the symlink target's content is written into `dist/`. For a local tool operating on trusted input this is low severity, but it creates surprising behavior: the dist artifact contains content not visible in the source tree.
-
-Separately, `cpSync` with `verbatimSymlinks: false` resolves relative symlinks into absolute paths at the source location. If the built artifact is later archived and extracted on another machine, the absolute symlink points to a path on the build machine that does not exist on the target machine — breaking the dist.
-
-**Why it happens:**
-`cpSync` defaults are designed for local copy, not for producing distributable artifacts. The distinction between "follow to embed content" vs "preserve as pointer" is not obvious.
-
-**How to avoid:**
-Use `{ verbatimSymlinks: true }` to preserve symlinks as-is. Document that symlinks to files outside the project are the author's responsibility. For a public distribution use case, add a lint check that no `shared/references/*.md` or `skills/*/references/*.md` entries are symlinks pointing outside the project root.
-
-**Warning signs:**
-- `dist/` contains a file that is not in `skills/` or `shared/` source trees
-- A symlink in `references/` resolves to an absolute path outside the project
-- CI diff of dist shows unexpected files
-
-**Phase to address:** Task 6 — build. Add `verbatimSymlinks: true` to the `cpSync` call. Add a note in comments.
-
----
-
-### Pitfall 10: `readdirSync` Order Is Non-Deterministic Across Platforms
-
-**What goes wrong:**
-`readdirSync(skillsDir)` returns directory entries in filesystem order, which differs by OS. On macOS (HFS+/APFS) the order is creation-time order. On Linux (ext4) it is hash-table order. On Windows it is not sorted. This means lint error output order varies across developers' machines and CI environments, making error lists non-reproducible.
-
-For Motto v1 the functional impact is zero (each skill is validated independently). The experience impact: two developers running `motto lint` on the same project get errors in different order, complicating comparisons and diffing CI logs.
-
-**Why it happens:**
-`readdirSync` does not guarantee order; the Node.js docs do not specify sorting behavior.
-
-**How to avoid:**
-Sort the discovered skills by `dirName` immediately after scanning:
-```js
-skills.sort((a, b) => a.dirName.localeCompare(b.dirName))
-```
-Add this one line to `discoverSkills` in `src/discover.js`. The lint output becomes deterministic.
-
-**Warning signs:**
-- Lint error order differs between local run and CI
-- Two developers report different error line ordering for the same project
-
-**Phase to address:** Task 4 — skill discovery. One line fix, one test assertion on discovered order.
+**Phase to address:** Phase 4 — note in the skill authoring process that descriptions and bodies are unrestricted. Document in `motto.yaml` comments or a README.
 
 ---
 
@@ -263,13 +330,11 @@ Add this one line to `discoverSkills` in `src/discover.js`. The lint output beco
 
 | Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
 |----------|-------------------|----------------|-----------------|
-| YAML parse errors re-thrown without original error message | Simpler code in parseFrontmatter | Users see "missing frontmatter block" when the real issue is a colon in description; debugging is hard | Never — always chain the original error message |
-| No BOM/CRLF normalization at read time | Slightly simpler parseFrontmatter | Mysterious failures for Windows authors; complaints with no reproduction path | Never in v1 — cost of fixing is two lines |
-| Regex for frontmatter without CRLF handling | Works on author's Mac | Silent breakage for CRLF files | Never |
-| Validating `plugins.public` kebab-case only loosely | Less code in config.js | Plugin loads in Motto but fails silently in Claude Code due to name format | Never — use the stricter regex from day one |
-| Skipping sort in `discoverSkills` | No extra code | Non-deterministic lint output order across platforms | Acceptable until it causes a reported annoyance |
-| Not checking for `---` inside multiline YAML values | Simpler parser | Silent wrong-parse produces confusing lint errors from wrong data | Acceptable in v1 if multiline descriptions are discouraged; document clearly |
-| Building template validation before a concrete template exists | Feels thorough | Dead code, wrong abstractions, wasted effort when the first real template contradicts assumptions | Never — YAGNI; wait for the concrete skill |
+| Calling `process.cwd()` in dogfood test | Quick to write | Breaks when run from non-root dir; fragile for CI | Never — use `import.meta.url` root resolution |
+| Not asserting `skillCount` in dogfood test | Fewer assertions | A fixture folder accidentally in `skills/` goes undetected | Never — assert the exact expected count |
+| Skipping `NAME_KEBAB` equality self-test | Less test code | Schema and config regexes diverge silently over time | Never — this is a one-assertion fix with high value |
+| Setting `plugins.private` only when needed | "Minimal config" feeling | First private skill addition causes build failure if config is forgotten | Acceptable if milestone has zero private skills; set it early otherwise |
+| Dogfood test cleans up `./dist/` in `finally` | No build artifacts post-test | Defeats the purpose; `./dist/` should persist to show the real build worked | Never clean up `./dist/` in dogfood test |
 
 ---
 
@@ -277,69 +342,25 @@ Add this one line to `discoverSkills` in `src/discover.js`. The lint output beco
 
 | Integration | Common Mistake | Correct Approach |
 |-------------|----------------|------------------|
-| Claude Code plugin loading | Placing skill SKILL.md files inside `.claude-plugin/` alongside `plugin.json` | Skills must be at plugin root as sibling directories to `.claude-plugin/`, not inside it |
-| Claude Code plugin loading | Omitting `name` from `plugin.json` (thinking version/description are required) | Only `name` is required; all other fields are optional |
-| Claude Code plugin caching | Updating skill content without bumping `version` in `motto.yaml` | Always bump `version` on any distributed update; cached plugins only refresh on version change |
-| Claude Code plugin loading | Using `plugins.public: my plugin` (space) or `plugins.public: My_Plugin` (underscore/caps) in motto.yaml | Plugin name must match `/^[a-z][a-z0-9]*(-[a-z0-9]+)*$/` — kebab-case, letter start |
-| `yaml` npm library | Not catching YAML parse errors from `YAML.parse()` | Wrap in try/catch; re-throw with both the field context and the original YAML error message |
-| Node.js `fs.cpSync` | Using default options when copying skill source trees for distribution | Add `{ verbatimSymlinks: true }` to preserve symlinks rather than resolving to absolute paths |
-
----
-
-## Performance Traps
-
-| Trap | Symptoms | Prevention | When It Breaks |
-|------|----------|------------|----------------|
-| Reading all SKILL.md files synchronously in `discoverSkills` | Slow `motto lint` on large skill trees | Acceptable for v1; parallelize with `Promise.all` + `readFile` only if a project exceeds ~50 skills | At ~50+ skill files on spinning disk; not relevant for typical Motto projects |
-| Re-discovering skills in both `lint()` and `build()` (two separate calls to `discoverSkills`) | Double disk read on `motto build` | The current plan calls `lint(projectDir)` then `discoverSkills(projectDir)` in `build()` — two full scans. Cache the result of `lint` to include the discovered skills so `build` reuses them | Not a real problem at v1 scale; note it for future optimization |
-
----
-
-## Security Mistakes
-
-| Mistake | Risk | Prevention |
-|---------|------|------------|
-| Following symlinks in `cpSync` without verification | Symlink in skill tree copies content outside project into dist artifact | Use `verbatimSymlinks: true`; add lint warning if references contain absolute symlinks |
-| No validation that `shared_references` entries contain only safe basenames | A `shared_references` entry like `../../../etc/passwd` would cause the build to attempt copying `/etc/passwd` into dist | Validate that each entry in `shared_references` matches `/^[a-z0-9][a-z0-9-]*$/` (no path separators, no dots) in `validateSkill` |
-| Writing `dist/` without confirming `outDir` is inside the project | If `outDir` is passed as an absolute path pointing outside project root, `rmSync(outDir, recursive)` destroys an arbitrary directory | In the CLI, default `outDir` to `process.cwd() + '/dist'`; in the API, document that callers are responsible |
-
----
-
-## UX Pitfalls
-
-| Pitfall | User Impact | Better Approach |
-|---------|-------------|-----------------|
-| Silent skill drop when YAML parse fails | Author runs `motto lint`, sees "0 skills OK" instead of an error — doesn't know why their skill disappeared | `discoverSkills` must catch per-file parse errors and return them as lint errors, never silently skip a file |
-| "missing frontmatter block" error for a BOM or CRLF file | Author has valid frontmatter but gets a confusing error; debugging requires hex editor | Normalize BOM/CRLF at read time; if normalization is not done, at least detect and say "file may have CRLF or BOM" |
-| Lint passes, build produces dist, but plugin doesn't load in Claude Code | Author thinks Motto succeeded; silent Claude Code failure | Cannot fully prevent (Claude Code error reporting is outside Motto's control), but document common post-build check: `cat dist/public/.claude-plugin/plugin.json` to verify name format |
-| `motto lint` prints errors in non-deterministic order | CI log comparison fails; two developers report different error lists | Sort skills by name before validation; ensures reproducible output |
+| Skill naming for Claude Code docs | Naming skills `claude-*` or `for-claude` | Use Motto-centric names: `skill-authoring`, `plugin-format`, `lint-guide` |
+| Husky pre-commit + dogfood build | Expecting `./dist/` to be stable across commits | `./dist/` is gitignored and rebuilt on every `npm test`; treat it as ephemeral |
+| Dogfood root path | Using `process.cwd()` to locate the project root | Use `resolve(dirname(fileURLToPath(import.meta.url)), '..')` from inside `test/` |
+| Lint vs build failure modes | Assuming lint-pass means build-pass | Private skills with no `plugins.private` pass lint but fail build; assert both stages |
+| Self-referential test | Calling `buildProject` then immediately asserting on dist | `buildProject` internally calls `lintProject`; lint runs twice; design assertions accordingly |
 
 ---
 
 ## "Looks Done But Isn't" Checklist
 
-- [ ] **CRLF support:** `parseFrontmatter` normalizes `\r\n` to `\n` — verify with a test file saved with CRLF endings
-- [ ] **BOM support:** `parseFrontmatter` strips `﻿` — verify with a test that prepends the BOM character
-- [ ] **YAML error surfacing:** `parseFrontmatter` catch block re-throws with the original YAML error message, not just "missing frontmatter block"
-- [ ] **Colon-in-description test:** a skill with `description: Use when: something` causes a clear lint error, not a "missing description" non-sequitur
-- [ ] **Silent skill drop prevention:** `discoverSkills` never silently skips a malformed `SKILL.md` — it always produces a lint error entry
-- [ ] **Plugin name strictness:** `loadConfig` validates `plugins.public` against `/^[a-z][a-z0-9]*(-[a-z0-9]+)*$/`, not just non-empty
-- [ ] **Shared reference name safety:** `shared_references` entries are validated to contain no path separators or dots
-- [ ] **Dist structure is correct:** `SKILL.md` files are at `dist/public/<name>/SKILL.md`, NOT at `dist/public/.claude-plugin/<name>/SKILL.md`
-- [ ] **Sort order:** `discoverSkills` returns skills sorted by `dirName` — lint output is deterministic across macOS/Linux/Windows
-
----
-
-## Recovery Strategies
-
-| Pitfall | Recovery Cost | Recovery Steps |
-|---------|---------------|----------------|
-| CRLF regex failure deployed | LOW | Add `.replace(/\r\n/g, '\n')` to `normalizeText` in `frontmatter.js`; add test; release patch version |
-| BOM regex failure deployed | LOW | Add `.replace(/^﻿/, '')` to `normalizeText`; release patch version |
-| Silent skill drop due to YAML error | MEDIUM | Wrap `parseFrontmatter` call in `discoverSkills` in try/catch; push lint error into results instead of silently continuing |
-| Plugin name fails Claude Code validation | LOW | User updates `motto.yaml` `plugins.public` to valid kebab-case with letter start; rebuild |
-| Symlink copies unexpected content into dist | MEDIUM | Add `verbatimSymlinks: true` to `cpSync`; clean and rebuild dist; audit what was distributed |
-| Template mechanism built prematurely (over-engineering) | HIGH | Delete half-implemented template code; the schema for the first real template will differ from the guess; rewrite from scratch once you have a concrete example |
+- [ ] **Skill names audit:** every skill in `skills/` has a `name` that passes `!name.includes('claude') && !name.includes('anthropic')` — checked before folder creation
+- [ ] **Dogfood root path:** test uses `resolve(dirname(fileURLToPath(import.meta.url)), '..')`, NOT `process.cwd()`
+- [ ] **Skill count assertion:** dogfood test asserts `lintResult.count === N` where N is the exact expected skill count
+- [ ] **Config clean before skill clean:** dogfood test asserts zero `motto.yaml` errors before asserting `lintResult.ok`
+- [ ] **`plugins.private` in `motto.yaml`:** set if any private skill exists; verified before build test runs
+- [ ] **`./dist/` gitignored:** `dist/` is in `.gitignore` (currently confirmed present) — if removed, every `npm test` makes the working tree dirty
+- [ ] **NAME_KEBAB equality self-test:** a test asserts `schema.NAME_KEBAB.source === config's_regex.source`
+- [ ] **Role lines present:** every skill has a `**Role:**` line that is meaningful, not just the bare colon
+- [ ] **No fixture folders in `skills/`:** all lint/build fixture usage uses `mkdtemp`; `skills/` is real skills only
 
 ---
 
@@ -347,35 +368,31 @@ Add this one line to `discoverSkills` in `src/discover.js`. The lint output beco
 
 | Pitfall | Prevention Phase | Verification |
 |---------|------------------|--------------|
-| CRLF breaking frontmatter regex | Task 1 (frontmatter parser) | Test: `parseFrontmatter('---\r\nname: x\r\n---\r\nbody')` returns `{ data: {name:'x'}, body:'body' }` |
-| BOM breaking frontmatter regex | Task 1 (frontmatter parser) | Test: `parseFrontmatter('﻿---\nname: x\n---\nbody')` does not throw |
-| `---` in multiline YAML value | Task 1 (frontmatter parser) or Task 3 (validator) | Test: skill with `description: |\n  text\n  ---\n  more` produces clear error, not wrong-parse |
-| Unquoted colon-space in description | Task 1 (parseFrontmatter catch) + Task 3 (error message) | Test: YAML parse error is surfaced in lint output with original message |
-| Silent skill drop on YAML error | Task 4 (discover) | Test: malformed `SKILL.md` appears as lint error, not as missing-skill silently |
-| H1/Role body check with CRLF body | Task 1 (normalization contract) + Task 3 (comment) | Normalization done in parseFrontmatter; schema.js comment documents assumption |
-| Role check false positive inside code block | Task 3 (schema validator) | Document limitation in comment; add test for code-block edge case as known acceptable false-positive |
-| Plugin name letter-start requirement | Task 2 (config loader) | Test: `plugins.public: 2fa` in motto.yaml causes `loadConfig` to throw |
-| Shared reference name path traversal | Task 3 (schema validator) | Test: `shared_references: ['../etc/passwd']` produces lint error "invalid reference name" |
-| Skills inside `.claude-plugin/` directory | Task 6 (build) | Test: assert `dist/public/hello/SKILL.md` exists, `dist/public/.claude-plugin/hello/SKILL.md` does not |
-| Symlinks in source tree | Task 6 (build) | Add `verbatimSymlinks: true` to `cpSync` call; document in code comment |
-| `readdirSync` non-deterministic order | Task 4 (discover) | Test: discovered skills are sorted alphabetically by `dirName` |
-| Over-engineering templates | Deferred by design | No template validation code in v1; `template` field accepted but ignored |
+| "claude"/"anthropic" in skill name | Phase 4 (skill tree authoring) | `motto lint` passes on all skills; zero LINT-02 errors |
+| dist/ wipe during npm test destroys manual build | Phase 4 (dogfood test authoring) | Test header comment documents behavior; `./dist/` confirmed in `.gitignore` |
+| `process.cwd()` wrong root | Phase 4 (dogfood test authoring) | Test uses `import.meta.url` path; `node --test test/dogfood.test.js` from `test/` dir passes |
+| Fixture skills in `skills/` tree | Phase 4 (dogfood test authoring) | `skillCount` assertion catches extra folders; convention documented |
+| Body-spine forces awkward Role line | Phase 4 (skill tree authoring) | All skills have non-empty, meaningful `**Role:**` lines; lint passes |
+| Config errors cascade through lint | Phase 4 (authoring order) | `motto.yaml` authored first; dogfood test asserts config-clean before skill-clean |
+| Double lint (lintProject + buildProject) | Phase 4 (dogfood test design) | Test explicitly calls lint + build separately with distinct assertion blocks |
+| NAME_KEBAB duplication divergence | Phase 4 (regression guard) | Equality self-test added to existing test suite |
+| Private skill without plugins.private | Phase 4 (motto.yaml authoring) | `motto.yaml` has `plugins.private` set before any private skill is authored |
+| LINT-02 misread as global content ban | Phase 4 (authoring) | Descriptions mention Claude Code freely; no self-censoring |
 
 ---
 
 ## Sources
 
-- Codex issue #13918: UTF-8 BOM in SKILL.md causes "missing YAML frontmatter delimited by ---" — https://github.com/openai/codex/issues/13918
-- Claude Code issue #17154: Frontmatter Parsing Error with valid YAML — https://github.com/anthropics/claude-code/issues/17154
-- OpenClaw issue #22134: YAML parse errors silently drop skills with no user feedback — https://github.com/openclaw/openclaw/issues/22134
-- autoresearch issue #69: Invalid YAML frontmatter — unquoted colon in description field — https://github.com/uditgoenka/autoresearch/issues/69
-- eemeli/yaml issue #595: Single `\r` not treated as line break (closed not-planned) — https://github.com/eemeli/yaml/issues/595
-- markdownlint issue #153: YAML Front Matter Regex Not Handling Mixed Fencing — https://github.com/DavidAnson/markdownlint/issues/153
-- Node.js GitHub issue #3232: `fs.readdir` order is platform-dependent — https://github.com/nodejs/node/issues/3232
-- Node.js docs `fs.cpSync` — `verbatimSymlinks` option — https://nodejs.org/api/fs.html
-- Claude Code official plugins reference — https://github.com/anthropics/claude-plugins-official/blob/main/plugins/plugin-dev/skills/plugin-structure/references/manifest-reference.md
-- Ansible docs: YAML colon-in-value syntax error — https://docs.ansible.com/ansible/latest/reference_appendices/YAMLSyntax.html
+- Motto `src/schema.js` — `RESERVED = ["anthropic", "claude"]` at line 39; name cascade at lines 76–92; description check at line 95 (field-specific, not global). Verified 2026-06-30.
+- Motto `src/lint.js` — `processConfig` continues after config errors (line 54); `lintProject` execution order (lines 186–206). Verified 2026-06-30.
+- Motto `src/build.js` — wipe at Step 4 (`rm(distDir, ...)` at line 150); lint gate at Step 1 (line 92); private-contradiction check at lines 134–141. Verified 2026-06-30.
+- Motto `src/config.js` — intentional `NAME_KEBAB` duplicate at line 35; cross-reference comment. Verified 2026-06-30.
+- Motto `.gitignore` — `dist/` is on line 2. Verified 2026-06-30.
+- Motto `.husky/pre-commit` — `npm test` (single line). Verified 2026-06-30.
+- Motto `package.json` — `"test": "node --test"` (discovers all `*.test.js` recursively). Verified 2026-06-30.
+- Motto `.planning/milestones/v0.0.1-ROADMAP.md` — tech debt section: NAME_KEBAB duplication identified as manual sync point. Verified 2026-06-30.
+- Motto `.planning/PROJECT.md` — v0.1.0 milestone goal: ≥1 public skill, ≥1 private skill, ≥1 shared_reference; dogfood test wired into node:test. Verified 2026-06-30.
 
 ---
-*Pitfalls research for: Motto — CLI linter + static packager for Claude Code Agent Skills*
+*Pitfalls research for: Motto v0.1.0 Self-Hosting (Dogfood)*
 *Researched: 2026-06-30*
