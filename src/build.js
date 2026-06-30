@@ -149,11 +149,14 @@ export async function buildProject(projectRoot) {
   const distDir = join(projectRoot, 'dist');
   await rm(distDir, { recursive: true, force: true }); // force:true silences ENOENT
 
-  // ── STEP 5: Pack each skill (public bucket only — Task 3 adds routing) ────
-  // In Task 1 all skills go to dist/public/<name>/ regardless of audience.
-  // Task 3 generalises this to route by audience field.
+  // ── STEP 5: Pack each skill, routed by audience (D3-09) ─────────────────
+  // public is always in bucketsUsed (D3-10); private is added when a skill
+  // declares audience:private (and plugins.private is guaranteed set by Step 3).
+  const bucketsUsed = new Set(['public']);
+
   for (const skill of skills) {
-    const dstSkillDir = join(distDir, 'public', skill.name);
+    const audience = skill.audience; // 'public' | 'private' (validated by lint)
+    const dstSkillDir = join(distDir, audience, skill.name);
 
     // Verbatim copy — verbatimSymlinks:true is MANDATORY (RESEARCH CRITICAL).
     // Default and dereference:false silently rewrite relative symlinks to
@@ -176,21 +179,29 @@ export async function buildProject(projectRoot) {
         );
       }
     }
+
+    if (audience === 'private') bucketsUsed.add('private');
   }
 
-  // ── STEP 6: Emit public bucket plugin.json (D3-13) ───────────────────────
-  // Task 3 will generalise to emit per-bucket; Task 1 emits public only.
+  // ── STEP 6: Emit plugin.json for each bucket used (D3-13) ────────────────
+  // public bucket: always emitted (D3-10); private bucket: emitted only when
+  // bucketsUsed has 'private' (D3-11 — the D3-12 check above ensures this only
+  // happens when plugins.private is set, so plugins.private is always present here).
   const plugins = config.plugins ?? {};
-  const pluginDir = join(distDir, 'public', '.claude-plugin');
-  await mkdir(pluginDir, { recursive: true });
-  await writeFile(
-    join(pluginDir, 'plugin.json'),
-    JSON.stringify(
-      { name: plugins.public, version: config.version, description: config.description },
-      null,
-      2,
-    ) + '\n',
-  );
+
+  for (const audience of bucketsUsed) {
+    const pluginName = audience === 'public' ? plugins.public : plugins.private;
+    const pluginDir = join(distDir, audience, '.claude-plugin');
+    await mkdir(pluginDir, { recursive: true });
+    await writeFile(
+      join(pluginDir, 'plugin.json'),
+      JSON.stringify(
+        { name: pluginName, version: config.version, description: config.description },
+        null,
+        2,
+      ) + '\n',
+    );
+  }
 
   // ── STEP 7: Return result ─────────────────────────────────────────────────
   return {
@@ -198,6 +209,6 @@ export async function buildProject(projectRoot) {
     outDir: distDir,
     errors: [],
     skillCount: skills.length,
-    bucketCount: 1, // Task 3 will compute actual bucket count
+    bucketCount: bucketsUsed.size,
   };
 }

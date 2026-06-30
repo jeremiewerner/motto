@@ -369,3 +369,115 @@ describe('buildProject — Task 2: safe-failure checks', () => {
     }
   });
 });
+
+// ---------------------------------------------------------------------------
+// Task 3: Private bucket routing — audience routing + conditional emission
+// ---------------------------------------------------------------------------
+
+describe('buildProject — Task 3: private bucket routing', () => {
+  it('routes private skill to dist/private/ and emits separate plugin.json [BUILD-04/05, D3-09/13]', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'motto-build-'));
+    try {
+      await mkdir(join(root, 'skills', 'pub-skill'), { recursive: true });
+      await mkdir(join(root, 'skills', 'priv-skill'), { recursive: true });
+      await writeFile(
+        join(root, 'motto.yaml'),
+        makeMottoYaml({ privatePlugin: 'my-project-private' }),
+      );
+      await writeFile(join(root, 'skills', 'pub-skill', 'SKILL.md'), makeSkillMd('pub-skill'));
+      await writeFile(
+        join(root, 'skills', 'priv-skill', 'SKILL.md'),
+        makePrivateSkillMd('priv-skill'),
+      );
+
+      const result = await buildProject(root);
+      assert.strictEqual(result.ok, true);
+
+      // Public bucket
+      await stat(join(root, 'dist', 'public', 'pub-skill', 'SKILL.md'));
+      const pubManifest = JSON.parse(
+        await readFile(join(root, 'dist', 'public', '.claude-plugin', 'plugin.json'), 'utf8'),
+      );
+      assert.strictEqual(pubManifest.name, 'my-project');
+      assert.ok(pubManifest.version, 'public plugin.json must have version');
+
+      // Private bucket
+      await stat(join(root, 'dist', 'private', 'priv-skill', 'SKILL.md'));
+      const privManifest = JSON.parse(
+        await readFile(join(root, 'dist', 'private', '.claude-plugin', 'plugin.json'), 'utf8'),
+      );
+      assert.strictEqual(privManifest.name, 'my-project-private');
+      assert.ok(privManifest.version, 'private plugin.json must have version');
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it('does not emit dist/private/ when no private skills exist [BUILD-05, D3-10/11]', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'motto-build-'));
+    try {
+      await scaffoldPublicProject(root);
+      await buildProject(root);
+
+      // Public bucket emitted
+      await stat(join(root, 'dist', 'public'));
+
+      // Private bucket NOT emitted
+      await assert.rejects(() => stat(join(root, 'dist', 'private')), { code: 'ENOENT' });
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it('returns skillCount=N and bucketCount=M for a 2-bucket build [D3-16]', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'motto-build-'));
+    try {
+      await mkdir(join(root, 'skills', 'pub-skill'), { recursive: true });
+      await mkdir(join(root, 'skills', 'priv-skill'), { recursive: true });
+      await writeFile(
+        join(root, 'motto.yaml'),
+        makeMottoYaml({ privatePlugin: 'my-project-private' }),
+      );
+      await writeFile(join(root, 'skills', 'pub-skill', 'SKILL.md'), makeSkillMd('pub-skill'));
+      await writeFile(
+        join(root, 'skills', 'priv-skill', 'SKILL.md'),
+        makePrivateSkillMd('priv-skill'),
+      );
+
+      const result = await buildProject(root);
+      assert.strictEqual(result.ok, true);
+      assert.strictEqual(result.skillCount, 2, 'N must equal total skills packed');
+      assert.strictEqual(result.bucketCount, 2, 'M must equal number of buckets emitted');
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it('preserves a relative symlink verbatim in a private-bucket skill [D3-05, audience-agnostic]', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'motto-build-'));
+    try {
+      await mkdir(join(root, 'skills', 'priv-skill'), { recursive: true });
+      await writeFile(
+        join(root, 'motto.yaml'),
+        makeMottoYaml({ privatePlugin: 'my-project-private' }),
+      );
+      await writeFile(
+        join(root, 'skills', 'priv-skill', 'SKILL.md'),
+        makePrivateSkillMd('priv-skill'),
+      );
+      await symlink('SKILL.md', join(root, 'skills', 'priv-skill', 'alias.md'));
+
+      const result = await buildProject(root);
+      assert.strictEqual(result.ok, true);
+
+      const linkPath = join(root, 'dist', 'private', 'priv-skill', 'alias.md');
+      const linkStat = await lstat(linkPath);
+      assert.ok(linkStat.isSymbolicLink(), 'alias.md must be a symlink in private bucket');
+
+      const target = await readlink(linkPath);
+      assert.strictEqual(target, 'SKILL.md', 'symlink target must be the original relative string');
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+});
