@@ -77,3 +77,14 @@ Carried from v0.0.1 (see `milestones/v0.0.1-REQUIREMENTS.md` for detail):
 - A real `npm publish` flow (the `motto-release` skill carries a stub until packaging is decided)
 - Tech debt: populate `requirements_completed` in 2 v0.0.1 summaries; doc nits (yaml ISC license, Phase-1 SC#1 "throws" wording)
 - Schema strictness gap: `validateSkill` does not enforce `description` max-1024 chars / no-XML-tags (CLAUDE.md spec says it should) — `src/schema.js`. Surfaced + deferred during v0.0.2 Phase 4 research; non-blocking (author clean short descriptions).
+
+### Phase 6: Address tech debt: schema strictness + summary frontmatter
+
+**Goal:** Make `validateSkill` fully conformant with the CLAUDE.md SKILL.md-frontmatter spec by enforcing `description` max-1024 chars, `description` no-XML-tags, and `name` max-64 chars (schema strictness only — summary-frontmatter + doc-nit buckets dropped as obsolete per D-01).
+**Requirements**: Internal tech-debt closure (no formal requirement ID)
+**Depends on:** Phase 5
+**Plans:** 1 plan
+
+Plans:
+
+- [ ] 06-01-PLAN.md — Add three strictness checks (name max-64, description max-1024, description no-XML) to validateSkill + tests B14–B19
