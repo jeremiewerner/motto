@@ -26,9 +26,9 @@ Requirements for the initial release (the core `lint` + `build` CLI). Each maps 
 
 ### Config (CONF)
 
-- [ ] **CONF-01**: `motto.yaml` is loaded and validated; `name`, `version`, `description`, `plugins.public` are required (missing fields reported together)
-- [ ] **CONF-02**: `plugins.public` (and `plugins.private` when present) match the letter-start plugin-name regex
-- [ ] **CONF-03**: `plugins.private` is optional
+- [x] **CONF-01**: `motto.yaml` is loaded and validated; `name`, `version`, `description`, `plugins.public` are required (missing fields reported together)
+- [x] **CONF-02**: `plugins.public` (and `plugins.private` when present) match the letter-start plugin-name regex
+- [x] **CONF-03**: `plugins.private` is optional
 
 ### Build / Packaging (BUILD)
 
@@ -87,9 +87,9 @@ Explicitly excluded. Documented to prevent scope creep.
 | LINT-05 | Phase 1 | Complete |
 | LINT-06 | Phase 2 | Pending |
 | LINT-07 | Phase 2 | Pending |
-| CONF-01 | Phase 1 | Pending |
-| CONF-02 | Phase 1 | Pending |
-| CONF-03 | Phase 1 | Pending |
+| CONF-01 | Phase 1 | Complete |
+| CONF-02 | Phase 1 | Complete |
+| CONF-03 | Phase 1 | Complete |
 | BUILD-01 | Phase 3 | Pending |
 | BUILD-02 | Phase 3 | Pending |
 | BUILD-03 | Phase 3 | Pending |

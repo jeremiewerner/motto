@@ -8,7 +8,7 @@
 
 ## Phases
 
-- [ ] **Phase 1: Pure Core** - Build the parsing, schema validation, and config loading foundation (no I/O dependencies)
+- [x] **Phase 1: Pure Core** - Build the parsing, schema validation, and config loading foundation (no I/O dependencies) (completed 2026-06-30)
 - [ ] **Phase 2: motto lint** - Compose discovery and validation into a working `motto lint` command
 - [ ] **Phase 3: motto build** - Add build orchestration to produce self-contained plugin distributions via `motto build`
 
@@ -28,11 +28,11 @@
   4. A stray `---` embedded inside a frontmatter YAML block produces a clear lint error naming the affected skill
   5. `validateSkill` returns errors for any of: missing required fields; non-letter-start, non-kebab, or reserved-word (`anthropic`/`claude`) name; invalid audience value; missing `# Title` or `**Role:**` body spine; unresolved `shared_references` entry; and `loadConfig` rejects a `motto.yaml` missing `name`, `version`, `description`, or `plugins.public`, or using a non-letter-start plugin name
 
-**Plans**: 2/3 plans executed
+**Plans**: 3/3 plans complete
 
 - [x] 01-01-PLAN.md — Scaffold (package.json + yaml) and parseFrontmatter (PARSE-01..04)
 - [x] 01-02-PLAN.md — validateSkill skill-schema validator (LINT-01..05)
-- [ ] 01-03-PLAN.md — loadConfig core config validator (CONF-01..03)
+- [x] 01-03-PLAN.md — loadConfig core config validator (CONF-01..03)
 
 ### Phase 2: motto lint
 
@@ -69,6 +69,6 @@
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Pure Core | 2/3 | In Progress|  |
+| 1. Pure Core | 3/3 | Complete   | 2026-06-30 |
 | 2. motto lint | 0/? | Not started | - |
 | 3. motto build | 0/? | Not started | - |
