@@ -7,7 +7,7 @@
 
 ## Executive Summary
 
-Motto is a small, well-specified internal tool — a lint-then-build CLI that validates structured SKILL.md files against a strict schema and packages them into standard Claude Code Agent Skills distributions. A complete design spec and 6-task TDD implementation plan already exist in the repo (`docs/superpowers/specs/2026-06-29-motto-design.md`, `docs/superpowers/plans/2026-06-30-motto-core-cli.md`). Research confirms the chosen stack (Node ≥ 20, plain ESM, `yaml` npm package, `node:test`, zero other dependencies) is correct and requires no changes. The architecture should follow the Functional Core / Imperative Shell pattern: pure modules (`frontmatter.js`, `schema.js`) own all transformation logic; IO-shell modules (`config.js`, `discover.js`) own filesystem access; orchestration modules (`lint.js`, `build.js`) compose them.
+Motto is a small, well-specified internal tool — a lint-then-build CLI that validates structured SKILL.md files against a strict schema and packages them into standard Claude Code Agent Skills distributions. A complete design spec and 6-task TDD implementation plan already exist in the repo (`.planning/superpowers/specs/2026-06-29-motto-design.md`, `.planning/superpowers/plans/2026-06-30-motto-core-cli.md`). Research confirms the chosen stack (Node ≥ 20, plain ESM, `yaml` npm package, `node:test`, zero other dependencies) is correct and requires no changes. The architecture should follow the Functional Core / Imperative Shell pattern: pure modules (`frontmatter.js`, `schema.js`) own all transformation logic; IO-shell modules (`config.js`, `discover.js`) own filesystem access; orchestration modules (`lint.js`, `build.js`) compose them.
 
 The primary risks are not architectural — they are text-processing edge cases consistently under-specified in linter implementations that have caused real production failures in analogous tools. Four are critical and must be addressed in Task 1: CRLF line endings, UTF-8 BOM, `---` inside multiline YAML block scalars, and YAML parse errors that must surface as lint failures (never silent skill drops). Two further constraints flow from the Claude Code plugin spec: plugin/skill names must match `/^[a-z][a-z0-9]*(-[a-z0-9]+)*$/` (letter start, not digit start), and `shared_references` entries must be validated as safe basenames (no `/` or `.`) to prevent path-traversal. `plugin.json` must always emit `version`; omitting it causes Claude Code to fall back to a git SHA of the dist directory, which breaks packaged distributions.
 
@@ -110,8 +110,8 @@ The existing 6-task TDD plan is the correct structure. Research adds success cri
 ## Sources
 
 ### Primary (HIGH confidence)
-- `docs/superpowers/specs/2026-06-29-motto-design.md` — authoritative design spec
-- `docs/superpowers/plans/2026-06-30-motto-core-cli.md` — authoritative TDD implementation plan
+- `.planning/superpowers/specs/2026-06-29-motto-design.md` — authoritative design spec
+- `.planning/superpowers/plans/2026-06-30-motto-core-cli.md` — authoritative TDD implementation plan
 - `nodejs.org/api/` — `parseArgs`, `node:test`, `fs.cpSync`, `fs.readdir` docs
 - `platform.claude.com/docs/en/agents-and-tools/agent-skills/overview` — SKILL.md frontmatter spec
 - `code.claude.com/docs/en/plugins-reference` — `plugin.json` schema, plugin directory layout, version behavior

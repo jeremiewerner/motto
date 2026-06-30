@@ -309,8 +309,8 @@ The only real scaling concern for v1 is the **double discoverSkills call in buil
 
 ## Sources
 
-- `docs/superpowers/specs/2026-06-29-motto-design.md` — authoritative design, approved (HIGH confidence)
-- `docs/superpowers/plans/2026-06-30-motto-core-cli.md` — authoritative implementation plan with interfaces and TDD steps (HIGH confidence)
+- `.planning/superpowers/specs/2026-06-29-motto-design.md` — authoritative design, approved (HIGH confidence)
+- `.planning/superpowers/plans/2026-06-30-motto-core-cli.md` — authoritative implementation plan with interfaces and TDD steps (HIGH confidence)
 - Functional Core / Imperative Shell: Gary Bernhardt (2012 "Boundaries" talk); pattern is stable, widely documented in Node CLI literature (MEDIUM confidence)
 - Node.js stdlib `node:test` runner: Node.js docs v20+ (MEDIUM confidence)
 

@@ -8,7 +8,7 @@
 **Areas discussed:** Parser error model, Normalization (CRLF/BOM), Malformed detection, Schema/config rule exactness
 
 > Framing finding presented before discussion: the superpowers TDD plan
-> (`docs/superpowers/plans/2026-06-30-motto-core-cli.md`) diverges from
+> (`.planning/superpowers/plans/2026-06-30-motto-core-cli.md`) diverges from
 > `.planning/REQUIREMENTS.md` in ≥6 concrete places (PARSE-02 normalization missing,
 > PARSE-03 uses throwing `YAML.parse`, PARSE-04 stray-`---` unhandled, LINT-02 regex
 > allows leading digit, LINT-05 basename safety missing, CONF-02 plugin-name regex

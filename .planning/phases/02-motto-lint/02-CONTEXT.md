@@ -76,8 +76,8 @@ Covers requirements **LINT-06, LINT-07, CLI-01**.
 - `.planning/phases/01-pure-core/01-*-SUMMARY.md` — what each function actually implemented.
 
 ### Reference only (NOT authority)
-- `docs/superpowers/specs/2026-06-29-motto-design.md` — design brief: source-tree shape, lint-first philosophy. Inspirational, not binding where it diverges from REQUIREMENTS.
-- `docs/superpowers/plans/2026-06-30-motto-core-cli.md` — 6-task TDD plan with prior-art CLI code; treat as a draft to correct (it diverged from REQUIREMENTS in ≥6 places per Phase 1 D-notes), not copy verbatim.
+- `.planning/superpowers/specs/2026-06-29-motto-design.md` — design brief: source-tree shape, lint-first philosophy. Inspirational, not binding where it diverges from REQUIREMENTS.
+- `.planning/superpowers/plans/2026-06-30-motto-core-cli.md` — 6-task TDD plan with prior-art CLI code; treat as a draft to correct (it diverged from REQUIREMENTS in ≥6 places per Phase 1 D-notes), not copy verbatim.
 
 ### Library / tooling
 - `.claude/CLAUDE.md` §"CLI Entry Point Pattern" + §parseArgs — `node:util parseArgs` for the two-subcommand CLI (no `commander`); `fs.readdir({recursive:false})` for the shallow `skills/` scan (no `glob`).

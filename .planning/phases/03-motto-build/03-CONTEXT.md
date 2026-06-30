@@ -78,8 +78,8 @@ Covers requirements **BUILD-01..06, CLI-02**. This is the final v1 phase — aft
 - `.planning/phases/02-motto-lint/02-RESEARCH.md` — fs/readdir/cp patterns, `process.exitCode`, temp-dir fixture test strategy — directly reusable for build.
 
 ### Reference only (NOT authority)
-- `docs/superpowers/specs/2026-06-29-motto-design.md` — design brief: source tree → dist layout, audience model, shared-refs. Inspirational where it agrees with REQUIREMENTS.
-- `docs/superpowers/plans/2026-06-30-motto-core-cli.md` — prior-art build code; treat as a draft to correct, not copy.
+- `.planning/superpowers/specs/2026-06-29-motto-design.md` — design brief: source tree → dist layout, audience model, shared-refs. Inspirational where it agrees with REQUIREMENTS.
+- `.planning/superpowers/plans/2026-06-30-motto-core-cli.md` — prior-art build code; treat as a draft to correct, not copy.
 
 ### Library / tooling
 - `.claude/CLAUDE.md` — `fs.cp()` (Node ≥16.7) for recursive copy, `fs.rm({recursive,force})` for the wipe, `fs.mkdir({recursive})`; no `glob`, no `mkdirp`/`rimraf`. `.claude-plugin/plugin.json` schema is the Claude Code plugin manifest (name/version/description).

@@ -201,8 +201,8 @@ Add these only when a real use case demands them.
 - [ESLint CLI reference](https://eslint.org/docs/latest/use/command-line-interface) — exit codes, --fix, --format, --ignore-pattern
 - [esbuild API](https://esbuild.github.io/api/) — entry points, outdir, bundle, watch mode
 - [ajv-cli GitHub](https://github.com/ajv-validator/ajv-cli) — exit codes, --errors format, YAML validation
-- In-repo: `docs/superpowers/specs/2026-06-29-motto-design.md` — full design spec
-- In-repo: `docs/superpowers/plans/2026-06-30-motto-core-cli.md` — TDD implementation plan
+- In-repo: `.planning/superpowers/specs/2026-06-29-motto-design.md` — full design spec
+- In-repo: `.planning/superpowers/plans/2026-06-30-motto-core-cli.md` — TDD implementation plan
 - In-repo: `.planning/PROJECT.md` — scope, constraints, out-of-scope decisions
 
 ---

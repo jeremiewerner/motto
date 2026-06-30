@@ -35,7 +35,7 @@ The **strict schema + linter**. Skills that always conform to one rigid-yet-crea
 ## Context
 
 - Output is **standard Agent Skills** (`SKILL.md` + frontmatter + `references/`). The tooling is Claude-Code-specific; the output is portable.
-- A full design spec and a 6-task TDD implementation plan already exist: `docs/superpowers/specs/2026-06-29-motto-design.md` and `docs/superpowers/plans/2026-06-30-motto-core-cli.md`.
+- A full design spec and a 6-task TDD implementation plan already exist: `.planning/superpowers/specs/2026-06-29-motto-design.md` and `.planning/superpowers/plans/2026-06-30-motto-core-cli.md`.
 - Repo layout for a Motto project: `skills/<name>/` (SKILL.md, references/, scripts/) + `shared/references/` → generated `dist/{public,private}/`.
 
 ## Constraints

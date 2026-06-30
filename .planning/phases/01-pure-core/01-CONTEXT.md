@@ -66,8 +66,8 @@ Covers requirements **PARSE-01..04, LINT-01..05, CONF-01..03**.
 - `.planning/PROJECT.md` — constraints (Node ≥20, ESM, `node --test`, single dep `yaml`), philosophy (YAGNI, mechanism over features), Key Decisions table.
 
 ### Design & prior-art plan (reference only — NOT authority)
-- `docs/superpowers/specs/2026-06-29-motto-design.md` — approved design: 3-layer skill schema, body spine rationale, audience binary, shared-refs model. Inspirational brief.
-- `docs/superpowers/plans/2026-06-30-motto-core-cli.md` — 6-task TDD plan with concrete code. **Useful starting code, but it diverges from REQUIREMENTS in ≥6 places (see D-02, D-08, D-10, D-16, plus missing PARSE-02 normalization and PARSE-04 detection). Where it conflicts with REQUIREMENTS.md or the decisions above, REQUIREMENTS/CONTEXT win.** Treat its code as a draft to correct, not copy verbatim.
+- `.planning/superpowers/specs/2026-06-29-motto-design.md` — approved design: 3-layer skill schema, body spine rationale, audience binary, shared-refs model. Inspirational brief.
+- `.planning/superpowers/plans/2026-06-30-motto-core-cli.md` — 6-task TDD plan with concrete code. **Useful starting code, but it diverges from REQUIREMENTS in ≥6 places (see D-02, D-08, D-10, D-16, plus missing PARSE-02 normalization and PARSE-04 detection). Where it conflicts with REQUIREMENTS.md or the decisions above, REQUIREMENTS/CONTEXT win.** Treat its code as a draft to correct, not copy verbatim.
 
 ### Library
 - CLAUDE.md (project instructions) §yaml — `parseDocument()` accumulates errors in `doc.errors[]` without throwing; this is why D-01/D-02 chose it over `YAML.parse`.
