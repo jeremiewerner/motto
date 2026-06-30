@@ -235,3 +235,137 @@ describe('buildProject — Task 1: happy-path public build', () => {
     }
   });
 });
+
+// ---------------------------------------------------------------------------
+// Task 2: Safe-failure checks — lint gate + pre-pack collision & contradiction
+// ---------------------------------------------------------------------------
+
+describe('buildProject — Task 2: safe-failure checks', () => {
+  it('returns ok:false with lint errors; dist/ does not exist on lint failure [BUILD-01, D3-01]', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'motto-build-'));
+    try {
+      // Missing `name` field → lint fails for this skill
+      await mkdir(join(root, 'skills', 'my-skill'), { recursive: true });
+      await writeFile(join(root, 'motto.yaml'), makeMottoYaml());
+      await writeFile(
+        join(root, 'skills', 'my-skill', 'SKILL.md'),
+        [
+          '---',
+          'description: A skill without a name',
+          'audience: public',
+          '---',
+          '# my-skill',
+          '',
+          '**Role:** helper.',
+          '',
+        ].join('\n'),
+      );
+
+      const result = await buildProject(root);
+      assert.strictEqual(result.ok, false);
+      assert.ok(result.errors.length > 0, 'errors must be non-empty');
+
+      // dist/ must NOT have been written
+      await assert.rejects(() => stat(join(root, 'dist')), { code: 'ENOENT' });
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it('leaves a pre-existing dist/ sentinel intact on lint failure [D3-02]', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'motto-build-'));
+    try {
+      // Invalid skill (missing name) so lint fails
+      await mkdir(join(root, 'skills', 'bad-skill'), { recursive: true });
+      await writeFile(join(root, 'motto.yaml'), makeMottoYaml());
+      await writeFile(
+        join(root, 'skills', 'bad-skill', 'SKILL.md'),
+        [
+          '---',
+          'description: A skill without a name',
+          'audience: public',
+          '---',
+          '# bad-skill',
+          '',
+          '**Role:** helper.',
+          '',
+        ].join('\n'),
+      );
+
+      // Place a sentinel file in dist/ (simulates a prior good build)
+      await mkdir(join(root, 'dist', 'public'), { recursive: true });
+      await writeFile(join(root, 'dist', 'public', 'sentinel.txt'), 'prior-good-build');
+
+      await buildProject(root);
+
+      // Sentinel must survive — lint gate returned before the wipe
+      const sentinel = await readFile(join(root, 'dist', 'public', 'sentinel.txt'), 'utf8');
+      assert.strictEqual(sentinel, 'prior-good-build');
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it('returns ok:false with "collides" error; dist/ sentinel survives [D3-07]', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'motto-build-'));
+    try {
+      // Skill declares shared_references: ['guide'] AND has a local references/guide.md
+      await mkdir(join(root, 'skills', 'my-skill', 'references'), { recursive: true });
+      await mkdir(join(root, 'shared', 'references'), { recursive: true });
+      await writeFile(join(root, 'motto.yaml'), makeMottoYaml());
+      await writeFile(
+        join(root, 'skills', 'my-skill', 'SKILL.md'),
+        makeSkillWithRefs('my-skill', ['guide']),
+      );
+      await writeFile(join(root, 'skills', 'my-skill', 'references', 'guide.md'), 'local guide');
+      await writeFile(join(root, 'shared', 'references', 'guide.md'), 'shared guide');
+
+      // Place sentinel in dist/
+      await mkdir(join(root, 'dist', 'public'), { recursive: true });
+      await writeFile(join(root, 'dist', 'public', 'sentinel.txt'), 'prior-build');
+
+      const result = await buildProject(root);
+      assert.strictEqual(result.ok, false);
+      assert.ok(
+        result.errors.some((e) => e.message.includes('collides')),
+        'error must mention "collides"',
+      );
+
+      // Sentinel must survive — collision check ran BEFORE the wipe
+      const sentinel = await readFile(join(root, 'dist', 'public', 'sentinel.txt'), 'utf8');
+      assert.strictEqual(sentinel, 'prior-build');
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it('returns ok:false when audience:private but plugins.private unset; sentinel survives [D3-12]', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'motto-build-'));
+    try {
+      // Private skill + no plugins.private in motto.yaml
+      await mkdir(join(root, 'skills', 'my-priv-skill'), { recursive: true });
+      await writeFile(join(root, 'motto.yaml'), makeMottoYaml()); // no privatePlugin
+      await writeFile(
+        join(root, 'skills', 'my-priv-skill', 'SKILL.md'),
+        makePrivateSkillMd('my-priv-skill'),
+      );
+
+      // Place sentinel in dist/
+      await mkdir(join(root, 'dist', 'public'), { recursive: true });
+      await writeFile(join(root, 'dist', 'public', 'sentinel.txt'), 'prior-build');
+
+      const result = await buildProject(root);
+      assert.strictEqual(result.ok, false);
+      assert.ok(
+        result.errors.some((e) => e.message.includes('plugins.private not set')),
+        'error must mention "plugins.private not set"',
+      );
+
+      // Sentinel must survive — private-contradiction check ran BEFORE the wipe
+      const sentinel = await readFile(join(root, 'dist', 'public', 'sentinel.txt'), 'utf8');
+      assert.strictEqual(sentinel, 'prior-build');
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+});
