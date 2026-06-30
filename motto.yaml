@@ -1,0 +1,6 @@
+name: motto
+version: "0.0.2"
+description: Motto is a framework for authoring, validating, and packaging Claude Code Agent Skills into self-contained, distributable plugins.
+plugins:
+  public: motto-skills
+  private: motto-private

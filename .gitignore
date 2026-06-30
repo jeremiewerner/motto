@@ -1,2 +1,5 @@
 node_modules/
 dist/
+
+# GSD scheduler lock (runtime, not source)
+.claude/scheduled_tasks.lock

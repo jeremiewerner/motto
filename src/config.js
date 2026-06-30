@@ -32,7 +32,7 @@ import { parseDocument } from "yaml";
  *
  * @type {RegExp}
  */
-const NAME_KEBAB = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/;
+export const NAME_KEBAB = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/;
 
 /**
  * Parse and validate a raw motto.yaml text string.

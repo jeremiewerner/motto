@@ -1,16 +1,19 @@
 ---
 gsd_state_version: 1.0
 milestone: v0.0.2
-milestone_name: Self-Hosting
-status: planning
-last_updated: "2026-06-30T13:27:29.527Z"
+milestone_name: — Self-Hosting
+current_phase: 05
+current_phase_name: dogfood-regression-guard
+status: "Milestone v0.0.2 shipped — PR #1"
+stopped_at: Phase 6 context gathered
+last_updated: "2026-06-30T20:51:09.284Z"
 last_activity: 2026-06-30
 progress:
-  total_phases: 2
-  completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
-  percent: 0
+  total_phases: 3
+  completed_phases: 3
+  total_plans: 3
+  completed_plans: 3
+  percent: 100
 ---
 
 # Project State
@@ -20,14 +23,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-30)
 
 **Core value:** A strict schema + linter that guarantees authored skills conform before they ship, then packages them into self-contained standard Agent Skill plugins.
-**Current focus:** Phase 4 — Self-Hosted Skill Tree + Gap Fixes
+**Current focus:** Phase 05 — dogfood-regression-guard
 
 ## Current Position
 
-Phase: Phase 4 — Self-Hosted Skill Tree + Gap Fixes (not started)
-Plan: —
-Status: Roadmap created — ready to plan Phase 4
-Last activity: 2026-06-30 — v0.0.2 roadmap created (Phases 4-5, 9 requirements mapped)
+Phase: 05 (dogfood-regression-guard) — EXECUTING
+Plan: 1 of 1
+Status: Milestone v0.0.2 shipped — PR #1
+Last activity: 2026-06-30
 
 ## Performance Metrics
 
@@ -50,6 +53,9 @@ Last activity: 2026-06-30 — v0.0.2 roadmap created (Phases 4-5, 9 requirements
 - Trend: -
 
 *Updated after each plan completion*
+| Phase 04 P01 | 8 | 2 tasks | 7 files |
+| Phase 05-dogfood-regression-guard P01 | 89 | - tasks | - files |
+| Phase 06-address-tech-debt-schema-strictness-summary-frontmatter P01 | 8m | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -67,6 +73,9 @@ Recent decisions affecting current work:
 - [v0.0.2 roadmap]: content-first ordering — author tree + lint + build + gap fixes (Phase 4) BEFORE writing the dogfood test (Phase 5), since the test's count assertions depend on the now-known skill/bucket counts
 - [v0.0.2 roadmap]: dogfood test lints REPO_ROOT in-place (read-only) but builds a `mkdtemp` COPY — `buildProject` destructively wipes `<root>/dist`; anchor via `import.meta.url`, not `process.cwd()`
 - [v0.0.2 roadmap]: zero new dependencies — all dogfood tooling is stdlib + existing `yaml`
+- [Phase ?]: Exported NAME_KEBAB from config.js for DOG-04 parity test
+- [Phase ?]: cascade placement ensures single error per name failure
+- [Phase ?]: guards both new checks from falsy-description TypeError
 
 ### Pending Todos
 
@@ -76,14 +85,24 @@ None yet.
 
 None yet.
 
+### Roadmap Evolution
+
+- Phase 6 added: Address tech debt: schema strictness + summary frontmatter
+
 ## Deferred Items
 
 | Category | Item | Status | Deferred At |
 |----------|------|--------|-------------|
 | *(none)* | | | |
 
+## Quick Tasks Completed
+
+| Date | Task ID | Description | Commits |
+|------|---------|-------------|---------|
+| 2026-06-30 | 260630-uxc-standardize-skill-names | Renamed skills to verb-first names (author-skill, setup-project, release); updated dogfood test | fc1f553, 3d7972d |
+
 ## Session Continuity
 
-Last session: 2026-06-30
-Stopped at: v0.0.2 roadmap created — Phases 4-5 defined, 9/9 requirements mapped
-Resume file: None
+Last session: 2026-06-30T20:06:09.630Z
+Stopped at: Phase 6 context gathered; quick task UXC-STANDARDIZE-NAMES complete
+Resume file: .planning/phases/06-address-tech-debt-schema-strictness-summary-frontmatter/06-CONTEXT.md

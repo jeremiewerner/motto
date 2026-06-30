@@ -65,7 +65,15 @@ export function parseFrontmatter(text) {
   if (nextDelim !== -1) {
     const region = lines.slice(close + 1, nextDelim).join("\n");
     const regionDoc = YAML.parseDocument(region);
-    const regionValue = regionDoc.toJS();
+    // toJS() can throw for unresolved YAML aliases (e.g. "**Role:**" in body text
+    // is parsed as a `*name` alias node). Treat any toJS() exception as a
+    // non-mapping result so the stray-delimiter check is skipped gracefully (D-01).
+    let regionValue;
+    try {
+      regionValue = regionDoc.toJS();
+    } catch (_) {
+      regionValue = null;
+    }
     const isMapping =
       regionValue !== null &&
       typeof regionValue === "object" &&
