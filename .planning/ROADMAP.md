@@ -65,3 +65,4 @@ Carried from v0.0.1 (see `milestones/v0.0.1-REQUIREMENTS.md` for detail):
 - Distribution layer (Motto-as-plugin, global install, version pinning) — depends on the open install-mechanism decision
 - A real `npm publish` flow (the `motto-release` skill carries a stub until packaging is decided)
 - Tech debt: populate `requirements_completed` in 2 v0.0.1 summaries; doc nits (yaml ISC license, Phase-1 SC#1 "throws" wording)
+- Schema strictness gap: `validateSkill` does not enforce `description` max-1024 chars / no-XML-tags (CLAUDE.md spec says it should) — `src/schema.js`. Surfaced + deferred during v0.0.2 Phase 4 research; non-blocking (author clean short descriptions).
