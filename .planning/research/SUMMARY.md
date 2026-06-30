@@ -1,129 +1,125 @@
-# Project Research Summary
+# Research Summary: Motto v0.1.0 Self-Hosting (Dogfood)
 
-**Project:** Motto
-**Domain:** Node.js CLI linter + static packager for Claude Code Agent Skills
+**Project:** Motto CLI — Node.js skill authoring & plugin packaging framework
+**Milestone:** v0.1.0 — Self-hosting dogfood milestone
+**Domain:** Meta-tooling — framework validating itself on its own project
 **Researched:** 2026-06-30
-**Confidence:** MEDIUM-HIGH
+**Confidence:** HIGH (all findings grounded in shipped v0.0.1 code + explicit milestone spec)
+
+---
 
 ## Executive Summary
 
-Motto is a small, well-specified internal tool — a lint-then-build CLI that validates structured SKILL.md files against a strict schema and packages them into standard Claude Code Agent Skills distributions. A complete design spec and 6-task TDD implementation plan already exist in the repo (`.planning/superpowers/specs/2026-06-29-motto-design.md`, `.planning/superpowers/plans/2026-06-30-motto-core-cli.md`). Research confirms the chosen stack (Node ≥ 20, plain ESM, `yaml` npm package, `node:test`, zero other dependencies) is correct and requires no changes. The architecture should follow the Functional Core / Imperative Shell pattern: pure modules (`frontmatter.js`, `schema.js`) own all transformation logic; IO-shell modules (`config.js`, `discover.js`) own filesystem access; orchestration modules (`lint.js`, `build.js`) compose them.
+Motto v0.1.0 is a self-hosting milestone: the CLI authors and packages real skills about itself (how to author a skill, how to set up a Motto project, and a private maintainer release checklist), bundling them with a shared schema reference. This exercises the full feature surface — public + private skill buckets, shared references, build packaging — and wires a permanent regression guard (dogfood test) into the pre-commit hook.
 
-The primary risks are not architectural — they are text-processing edge cases consistently under-specified in linter implementations that have caused real production failures in analogous tools. Four are critical and must be addressed in Task 1: CRLF line endings, UTF-8 BOM, `---` inside multiline YAML block scalars, and YAML parse errors that must surface as lint failures (never silent skill drops). Two further constraints flow from the Claude Code plugin spec: plugin/skill names must match `/^[a-z][a-z0-9]*(-[a-z0-9]+)*$/` (letter start, not digit start), and `shared_references` entries must be validated as safe basenames (no `/` or `.`) to prevent path-traversal. `plugin.json` must always emit `version`; omitting it causes Claude Code to fall back to a git SHA of the dist directory, which breaks packaged distributions.
+The technical approach is proven and low-risk: **zero new dependencies**. The existing `lintProject` and `buildProject` need only be called from a test file. The core risk is **not** technical scope but **naming discipline**: Motto's skills document Claude Code, yet any skill `name` containing the substring "claude" or "anthropic" fails the reserved-word check. Use Motto-centric names (`authoring-a-skill`, `motto-project-setup`), not platform-centric ones.
 
-The scope is deliberately minimal and not reducible for v1. All features in the existing plan are table stakes. Research adds pitfall-prevention success criteria to specific tasks, not new work items.
+One architectural decision: `buildProject` destructively wipes `<projectRoot>/dist/` before packing. Lint the real tree in-place (read-only, safe); build against a `mkdtemp` copy so the repo's `dist/` is never wiped on every `npm test`.
+
+---
 
 ## Key Findings
 
-### Recommended Stack
+### Recommended Stack — No changes
 
-The project's chosen stack is validated and correct. No changes recommended.
+v0.0.1 stack (Node ≥20, ESM, `node:test`, single dep `yaml`) is correct for this milestone. **No new dependencies.** All dogfood tooling is stdlib: `node:fs/promises`, `node:path`, `node:url` (`fileURLToPath` for `REPO_ROOT`), `node:os` (`tmpdir`), `node:assert/strict`, `node:test` (auto-discovers `*.test.js`).
 
-**Core technologies:**
-- **Node.js ≥ 20**: First LTS with stable `node:test`, stable `parseArgs`, native ESM
-- **`yaml` v2.9.0**: Only runtime dependency; YAML 1.2 core schema (no `yes`/`no` boolean surprises); `parseDocument()` accumulates errors in `doc.errors[]` — ideal for a collect-all-errors linter
-- **`node:test` (stdlib)**: Zero-config test runner for ESM; `describe`/`it`/`mock`/`beforeEach` all present
-- **`node:util parseArgs`**: Replaces `commander` for a two-subcommand CLI
-- **`node:fs/promises` + `node:path`**: Cover all file I/O without `glob`, `mkdirp`, or `rimraf`
+### Expected Features — 3 skills + 1 shared reference (all LOW complexity)
 
-**Avoid:** `js-yaml` (YAML 1.1 schema), `gray-matter` (wraps js-yaml), `commander`/`yargs`, `zod`/`ajv`, `glob`/`fast-glob`, `chalk`, TypeScript, Jest/Vitest.
+**Table stakes:**
+1. **`authoring-a-skill` (public)** — teaches the schema step-by-step with an annotated example; references `skill-schema`.
+2. **`motto-project-setup` (public)** — project initialization: directory layout, `motto.yaml` fields, dist output; references `skill-schema`.
+3. **`motto-release` (private)** — maintainer release checklist (tests, version bump, dogfood lint/build, tag, npm publish stub); exercises the private bucket.
+4. **`skill-schema` (shared reference)** — single source of truth for field rules; bundled into each skill's `references/`.
 
-### Expected Features
+**Anti-features (deferred):** pure schema-reference-as-skill, `troubleshooting-motto`, `distributing-a-motto-plugin` (distribution undecided), `motto-overview`.
 
-**Must have (v1 — all already scoped):**
-- Exit codes 0 / 1 / 2; collect-all-errors before reporting; error messages name skill + field
-- Frontmatter validation: `name`, `description`, `audience`, `shared_references`; `name` = kebab = folder; `audience` binary
-- Body spine: `# Title` + `**Role:**` mandatory; `shared_references` file-existence resolution at lint time
-- Lint-first build (throws immediately on failure, writes nothing); wipe dist before emit
-- Verbatim skill copy; shared refs bundled into each skill's `references/` in dist
-- `plugin.json` from `motto.yaml` fields; per-project plugin naming
+### Architecture — real tree at repo root, split dogfood test
 
-**Defer to v1.x:** `--quiet`, `--format json`, template validation (wait for first concrete template), `--zip`
+```
+skills/authoring-a-skill/SKILL.md
+skills/motto-project-setup/SKILL.md
+skills/motto-release/SKILL.md
+shared/references/skill-schema.md
+motto.yaml
+test/dogfood.test.js   (NEW)
+dist/                  (gitignored)
+```
 
-**Never:** `--fix`, watch mode, per-directory config, multiple config formats, STDIN, content transform
-
-### Architecture Approach
-
-6 modules in 3 dependency levels. Pure modules never import `node:fs`. The CLI entry does exactly: parse argv → call lint/build → format output → exit.
-
-**Major components:**
-1. `frontmatter.js` (Pure) — parse + normalize CRLF/BOM; surface YAML parse errors
-2. `schema.js` (Pure) — validate `{dirName, data, body}` → `errors[]`; never throw
-3. `config.js` (IO) — read and validate `motto.yaml`; strict plugin name regex; require `version`
-4. `discover.js` (IO) — walk skills tree; sort by `dirName`; per-file try/catch
-5. `lint.js` (Orchestration) — compose discovery + per-skill validation
-6. `build.js` (Orchestration + IO) — lint-guard, wipe dist, copy with `verbatimSymlinks:true`, write `plugin.json`
+- **Lint** the real tree in-place: `lintProject(REPO_ROOT)` — read-only, safe.
+- **Build** against an isolated copy: copy `skills/` + `shared/` + `motto.yaml` to `mkdtemp(tmpdir())`, then `buildProject(tempDir)` — keeps the destructive `rm(dist)` off the repo root.
+- Compute `REPO_ROOT` via `resolve(dirname(fileURLToPath(import.meta.url)), '..')`, NOT `process.cwd()`.
+- `node --test` auto-discovers the test; `dist/` already gitignored; husky `npm test` makes it a free regression guard. No config/hook/.gitignore changes.
 
 ### Critical Pitfalls
 
-1. **CRLF breaks frontmatter regex** — `normalizeText` must strip `\r\n` → `\n` before any regex or YAML parse. Test with CRLF fixture. (Task 1)
-2. **UTF-8 BOM breaks frontmatter regex** — combine BOM strip (`\xEF\xBB\xBF`) into `normalizeText`. (Task 1)
-3. **`---` inside multiline YAML block scalar poisons closing-fence detection** — detect `\n---` in the extracted YAML string and emit a clear lint error rather than silently misparsing. (Task 1 or 3)
-4. **YAML parse errors must surface as lint errors, never silent skill drops** — `discoverSkills` per-file try/catch; `parseFrontmatter` re-throws with original `e.message`. (Tasks 1 + 4)
-5. **Plugin/skill name must start with a letter** — Claude Code requires `/^[a-z][a-z0-9]*(-[a-z0-9]+)*$/`; use this in both `loadConfig` and `schema.js`. (Tasks 2 + 3)
-6. **`shared_references` entries must be safe basenames** — validate against `/^[a-z0-9][a-z0-9-]*$/` (no `/`, no `.`). (Task 3)
-7. **`plugin.json` must always emit `version`** — require `version` in `motto.yaml`; always propagate to `plugin.json`. (Tasks 2 + 6)
-8. **`sort()` in `discoverSkills`** — `skills.sort((a, b) => a.dirName.localeCompare(b.dirName))` for deterministic output. (Task 4)
-9. **`cpSync` with `verbatimSymlinks: true`** — prevents symlinks from copying outside-project content into dist. (Task 6)
-10. **`name` must not contain `"anthropic"` or `"claude"`** — Claude Code rejects these substrings in skill names. (Task 3)
+1. **(HIGHEST) Reserved-substring ban on `name` only.** `validateSkill` rejects any `name` containing `claude`/`anthropic`. Applies to `name` ONLY — description and body may say "Claude Code" freely. Name skills after what Motto does (`authoring-a-skill`), check substrings before creating folders.
+2. **Dogfood build wipes `./dist/` every `npm test`** if run on REPO_ROOT — use the mkdtemp copy for the build test.
+3. **`process.cwd()` is the wrong anchor** — use `import.meta.url` resolution.
+4. Fixture skills counted as real → assert exact `count` against the temp copy.
+5. Body-spine forces a `**Role:**` line on reference-flavored skills → write honest role lines, accept it.
+6. `motto.yaml` config errors cascade → author config FIRST.
+7. `buildProject` re-lints internally → double-lint is correct; design assertions accordingly.
+8. `NAME_KEBAB` duplicated (schema.js vs config.js) → add an equality self-test this milestone.
+9. Private skill without `plugins.private` → set `plugins.private` in `motto.yaml` early.
+10. LINT-02 is not a global content ban → only `name` is restricted.
+
+---
 
 ## Implications for Roadmap
 
-The existing 6-task TDD plan is the correct structure. Research adds success criteria to tasks, not new tasks.
+**Phase 4 — content-first, then test wiring** (the roadmapper may split into 4a/4b or keep as one phase with ordered tasks):
 
-### Phase 1: Pure Core (Tasks 1–3)
-**Rationale:** No I/O dependencies; maximally testable; everything else depends on them.
-**Delivers:** `frontmatter.js`, `schema.js`, `config.js`
-**Research additions:** normalizeText (CRLF + BOM), `---`-in-block-scalar detection, letter-start name regex, `shared_references` basename safety regex, `name` cannot contain `"anthropic"`/`"claude"`, `version` required in `motto.yaml`
+**4a — Author content + fix gaps:**
+1. Create `motto.yaml` (name, version, description, plugins.public, plugins.private).
+2. Author 3 SKILL.md files (public, public, private) — check names for `claude`/`anthropic` first.
+3. Author `shared/references/skill-schema.md`.
+4. Run `motto lint` → expect clean; fix any surfaced schema gaps in `src/`.
+5. Run `npm test` → 53 existing tests still green.
+6. Run `motto build` manually → inspect `dist/`; fix any build gaps.
+7. Add `NAME_KEBAB` equality self-test.
 
-### Phase 2: IO Shell (Task 4)
-**Rationale:** Depends on `frontmatter.js`; produces data structures for orchestration.
-**Delivers:** `discover.js`
-**Research additions:** Per-file try/catch (no silent drops), `sort()` for deterministic output
+**4b — Wire dogfood test:**
+1. `test/dogfood.test.js`: lint `REPO_ROOT` (read-only) + build a mkdtemp copy; assert clean lint, expected skill/bucket counts, `dist/` artifacts present (incl. bundled shared ref + per-bucket plugin.json).
+2. `npm test` green (54+).
+3. Commit — husky now guards forever.
 
-### Phase 3: Orchestration + CLI (Tasks 5–6)
-**Rationale:** Composes all lower levels; completes the system.
-**Delivers:** `lint.js`, `build.js`, `bin/motto.js`
-**Research additions:** `cpSync({ verbatimSymlinks: true })`, `plugin.json` always includes `version`, build test asserts correct dist structure (SKILL.md at `dist/public/<name>/SKILL.md`, not inside `.claude-plugin/`), `err.lint = result; throw err` for full error propagation
-
-### Research Flags
-
-**All phases: standard patterns — no research-phase runs needed.** The design spec and implementation plan are authoritative. No ambiguity requires deeper research.
+---
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | Official Node.js docs + npm registry confirmed |
-| Features | HIGH | Design spec + implementation plan are complete and authoritative |
-| Architecture | HIGH | Derived directly from existing TDD plan; well-documented pattern |
-| Pitfalls | MEDIUM | CRLF/BOM/YAML edge cases confirmed by real GitHub issues; Claude Code name regex confirmed from official docs |
+| Stack | HIGH | No new deps; all stdlib or existing `yaml` |
+| Features | HIGH | 3 skills + 1 shared ref, concrete, low complexity |
+| Architecture | HIGH | Patterns from existing v0.0.1 tests |
+| Pitfalls | HIGH | All grounded in actual v0.0.1 code |
 
-**Overall confidence:** HIGH
+**Overall: HIGH.** Only unknown: whether real authoring surfaces additional schema gaps — gap discovery is the point of Phase 4a.
 
-### Gaps to Address
+---
 
-- **`---` in multiline YAML**: Recommend Option A (detect + error loudly). Exact error message and test fixture to be settled in Task 1. A prose-only constraint ("do not use `|` block scalars in frontmatter") may be simpler than runtime detection.
-- **Claude Code plugin name regex**: Confirmed from official docs but documented in prose, not a formal spec. If Claude Code updates validation, `loadConfig` needs to match.
-- **Audience-based dist routing**: Directory layout defined in design spec but not tested against a live Claude Code install. Run `claude plugin validate` against `dist/` output as a post-build check.
+## Gaps to Address
+
+1. **npm publish mechanism** — `motto-release` includes a TODO publish step; acceptable for a dogfood milestone, expand during a packaging follow-up.
+2. **Distribution mechanism** — how end-users install from `dist/` is deferred (PROJECT.md Out of Scope).
+3. **Real-world schema edge cases** — first exercise against non-synthetic content; design Phase 4a iteratively.
+
+---
 
 ## Sources
 
-### Primary (HIGH confidence)
-- `.planning/superpowers/specs/2026-06-29-motto-design.md` — authoritative design spec
-- `.planning/superpowers/plans/2026-06-30-motto-core-cli.md` — authoritative TDD implementation plan
-- `nodejs.org/api/` — `parseArgs`, `node:test`, `fs.cpSync`, `fs.readdir` docs
-- `platform.claude.com/docs/en/agents-and-tools/agent-skills/overview` — SKILL.md frontmatter spec
-- `code.claude.com/docs/en/plugins-reference` — `plugin.json` schema, plugin directory layout, version behavior
-- `eemeli.org/yaml/` + `registry.npmjs.org/yaml/latest` — yaml@2.9.0 API and version confirmed
+### Primary (HIGH)
+- `src/` (all modules) — RESERVED check, build wipe, config validation, frontmatter/schema. Verified 2026-06-30.
+- `test/` (all modules) — mkdtemp + fs-assertion patterns. Verified 2026-06-30.
+- `.planning/PROJECT.md` — v0.1.0 scope, out-of-scope. Verified 2026-06-30.
+- Official Node.js docs (util.parseArgs, test runner, url.fileURLToPath). Verified 2026-06-30.
+- Official Claude Code docs (agent-skills overview, plugins-reference). Verified 2026-06-30.
 
-### Secondary (MEDIUM confidence)
-- Codex issue #13918 — UTF-8 BOM causes "missing YAML frontmatter" in skill loaders
-- autoresearch issue #69 — unquoted colon-space in YAML description field
-- markdownlint issue #153 — `---` in frontmatter regex fencing
-- Node.js issue #3232 — `fs.readdir` order is platform-dependent
-- OpenClaw issue #22134 — silent skill drop on YAML parse error
+### Secondary (MEDIUM)
+- `yaml` v2.9 docs (error accumulation, YAML 1.2). Verified 2026-06-30.
+- `.planning/milestones/v0.0.1-REQUIREMENTS.md` — locked schema. Verified 2026-06-30.
 
 ---
-*Research completed: 2026-06-30*
-*Ready for roadmap: yes*
+
+*Research synthesis completed 2026-06-30. Ready for roadmap creation.*
