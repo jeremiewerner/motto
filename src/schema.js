@@ -42,7 +42,7 @@ const RESERVED = ["anthropic", "claude"];
  * Validate a parsed skill object against the Motto schema.
  *
  * Error-aggregation model (D-13):
- *   - NAME checks CASCADE: missing → non-kebab → max-64 → reserved-word → ≠folder.
+ *   - NAME checks CASCADE: missing/falsy → non-string → non-kebab → max-64 → reserved-word → ≠folder.
  *     The chain stops at the first failure; subsequent name checks are skipped
  *     because they are meaningless once an earlier check fails.
  *   - All OTHER checks (description, audience, body Title, body Role, each
@@ -74,10 +74,15 @@ export function validateSkill(skill, sharedRefs = new Set()) {
   // Stop at the first failure. Do NOT accumulate multiple name errors.
   const name = data.name;
   if (!name) {
-    // Step 1: missing / empty name
+    // Step 1: missing / empty / falsy name (false, 0, "", null, undefined)
     err("name is required");
+  } else if (typeof name !== "string") {
+    // Step 2: non-string truthy name (e.g. YAML boolean true, number 123, array, object).
+    // Must guard BEFORE NAME_KEBAB.test() and RESERVED.includes() — both coerce and
+    // may throw (`.includes` is not defined on booleans). D-01: never throw. (REVIEW-01)
+    err(`name must be a string (got ${typeof name})`);
   } else if (!NAME_KEBAB.test(name)) {
-    // Step 2: not letter-start kebab-case (D-08)
+    // Step 3: not letter-start kebab-case (D-08)
     err(
       `name must be letter-start kebab-case (/^[a-z][a-z0-9]*(-[a-z0-9]+)*$/): "${name}"`
     );

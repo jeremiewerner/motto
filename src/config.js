@@ -9,6 +9,7 @@
  */
 
 import { parseDocument } from "yaml";
+import { safeToJS } from "./frontmatter.js";
 
 /**
  * Letter-start kebab-case regex for plugin names.
@@ -72,9 +73,14 @@ export function loadConfig(text) {
     errors.push({ message: yamlErr.message || String(yamlErr) });
   }
 
-  // Resolve to a plain JS object. doc.toJS() returns null for a null/empty document.
-  const parsed = doc.toJS();
-  config = parsed != null && typeof parsed === "object" ? parsed : {};
+  // Resolve to a plain JS object. safeToJS guards against toJS() throwing on an
+  // unresolved alias (e.g. `name: *foo` — D-01, REVIEW-03). src/schema.js is
+  // the sole source of NAME_KEBAB (REVIEW-11); safeToJS is the sole helper (REVIEW-02/03).
+  const { value, threw, message } = safeToJS(doc);
+  if (threw) {
+    errors.push({ message });
+  }
+  config = value != null && typeof value === "object" ? value : {};
 
   // ── REQUIRED FIELDS (CONF-01, D-15) ───────────────────────────────────────
   // Collect ALL missing required fields together — no short-circuit (D-15).

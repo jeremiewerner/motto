@@ -1,6 +1,26 @@
 import YAML from "yaml";
 
 /**
+ * Safely convert a YAML Document node to a plain JS value without throwing.
+ *
+ * YAML's doc.toJS() throws a ReferenceError when the document contains an
+ * unresolved alias (e.g. `description: *foo` where anchor `foo` is not defined).
+ * The parsers in this project must NEVER throw (D-01, REVIEW-02, REVIEW-03);
+ * this helper centralises the guard so neither parseFrontmatter nor loadConfig
+ * needs its own try/catch.
+ *
+ * @param {import('yaml').Document} doc
+ * @returns {{ value: any, threw: boolean, message: string|null }}
+ */
+export function safeToJS(doc) {
+  try {
+    return { value: doc.toJS(), threw: false, message: null };
+  } catch (e) {
+    return { value: null, threw: true, message: String(e?.message ?? e) };
+  }
+}
+
+/**
  * Split a SKILL.md into frontmatter `data` + Markdown `body`, normalizing the
  * input first, and report every structural malformation through a uniform
  * `errors[]` array. NEVER throws (D-01, D-03): every failure path returns via
@@ -89,13 +109,19 @@ export function parseFrontmatter(text) {
 
   // (5) PARSE THE BLOCK with YAML.parseDocument (NOT YAML.parse — D-02). Map
   // every parse error into the returned errors[] (D-02, PARSE-03). An empty
-  // block yields data {} with NO parse error (D-07).
+  // block yields data {} with NO parse error (D-07). toJS() is deferred to (5b).
   const doc = YAML.parseDocument(block);
   for (const e of doc.errors) {
     errors.push({ message: e.message });
   }
 
-  let data = doc.toJS();
+  // (5b) RESOLVE to plain JS. safeToJS guards against toJS() throwing on an
+  // unresolved alias (e.g. `description: *foo` — D-01, REVIEW-02).
+  const { value, threw, message } = safeToJS(doc);
+  if (threw) {
+    errors.push({ message });
+  }
+  let data = value;
   if (data === null || typeof data !== "object" || Array.isArray(data)) {
     data = {};
   }

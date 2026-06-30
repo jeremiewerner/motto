@@ -382,6 +382,17 @@ describe("validateSkill", () => {
     );
   });
 
+  // B20: validateSkill must not throw for a non-string truthy name (D-01 regression)
+  it("B20: validateSkill does not throw and returns an error array for name: true (D-01)", () => {
+    const base = { description: "use when X", audience: "public" };
+    const skill = { dirName: "d", data: { ...base, name: true }, body: VALID_BODY };
+    assert.doesNotThrow(() => validateSkill(skill), "must not throw for name: true");
+    const result = validateSkill(skill);
+    assert.ok(Array.isArray(result), "result must be an array");
+    assert.ok(result.length > 0, "must return at least one name error");
+    assert.ok(result.some((e) => /name/i.test(e.message)), "error must mention name");
+  });
+
   // NAME_KEBAB export — letter-start kebab regex (D-08, D-16)
   it("NAME_KEBAB is exported and is the letter-start kebab regex (D-08, D-16)", () => {
     assert.ok(NAME_KEBAB instanceof RegExp, "NAME_KEBAB should be a RegExp");

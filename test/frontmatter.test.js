@@ -83,6 +83,16 @@ describe("parseFrontmatter", () => {
     assert.ok(body.includes("\n---\n"), "body should retain the --- horizontal rule");
   });
 
+  // B9 (D-01 regression) — unresolved alias in the frontmatter block must not throw
+  it("B9: parseFrontmatter does not throw on an unresolved alias in the frontmatter block (D-01)", () => {
+    let result;
+    assert.doesNotThrow(() => {
+      result = parseFrontmatter("---\ndescription: *foo\n---\n# body");
+    }, "must not throw for unresolved frontmatter alias");
+    assert.ok(result.errors.length > 0, "must return at least one error");
+    assert.deepEqual(result.data, {}, "data must fall back to {}");
+  });
+
   // B8 (D-01 backstop) — **Role:** before a body --- must not throw
   // Regression guard for the toJS() alias-throw bug: YAML parses "**Role:**"
   // as a *name alias reference; toJS() throws for unresolved aliases. The
