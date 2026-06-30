@@ -1,319 +1,342 @@
 # Architecture Research
 
-**Domain:** Node.js lint/build CLI — text-file validation and copy-based packaging
+**Domain:** Node.js lint/build CLI — self-hosting integration (v0.1.0)
 **Researched:** 2026-06-30
-**Confidence:** HIGH (primary sources: project design spec + implementation plan, both authoritative; validated against established functional-core/imperative-shell pattern)
+**Confidence:** HIGH (all decisions derived by reading the live source tree; no speculation)
 
-## Standard Architecture
+---
+
+## Part 1 — v0.0.1 Core Architecture (existing, for context)
 
 ### System Overview
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │  CLI Entry (bin/motto.js)                                        │
-│  parse argv → call lint/build → print results → exit(0|1)        │
-├────────────────────┬────────────────────────────────────────────┤
-│  Orchestration     │                                            │
-│  lint.js           │  build.js                                  │
-│  (discover+schema) │  (lint-guard + config + discover + emit)   │
-├───────┬────────────┴──────────┬─────────────────────────────────┤
-│  IO Shell                     │  Pure Core                      │
-│  ┌────────────┐ ┌──────────┐  │  ┌────────────┐ ┌───────────┐  │
-│  │ config.js  │ │discover  │  │  │frontmatter │ │ schema.js │  │
-│  │(reads yaml)│ │(reads fs)│  │  │  .js       │ │(validates)│  │
-│  └────────────┘ └──────────┘  │  │(parses str)│ │           │  │
-│                               │  └────────────┘ └───────────┘  │
-└───────────────────────────────┴─────────────────────────────────┘
+│  parse argv → call lintProject/buildProject → print → exitCode  │
+├──────────────────────────┬──────────────────────────────────────┤
+│  Orchestration           │                                       │
+│  lint.js                 │  build.js                             │
+│  (fs → schema core)      │  (lint-guard → fs → emit)            │
+├───────┬──────────────────┴────────────┬──────────────────────────┤
+│  IO shell (inline in lint.js/build.js)│  Pure Core               │
+│  ┌──────────────┐ ┌────────────────┐  │  ┌──────────┐ ┌───────┐ │
+│  │processConfig │ │discoverSkill   │  │  │frontmattr│ │schema │ │
+│  │(reads yaml)  │ │Names/Skill     │  │  │.js       │ │.js    │ │
+│  └──────────────┘ └────────────────┘  │  │(pure str)│ │(pure) │ │
+└───────────────────────────────────────┴──────────────────────────┘
 ```
 
-The critical structural rule: **pure-core modules never import `node:fs`**. IO-shell modules accept a `projectDir` path as input and return plain data structures upward. The boundary is deliberate — pure modules are testable with `assert.deepEqual` and zero fixtures; IO modules need temp dirs but no mocks.
+### Actual module shape (as-built — corrects pre-implementation plan)
+
+| File | Layer | Exported symbol | Signature |
+|------|-------|----------------|-----------|
+| `src/frontmatter.js` | Pure core | `parseFrontmatter` | `(text) → {data, body, errors[]}` |
+| `src/schema.js` | Pure core | `validateSkill` | `({dirName,data,body}, sharedRefs) → errors[]` |
+| `src/config.js` | **Pure core** (takes text, not path) | `loadConfig` | `(text) → {config, errors[]}` |
+| `src/lint.js` | IO orchestration | `lintProject` | `(projectRoot) → {ok, errors[], count}` |
+| `src/build.js` | IO orchestration + emit | `buildProject` | `(projectRoot) → {ok, outDir, errors[], skillCount, bucketCount}` |
+| `bin/motto.js` | CLI entry | (executable) | parse argv → call lint/build → exitCode |
+
+`config.js` is pure (accepts a string, not a path). The IO wiring — read `motto.yaml` from disk, pass text to `loadConfig` — lives inside `lint.js` (`processConfig`) and `build.js`. `discover.js` was not created as a separate module; discover logic is inlined as private helpers in `lint.js` and `build.js`.
+
+---
+
+## Part 2 — v0.1.0 Self-Hosting Integration Architecture
+
+### The Integration Question
+
+Motto has no skills of its own. v0.1.0 adds a real `skills/` tree + `motto.yaml` to the repo and wires a dogfood test into `node --test`. The key tension: `buildProject(projectRoot)` **wipes and rewrites `dist/`**. If the dogfood test passes the repo root as `projectRoot`, every `npm test` / pre-commit hook destroys the repo's `dist/`.
+
+### Repo Layout After v0.1.0
+
+```
+motto/                              ← repo root (REPO_ROOT)
+├── bin/motto.js                    unchanged
+├── src/                            unchanged + possible gap-fix edits
+│   ├── frontmatter.js
+│   ├── schema.js
+│   ├── config.js
+│   ├── lint.js
+│   └── build.js
+├── test/
+│   ├── build.test.js               unchanged
+│   ├── config.test.js              unchanged
+│   ├── frontmatter.test.js         unchanged
+│   ├── lint.test.js                unchanged
+│   ├── schema.test.js              unchanged
+│   └── dogfood.test.js             NEW — integration regression guard
+├── skills/                         NEW — Motto's own skill source files
+│   ├── <public-skill>/
+│   │   └── SKILL.md
+│   └── <private-skill>/
+│       └── SKILL.md
+├── shared/                         NEW — shared reference files
+│   └── references/
+│       └── <ref>.md
+├── motto.yaml                      NEW — Motto's own project config
+├── dist/                           RUNTIME ARTIFACT — gitignored; never written by tests
+├── package.json                    unchanged
+├── .gitignore                      unchanged (dist/ already listed)
+└── .husky/pre-commit               unchanged (npm test covers dogfood automatically)
+```
 
 ### Component Responsibilities
 
-| Module | Layer | Responsibility | Imports | Exports |
-|--------|-------|----------------|---------|---------|
-| `frontmatter.js` | Pure core | Split `---`-delimited YAML from Markdown body | `yaml` only | `parseFrontmatter(text) → {data, body}` |
-| `schema.js` | Pure core | Validate a skill object against Motto's rules | nothing | `validateSkill(skill, sharedRefs?) → errors[]` |
-| `config.js` | IO shell | Read and validate `motto.yaml` from disk | `node:fs`, `yaml` | `loadConfig(projectDir) → config` |
-| `discover.js` | IO shell | Walk `skills/*/SKILL.md` and `shared/references/` | `node:fs`, `frontmatter.js` | `discoverSkills(projectDir) → {skills, sharedRefs}` |
-| `lint.js` | Orchestration | Compose discovery + per-skill validation into one result | `discover.js`, `schema.js` | `lint(projectDir) → {ok, errors, count}` |
-| `build.js` | Orchestration + IO | Lint-guard, load config, wipe+write `dist/` | `lint.js`, `discover.js`, `config.js`, `node:fs` | `build(projectDir, outDir?) → {ok, outDir}` or throws |
-| `bin/motto.js` | CLI entry | Parse argv, call lint/build, format output, exit | `lint.js`, `build.js` | (executable) |
+| Component | Status | Responsibility | Integration point |
+|-----------|--------|----------------|-------------------|
+| `motto.yaml` (repo root) | NEW | Project identity: name, version, description, plugins.public, plugins.private | Read by `lintProject(REPO_ROOT)` and `buildProject(tempDir)` |
+| `skills/<name>/SKILL.md` | NEW (≥2) | Real Motto skill content — ≥1 public, ≥1 private | Discovered by `lintProject` / `buildProject` |
+| `shared/references/<ref>.md` | NEW (≥1) | Shared reference bundled into each skill at build | Bundled by `buildProject` |
+| `dist/` (repo root) | EXISTING (gitignored) | Build output — written by `motto build` CLI invocations | NOT written by any test; developers run `motto build` manually |
+| `test/dogfood.test.js` | NEW | Integration regression guard: lint passes + build produces expected output | Discovered by `node --test` auto-discovery; calls `lintProject(REPO_ROOT)` and `buildProject(tempDir)` |
+| `src/*.js` | POSSIBLY MODIFIED | Schema/lint/build gap fixes surfaced by dogfooding real content | Modified only if gaps are discovered |
 
-## Recommended Project Structure
-
-```
-motto/
-├── bin/
-│   └── motto.js          # CLI entry — thin; no business logic
-├── src/
-│   ├── frontmatter.js    # Pure: parse YAML frontmatter from text
-│   ├── schema.js         # Pure: validate skill {data, body} → errors[]
-│   ├── config.js         # IO: read motto.yaml → config object
-│   ├── discover.js       # IO: walk fs → {skills[], sharedRefs}
-│   ├── lint.js           # Orchestrate: discover + validate → {ok, errors, count}
-│   └── build.js          # Orchestrate + emit: lint-guard + write dist/
-├── test/
-│   ├── frontmatter.test.js
-│   ├── schema.test.js
-│   ├── config.test.js
-│   ├── discover.test.js
-│   ├── lint.test.js
-│   ├── build.test.js
-│   └── fixtures/
-│       └── sample/       # real-directory fixture for IO tests
-│           ├── motto.yaml
-│           ├── skills/
-│           │   ├── hello/SKILL.md
-│           │   └── secret/SKILL.md
-│           └── shared/references/voice.md
-├── package.json          # type:module, bin:motto, deps:{yaml}
-└── motto.yaml            # the repo's own Motto config (dog-fooded)
-```
-
-### Structure Rationale
-
-- **`src/` flat, not nested:** Seven files total. No subdirectory complexity justified by size. Alphabetical import paths are easy to read.
-- **`bin/` separate from `src/`:** Entry point is not a library module. The shebang and `process.argv` live in one file only; nothing else calls `process.exit`.
-- **`test/fixtures/sample/`:** A real on-disk project used by all IO tests. Avoids mocking `node:fs`; exercises the full path from disk read to parsed output. Pure-module tests use no fixtures at all.
+---
 
 ## Architectural Patterns
 
-### Pattern 1: Functional Core / Imperative Shell
+### Pattern 1: Split lint and build concerns in the dogfood test
 
-**What:** Pure functions that operate on plain data live in the core (`frontmatter.js`, `schema.js`). Functions with side effects (filesystem reads/writes) live at the shell (`config.js`, `discover.js`, `build.js`). The shell calls the core; the core never calls the shell.
+**What:** Lint is read-only. Build is destructive. Treat them separately in the dogfood test.
 
-**When to use:** Any CLI where the core logic is transformations over data (parse, validate, compute). This project is a canonical fit: frontmatter parsing is `string → object`; validation is `object → errors[]`. Both are referentially transparent.
+- **Lint assertion**: call `lintProject(REPO_ROOT)` directly. No mutation, no temp dir needed. This is equivalent to the developer running `motto lint` — a pure read operation over the real tree.
+- **Build assertion**: copy `skills/`, `shared/`, `motto.yaml` to a `mkdtemp` temp dir, then call `buildProject(tempDir)`. The wipe runs on `tempDir/dist`, not `REPO_ROOT/dist`.
 
-**Trade-offs:** Adds one level of indirection (callers must fetch data and pass it in). Worth it: pure modules are testable with zero I/O setup, the boundary makes the dependency graph explicit, and the shell is trivially thin.
+**Why this split:** `buildProject` calls `rm(distDir, {recursive:true,force:true})` unconditionally (step 4 in build.js). If `projectRoot = REPO_ROOT`, every test run destroys whatever `dist/` the developer last built. This turns the pre-commit hook from a regression guard into an adversary.
 
-**The boundary in Motto:**
-```
-// Pure — testable with assert.deepEqual, no fixtures needed
-validateSkill({ dirName: 'my-skill', data: {...}, body: '...' }, new Set(['voice']))
-
-// Shell — accepts a path, reads disk, returns plain data
-discoverSkills('/path/to/project')
-// => { skills: [{dirName, dir, data, body}], sharedRefs: Set }
-```
-
-### Pattern 2: Lint-Guard Composition
-
-**What:** `build` reuses `lint` as its first step. On lint failure, `build` throws immediately with the lint result attached (`err.lint = {ok, errors, count}`) and writes nothing to disk. The CLI catches this and prints lint errors the same way `motto lint` would.
-
-**When to use:** Any pipeline where a downstream step must not run on invalid input. Avoids silent production of corrupt output.
-
-**Trade-offs:** `build` calls `discoverSkills` twice (once inside `lint`, once again for skill paths during emission). Acceptable for this problem size; a future optimization would pass the result through. Do not optimize prematurely.
+**Trade-off:** The build test uses a copy of the source tree, so it's testing the snapshot at test time. This is correct — the test asserts the committed tree builds cleanly, not some in-flight edit.
 
 ```js
-export function build(projectDir, outDir = join(projectDir, 'dist')) {
-  const result = lint(projectDir)   // lint = discover + validateSkill
-  if (!result.ok) {
-    const err = new Error('lint failed; build aborted')
-    err.lint = result               // CLI reads err.lint.errors for output
-    throw err
-  }
-  // ... emit phase (config load, wipe outDir, copy skills + refs, write plugin.json)
-}
+// test/dogfood.test.js — canonical shape
+
+import { describe, it } from 'node:test';
+import assert from 'node:assert/strict';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { mkdtemp, cp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { lintProject } from '../src/lint.js';
+import { buildProject } from '../src/build.js';
+
+// Two dirname() calls: test/dogfood.test.js → test/ → repo root
+const REPO_ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
+
+describe('dogfood: Motto self-validates its own skills tree', () => {
+  it('lintProject passes with zero errors on the real skills/ tree', async () => {
+    const result = await lintProject(REPO_ROOT);
+    assert.strictEqual(result.ok, true, JSON.stringify(result.errors, null, 2));
+  });
+
+  it('buildProject produces expected dist/ layout (isolated temp dir)', async () => {
+    const tmp = await mkdtemp(join(tmpdir(), 'motto-dogfood-'));
+    try {
+      // Copy real source tree to isolated temp dir — build writes tmp/dist, not REPO_ROOT/dist
+      await cp(join(REPO_ROOT, 'skills'), join(tmp, 'skills'), { recursive: true });
+      await cp(join(REPO_ROOT, 'shared'), join(tmp, 'shared'), { recursive: true });
+      await cp(join(REPO_ROOT, 'motto.yaml'), join(tmp, 'motto.yaml'));
+
+      const result = await buildProject(tmp);
+      assert.strictEqual(result.ok, true, JSON.stringify(result.errors, null, 2));
+      // Assert specific structure: skill counts, bucket counts, plugin names
+      // e.g.: assert.strictEqual(result.skillCount, 2);
+    } finally {
+      await rm(tmp, { recursive: true, force: true });
+    }
+  });
+});
 ```
 
-### Pattern 3: Error Accumulation over Early Return
+### Pattern 2: REPO_ROOT via `import.meta.url`
 
-**What:** `validateSkill` collects all violations in an `errors[]` array and returns it. `lint` accumulates across all skills. The user sees every problem in one run.
-
-**When to use:** Any validation pass where seeing the first error hides the others. Lint tools universally do this.
-
-**Trade-offs:** Slightly more complex than `throw` on first error, but a linter that stops at the first `missing description` in skill #1 and forces repeated runs is hostile.
+**What:** Compute the absolute repo root from the test file's own URL — not from `process.cwd()`.
 
 ```js
-// schema.js
-const errors = []
-const push = (message) => errors.push({ skill: dirName, message })
-
-if (!data.description) push('frontmatter: missing description')
-if (!['public', 'private'].includes(data.audience)) push(...)
-// ... accumulate all, then:
-return errors
+const REPO_ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
+// test/dogfood.test.js → test/ → repo root
 ```
+
+**Why not `process.cwd()`:** `npm test` happens to run from the package root, so `process.cwd()` works. But `node --test test/dogfood.test.js` run from a different directory breaks silently. `import.meta.url` is always an absolute URL for the file, stable regardless of invocation directory.
+
+### Pattern 3: `node --test` auto-discovery of `dogfood.test.js`
+
+**What:** `node --test` (the `"test"` script in `package.json`) discovers all `*.test.js` files recursively from the package root. Adding `test/dogfood.test.js` is sufficient — no `package.json` change needed.
+
+**Discovery collision check:**
+- `skills/` directories contain `SKILL.md`, not `*.test.js` — not discovered
+- `shared/references/` contains `.md` files — not discovered
+- `dist/` contains `.json` and `.md` files — not discovered (and usually absent during test runs)
+- `node_modules/` — excluded by default in Node 20+
+
+No runner config changes required.
+
+---
 
 ## Data Flow
 
-### Command: `motto lint`
+### Dogfood Lint Flow (read-only, real tree)
 
 ```
-argv → [cmd='lint']
-                ↓
-         lint(cwd)
+test/dogfood.test.js
+    │
+    └─ lintProject(REPO_ROOT)
+           ├─ processConfig(REPO_ROOT)     reads REPO_ROOT/motto.yaml
+           ├─ loadSharedRefs(REPO_ROOT)    reads REPO_ROOT/shared/references/*.md → Set
+           ├─ discoverSkillNames()         reads REPO_ROOT/skills/ → sorted names[]
+           └─ processSkill() × N          reads each REPO_ROOT/skills/<n>/SKILL.md
+                                           calls parseFrontmatter → validateSkill
            ↓
-     discoverSkills(cwd)
-       ├── readdirSync('skills/') → dirNames
-       ├── readFileSync(SKILL.md) → text
-       ├── parseFrontmatter(text) → {data, body}   [pure]
-       └── readdirSync('shared/references/') → sharedRefs
+    assert result.ok === true
+    (no files written anywhere)
+```
+
+### Dogfood Build Flow (isolated temp dir)
+
+```
+test/dogfood.test.js
+    │
+    ├─ mkdtemp() → /tmp/motto-dogfood-XXXXX/   (OS temp, not repo)
+    ├─ cp(REPO_ROOT/skills  → tmp/skills,  {recursive})
+    ├─ cp(REPO_ROOT/shared  → tmp/shared,  {recursive})
+    ├─ cp(REPO_ROOT/motto.yaml → tmp/motto.yaml)
+    │
+    └─ buildProject(tmp)
+           ├─ lintProject(tmp)              [gate — reads tmp/]
+           ├─ loadConfig(tmp/motto.yaml)
+           ├─ discoverSkillNames(tmp/skills)
+           ├─ pre-pack checks
+           ├─ rm(tmp/dist, recursive)       ← wipes tmp/dist, NOT REPO_ROOT/dist
+           ├─ cp(tmp/skills/<n> → tmp/dist/...)
+           └─ writeFile(tmp/dist/.../plugin.json)
            ↓
-     {skills: [{dirName, dir, data, body}], sharedRefs: Set<string>}
-           ↓
-     for each skill:
-       validateSkill(skill, sharedRefs) → errors[]   [pure]
-           ↓
-     {ok: bool, errors: [{skill, message}], count: n}
-           ↓
-     CLI: if ok → console.log('✓ N skills OK') + exit(0)
-          else → console.error per error + exit(1)
+    assert result.ok === true
+    ↓
+    rm(tmp, recursive)                      ← cleanup
 ```
 
-### Command: `motto build`
-
-```
-argv → [cmd='build']
-                ↓
-         build(cwd)
-           ├── lint(cwd) ──────────────────── (full lint flow above)
-           │   if !ok → throw err (err.lint = result)
-           │                   ↓ (only if lint passes)
-           ├── loadConfig(cwd)     → {name, version, plugins:{public, private?}}
-           ├── discoverSkills(cwd) → {skills, sharedRefs}  (re-scan for paths)
-           ├── rmSync(outDir, {recursive:true, force:true})
-           └── for each skill:
-               ├── cpSync(skill.dir → dist/<audience>/<dirName>/)
-               └── for each shared_reference:
-                   copyFileSync(shared/references/<ref>.md
-                              → dist/<audience>/<dirName>/references/<ref>.md)
-               writeFileSync(dist/<audience>/.claude-plugin/plugin.json)
-                 content: {name: config.plugins[audience], version, description}
-                           ↓
-              {ok: true, outDir: 'dist/'}
-                           ↓
-     CLI: console.log('✓ built → dist/')
-```
-
-### Key Data Shapes
-
-```js
-// Skill object — the lingua franca between discover, schema, lint, build
-{ dirName: string,    // folder name; schema checks name===dirName
-  dir: string,        // absolute path to skills/<dirName>/
-  data: object,       // parsed YAML frontmatter {name, description, audience, ...}
-  body: string }      // everything after the closing ---
-
-// Lint error — accumulator item
-{ skill: string,      // dirName of the offending skill
-  message: string }   // human-readable rule violation
-
-// Lint result — lint() return value and err.lint shape
-{ ok: boolean, errors: [{skill, message}], count: number }
-
-// Config — loadConfig() return value
-{ name: string, version: string, description: string,
-  plugins: { public: string, private?: string } }
-```
-
-## Dependency Graph (Build Order)
-
-This graph governs task sequencing — each level can be built independently; later levels depend on earlier ones.
-
-```
-Level 0 — Pure, no deps (build first; maximally testable)
-  frontmatter.js    (depends on: yaml only)
-  schema.js         (depends on: nothing)
-
-Level 1 — IO, depend on Level 0 or nothing
-  config.js         (depends on: yaml, node:fs — no Level 0 deps)
-  discover.js       (depends on: frontmatter.js, node:fs)
-
-Level 2 — First composition
-  lint.js           (depends on: discover.js + schema.js)
-
-Level 3 — Full system
-  build.js          (depends on: lint.js + discover.js + config.js + node:fs)
-  bin/motto.js      (depends on: lint.js + build.js)
-```
-
-**Phase mapping implication:** Level 0 + 1 = Phase 1 (pure modules + IO adapters); Level 2 = Phase 2 (first integration); Level 3 = Phase 3 (full CLI). Tests at each level require nothing from the level above, so phases are independently verifiable.
+---
 
 ## Anti-Patterns
 
-### Anti-Pattern 1: IO Inside Validators
+### Anti-Pattern 1: Dogfood build test calls `buildProject(REPO_ROOT)`
 
-**What people do:** Call `readFileSync` inside `validateSkill` (e.g., to check if a referenced file exists on disk).
+**What people do:** Pass `REPO_ROOT` to `buildProject` in the dogfood test for simplicity — the real tree is already there.
 
-**Why it's wrong:** The validator becomes untestable without real fixtures. It can no longer be called with synthesized in-memory objects. Error cases that are hard to create on disk become hard to test.
+**Why it's wrong:** `buildProject` runs `rm(join(projectRoot,'dist'), {recursive:true,force:true})` in step 4 before writing. Every `npm test` invocation — including every Husky pre-commit hook — wipes the repo's `dist/`. A developer who runs `motto build` and then `git commit` finds their build gone. If two tests run in the same process and one expects `dist/` to exist, test order becomes load-bearing.
 
-**Do this instead:** Resolve shared refs in `discoverSkills` into a `Set<string>`, pass it as a parameter to `validateSkill`. The validator stays pure; the set comes from the IO layer.
+**Do this instead:** Copy `skills/`, `shared/`, `motto.yaml` to `mkdtemp`, call `buildProject(tempDir)`. The lint sub-test can still call `lintProject(REPO_ROOT)` — lint never writes.
 
-### Anti-Pattern 2: Business Logic in the CLI Entry
+### Anti-Pattern 2: Placing `skills/` inside `src/`, `test/`, or a nested subdirectory
 
-**What people do:** Put frontmatter parsing, error formatting rules, or path resolution in `bin/motto.js`.
+**What people do:** Put the real skills tree at `src/skills/` or `example/` to "group it with the code".
 
-**Why it's wrong:** CLI entry is untestable (it calls `process.exit`). Logic in the CLI can't be unit-tested or reused from a programmatic API.
+**Why it's wrong:** Motto users place `skills/` at repo root. Putting it elsewhere in Motto's own repo means the dogfood doesn't mirror the user experience — the regression guard tests a different layout than what users actually have. Also, `lintProject(process.cwd())` and `lintProject(REPO_ROOT)` diverge from what `motto lint` would do when run from the CLI.
 
-**Do this instead:** The CLI entry does exactly three things: parse argv, call `lint()` or `build()`, format and print the returned/thrown value. All logic lives in `src/`.
+**Do this instead:** `skills/`, `shared/`, `motto.yaml` at repo root — the canonical Motto project layout.
 
-### Anti-Pattern 3: Throwing on First Validation Error
+### Anti-Pattern 3: Asserting on `dist/` contents at `REPO_ROOT/dist` in tests
 
-**What people do:** `if (!data.description) throw new Error(...)` inside the validator.
+**What people do:** After the build test, read assertions from `join(REPO_ROOT, 'dist', ...)`.
 
-**Why it's wrong:** The user runs `motto lint`, fixes the first error, runs again, sees the next. Repeat five times. The linter is an antagonist.
+**Why it's wrong:** The isolated build test writes to `tmp/dist`, not `REPO_ROOT/dist`. Reading from `REPO_ROOT/dist` asserts on whatever the last manual `motto build` left behind — a phantom dependency on developer state.
 
-**Do this instead:** Accumulate all errors in an array and return it. Let the caller decide whether to print and exit (CLI) or inspect (tests).
+**Do this instead:** All assertions read from `join(tmp, 'dist', ...)`. The temp dir is the single source of truth for the build test.
 
-### Anti-Pattern 4: Stripping Frontmatter at Build
+### Anti-Pattern 4: Using unit-test fixture helpers to author real skill content
 
-**What people do:** Strip Motto-specific frontmatter keys (`audience`, `shared_references`) from `SKILL.md` before copying to `dist/`.
+**What people do:** Reuse `makeSkillMd(name)` from `build.test.js` to generate `SKILL.md` content for the real `skills/` tree.
 
-**Why it's wrong:** Adds a content-transform step that can introduce bugs and fights the verbatim-copy principle. Unknown frontmatter keys are harmless to agents; portability requires no build-time mutation.
+**Why it's wrong:** Unit-test helpers produce minimal synthetic content. The real `skills/` tree should contain actual documentation that exercises the schema fully (including `shared_references`, `template:`, body spine, etc.). Using synthetic helpers defeats the dogfood purpose — the whole point is to lint content that a human would author.
 
-**Do this instead:** `cpSync(skill.dir, dest, { recursive: true })` — verbatim copy. No content transform.
+**Do this instead:** Hand-author the real `SKILL.md` files. This is the dogfood moment — if authoring is painful, that's signal to fix the schema.
 
-### Anti-Pattern 5: Discarding the lint Result in build
+---
 
-**What people do:** Run lint inside build but catch and re-throw without attaching the lint result — the CLI can only print "lint failed" with no details.
+## Integration Points — New vs Modified Files
 
-**Why it's wrong:** The user loses all diagnostic context. The `motto lint` output and `motto build` failure output should be identical in their error listing.
+### New Files
 
-**Do this instead:** `err.lint = result; throw err` — the lint result rides with the error, and the CLI can print every violation the same way `motto lint` would.
+| Path | Why new |
+|------|---------|
+| `motto.yaml` | Motto's own project config — required by `lintProject` / `buildProject` |
+| `skills/<public-skill>/SKILL.md` | ≥1 public-audience skill |
+| `skills/<private-skill>/SKILL.md` | ≥1 private-audience skill |
+| `shared/references/<ref>.md` | ≥1 shared reference (required for full schema surface coverage) |
+| `test/dogfood.test.js` | Lint + build integration test; permanent regression guard |
 
-## Integration Points
+### Possibly Modified Files (gap fixes)
 
-### Internal Boundaries
+| Path | When modified |
+|------|--------------|
+| `src/schema.js` | If authoring real content surfaces a validation gap |
+| `src/lint.js` | If a lint orchestration edge case appears |
+| `src/build.js` | If a build edge case appears (e.g., `shared/` copy behavior) |
+| `src/config.js` | If `motto.yaml` config validation is missing a rule |
 
-| Boundary | Communication | Contract |
-|----------|---------------|----------|
-| `discover.js` → `frontmatter.js` | Direct ESM import call | `parseFrontmatter(text: string) → {data, body}` — throws on missing `---` block |
-| `lint.js` → `discover.js` | Direct ESM import call | `discoverSkills(projectDir) → {skills, sharedRefs}` — returns empty arrays if dirs absent |
-| `lint.js` → `schema.js` | Direct ESM import call | `validateSkill(skill, sharedRefs) → errors[]` — never throws; returns `[]` for valid skills |
-| `build.js` → `lint.js` | Direct call; throw protocol | `lint(projectDir)` — `build` checks `result.ok`; failure path: `err.lint = result; throw err` |
-| `build.js` → `config.js` | Direct ESM import call | `loadConfig(projectDir) → config` — throws listing all missing required fields |
-| `bin/motto.js` → `lint.js` / `build.js` | Direct call; exit codes | Return value → exit 0; thrown Error → print `err.message` or `err.lint.errors` → exit 1 |
+### Unchanged Files
 
-### External Dependencies
+| Path | Reason |
+|------|--------|
+| `bin/motto.js` | CLI unchanged |
+| `test/*.test.js` (existing 5) | Unit tests use `mkdtemp` fixtures; no conflict with real tree |
+| `.gitignore` | `dist/` already listed |
+| `package.json` | No new deps; `node --test` auto-discovers `dogfood.test.js` |
+| `.husky/pre-commit` | `npm test` already runs everything; dogfood test becomes a free regression guard |
 
-| Dependency | Role | Why this one |
-|------------|------|-------------|
-| `yaml` (npm) | Parse YAML frontmatter + motto.yaml | Only runtime dep; avoids hand-rolling a YAML parser. `^2.x` is stable, well-maintained, pure JS. |
-| `node:fs` (stdlib) | File system IO in shell modules | Built-in; `cpSync` (Node 16.7+), `rmSync` (Node 14.14+), `readdirSync`, `readFileSync` all available in Node ≥20. |
-| `node:test` (stdlib) | Test runner | Built-in in Node ≥18, stable in Node ≥20. Zero install cost. Sufficient for this problem size. |
-| `node:path`, `node:url` | Path resolution in IO modules | Built-in; `join`, `dirname`, `fileURLToPath` cover all needs. |
+---
 
-## Scaling Considerations
+## Suggested Build Order
 
-This is a local developer tool. User count is not the scaling dimension. The relevant dimension is **number of skills in a project**.
+Two sub-phases within Phase 4 (content-first, then wire test).
 
-| Scale | Behavior |
-|-------|----------|
-| 1–50 skills | Synchronous `readdirSync` + `readFileSync` in a loop is fast enough. No change needed. |
-| 50–500 skills | Lint may be perceptibly slow. Add `--parallel` with `Promise.all` over `readFile` calls. Not needed in v1. |
-| 500+ skills | Unlikely for the use case (author tooling, not a monorepo build system). If reached, stream results rather than collecting all errors in memory first. |
+**Sub-phase 4a — Author real content + fix gaps**
 
-The only real scaling concern for v1 is the **double discoverSkills call in build** (once inside lint, once for emission paths). For 50 skills this is a millisecond difference; for 500 it matters. Optimization path: pass the lint result's skill list directly to the emit phase. Defer until it is measurably slow.
+1. Create `motto.yaml` with valid project config (name, version, description, `plugins.public`, `plugins.private`)
+2. Author `skills/<public-skill>/SKILL.md` — hand-written real documentation content
+3. Author `skills/<private-skill>/SKILL.md`
+4. Author `shared/references/<ref>.md` — referenced by at least one skill's `shared_references:`
+5. Run `node bin/motto.js lint` from repo root — expect clean; fix any schema/lint gaps in `src/`
+6. Run `npm test` — existing 53 unit tests must still pass after any gap fixes
+7. Run `node bin/motto.js build` from repo root — inspect `dist/` manually; fix any build gaps
+
+**Sub-phase 4b — Wire dogfood test**
+
+1. Write `test/dogfood.test.js`:
+   - Lint assertion: `lintProject(REPO_ROOT)` → `result.ok === true`
+   - Build assertion: copy to `mkdtemp`, `buildProject(tmp)` → `result.ok`, `skillCount`, `bucketCount`, specific plugin names from `motto.yaml`
+2. Run `npm test` — all tests (53 existing + dogfood) must pass
+3. Commit — Husky pre-commit now catches any future skill authoring that breaks lint/build
+
+**Why content-first (not TDD):** The skill names and plugin names in `motto.yaml` must be known before you can write specific assertions in `dogfood.test.js` (e.g., `assert.strictEqual(result.skillCount, 2)`). Authoring content first makes the test assertions concrete rather than provisional.
+
+**Dependency chain within 4a:**
+`motto.yaml` (lint needs it) → `skills/` content (lint validates it) → `shared/references/` (lint resolves refs) → gap fixes in `src/` → `npm test` green. Only then write `dogfood.test.js`.
+
+---
+
+## Collision Risk Analysis
+
+| Risk | Assessment | Mitigation |
+|------|------------|------------|
+| `skills/` naming conflicts with Node.js conventions | None — Node has no special treatment for this dirname | None needed |
+| `node --test` discovers files in `skills/` or `dist/` | No — only `*.test.js` / `*.spec.js` are discovered; `.md` and `.json` are ignored | None needed |
+| `shared/` conflicts with existing tooling | None | None needed |
+| `motto.yaml` at root read by tools other than Motto | Harmless — it's a custom YAML file with no standard meaning | None needed |
+| `dist/` mutated by tests | **Real hazard** — addressed by Pattern 1 (temp dir isolation for build tests) | Use `mkdtemp` in dogfood build test |
+| Gap fixes in `src/` break existing 53 unit tests | Possible if a fix changes error message text that tests assert on | Run `npm test` after each gap fix before committing |
+
+---
 
 ## Sources
 
-- `.planning/superpowers/specs/2026-06-29-motto-design.md` — authoritative design, approved (HIGH confidence)
-- `.planning/superpowers/plans/2026-06-30-motto-core-cli.md` — authoritative implementation plan with interfaces and TDD steps (HIGH confidence)
-- Functional Core / Imperative Shell: Gary Bernhardt (2012 "Boundaries" talk); pattern is stable, widely documented in Node CLI literature (MEDIUM confidence)
-- Node.js stdlib `node:test` runner: Node.js docs v20+ (MEDIUM confidence)
+- `/Users/jeremie/Projects/motto/src/build.js` — confirms `rm(join(projectRoot,'dist'), ...)` at step 4; confirmed `buildProject(projectRoot)` signature
+- `/Users/jeremie/Projects/motto/src/lint.js` — confirms `lintProject(projectRoot)` is read-only (no fs writes)
+- `/Users/jeremie/Projects/motto/test/build.test.js` — confirms `mkdtemp` isolation pattern used throughout existing tests
+- `/Users/jeremie/Projects/motto/.gitignore` — confirms `dist/` already gitignored
+- `/Users/jeremie/Projects/motto/.husky/pre-commit` — confirms `npm test` runs on every commit
+- `/Users/jeremie/Projects/motto/package.json` — confirms `"test": "node --test"` (auto-discovery); no existing test glob config
+- `/Users/jeremie/Projects/motto/.planning/PROJECT.md` — v0.1.0 goals: ≥1 public + ≥1 private + ≥1 shared ref; Phase numbering continues from 4
 
 ---
-*Architecture research for: Motto — Node.js lint/build CLI for Claude Code Agent Skills*
+*Architecture research for: Motto v0.1.0 Self-Hosting Integration*
 *Researched: 2026-06-30*
