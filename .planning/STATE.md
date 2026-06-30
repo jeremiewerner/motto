@@ -6,15 +6,15 @@ current_phase: 05
 current_phase_name: dogfood-regression-guard
 status: verifying
 stopped_at: Phase 6 context gathered
-last_updated: "2026-06-30T15:49:22.659Z"
+last_updated: "2026-06-30T20:06:14.575Z"
 last_activity: 2026-06-30
 last_activity_desc: Phase 05 execution started
 progress:
   total_phases: 3
-  completed_phases: 2
-  total_plans: 2
-  completed_plans: 2
-  percent: 67
+  completed_phases: 3
+  total_plans: 3
+  completed_plans: 3
+  percent: 100
 ---
 
 # Project State
@@ -56,6 +56,7 @@ Last activity: 2026-06-30 — Phase 05 execution started
 *Updated after each plan completion*
 | Phase 04 P01 | 8 | 2 tasks | 7 files |
 | Phase 05-dogfood-regression-guard P01 | 89 | - tasks | - files |
+| Phase 06-address-tech-debt-schema-strictness-summary-frontmatter P01 | 8m | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -74,6 +75,8 @@ Recent decisions affecting current work:
 - [v0.0.2 roadmap]: dogfood test lints REPO_ROOT in-place (read-only) but builds a `mkdtemp` COPY — `buildProject` destructively wipes `<root>/dist`; anchor via `import.meta.url`, not `process.cwd()`
 - [v0.0.2 roadmap]: zero new dependencies — all dogfood tooling is stdlib + existing `yaml`
 - [Phase ?]: Exported NAME_KEBAB from config.js for DOG-04 parity test
+- [Phase ?]: cascade placement ensures single error per name failure
+- [Phase ?]: guards both new checks from falsy-description TypeError
 
 ### Pending Todos
 
@@ -95,6 +98,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-06-30T15:49:22.655Z
+Last session: 2026-06-30T20:06:09.630Z
 Stopped at: Phase 6 context gathered
 Resume file: .planning/phases/06-address-tech-debt-schema-strictness-summary-frontmatter/06-CONTEXT.md

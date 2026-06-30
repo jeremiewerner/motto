@@ -83,8 +83,8 @@ Carried from v0.0.1 (see `milestones/v0.0.1-REQUIREMENTS.md` for detail):
 **Goal:** Make `validateSkill` fully conformant with the CLAUDE.md SKILL.md-frontmatter spec by enforcing `description` max-1024 chars, `description` no-XML-tags, and `name` max-64 chars (schema strictness only — summary-frontmatter + doc-nit buckets dropped as obsolete per D-01).
 **Requirements**: Internal tech-debt closure (no formal requirement ID)
 **Depends on:** Phase 5
-**Plans:** 1 plan
+**Plans:** 1/1 plans complete
 
 Plans:
 
-- [ ] 06-01-PLAN.md — Add three strictness checks (name max-64, description max-1024, description no-XML) to validateSkill + tests B14–B19
+- [x] 06-01-PLAN.md — Add three strictness checks (name max-64, description max-1024, description no-XML) to validateSkill + tests B14–B19
