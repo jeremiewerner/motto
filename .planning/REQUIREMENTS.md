@@ -32,17 +32,17 @@ Requirements for the initial release (the core `lint` + `build` CLI). Each maps 
 
 ### Build / Packaging (BUILD)
 
-- [ ] **BUILD-01**: `motto build` runs lint first; on failure it writes nothing and surfaces the same lint diagnostics
-- [ ] **BUILD-02**: `dist/` is wiped, then each skill is copied verbatim into `dist/<audience>/<name>/` (symlinks not dereferenced)
-- [ ] **BUILD-03**: Declared `shared_references` are bundled into each skill's `references/` in dist (self-contained output)
-- [ ] **BUILD-04**: Each bucket gets `.claude-plugin/plugin.json` from `motto.yaml`, always including `version`
-- [ ] **BUILD-05**: The private bucket/plugin is emitted only when private skills exist and `plugins.private` is set
-- [ ] **BUILD-06**: Skills are siblings of `.claude-plugin/` in dist (never nested inside it)
+- [x] **BUILD-01**: `motto build` runs lint first; on failure it writes nothing and surfaces the same lint diagnostics
+- [x] **BUILD-02**: `dist/` is wiped, then each skill is copied verbatim into `dist/<audience>/<name>/` (symlinks not dereferenced)
+- [x] **BUILD-03**: Declared `shared_references` are bundled into each skill's `references/` in dist (self-contained output)
+- [x] **BUILD-04**: Each bucket gets `.claude-plugin/plugin.json` from `motto.yaml`, always including `version`
+- [x] **BUILD-05**: The private bucket/plugin is emitted only when private skills exist and `plugins.private` is set
+- [x] **BUILD-06**: Skills are siblings of `.claude-plugin/` in dist (never nested inside it)
 
 ### CLI (CLI)
 
 - [x] **CLI-01**: `motto lint` validates the current project and prints per-error output with the correct exit code
-- [ ] **CLI-02**: `motto build` builds the current project, reports the output dir, and reuses lint diagnostics on failure
+- [x] **CLI-02**: `motto build` builds the current project, reports the output dir, and reuses lint diagnostics on failure
 
 ## v2 Requirements
 
@@ -90,14 +90,14 @@ Explicitly excluded. Documented to prevent scope creep.
 | CONF-01 | Phase 1 | Complete |
 | CONF-02 | Phase 1 | Complete |
 | CONF-03 | Phase 1 | Complete |
-| BUILD-01 | Phase 3 | Pending |
-| BUILD-02 | Phase 3 | Pending |
-| BUILD-03 | Phase 3 | Pending |
-| BUILD-04 | Phase 3 | Pending |
-| BUILD-05 | Phase 3 | Pending |
-| BUILD-06 | Phase 3 | Pending |
+| BUILD-01 | Phase 3 | Complete |
+| BUILD-02 | Phase 3 | Complete |
+| BUILD-03 | Phase 3 | Complete |
+| BUILD-04 | Phase 3 | Complete |
+| BUILD-05 | Phase 3 | Complete |
+| BUILD-06 | Phase 3 | Complete |
 | CLI-01 | Phase 2 | Complete |
-| CLI-02 | Phase 3 | Pending |
+| CLI-02 | Phase 3 | Complete |
 
 **Coverage:**
 

@@ -10,7 +10,7 @@
 
 - [x] **Phase 1: Pure Core** - Build the parsing, schema validation, and config loading foundation (no I/O dependencies) (completed 2026-06-30)
 - [x] **Phase 2: motto lint** - Compose discovery and validation into a working `motto lint` command (completed 2026-06-30)
-- [ ] **Phase 3: motto build** - Add build orchestration to produce self-contained plugin distributions via `motto build`
+- [x] **Phase 3: motto build** - Add build orchestration to produce self-contained plugin distributions via `motto build` (completed 2026-06-30)
 
 ## Phase Details
 
@@ -65,9 +65,9 @@
   4. The private bucket is emitted only when at least one skill declares `audience: private` and `plugins.private` is set in `motto.yaml`; otherwise only `dist/public/` is written
   5. `motto build` on a lint-failing project exits 1, reports the same lint diagnostics as `motto lint`, and writes nothing to `dist/`
 
-**Plans**: 1 plan
+**Plans**: 1/1 plans complete
 
-- [ ] 03-01-PLAN.md — buildProject packager (lint gate, verbatim copy, shared-ref bundling, conditional buckets, plugin.json) + CLI wiring (BUILD-01..06, CLI-02)
+- [x] 03-01-PLAN.md — buildProject packager (lint gate, verbatim copy, shared-ref bundling, conditional buckets, plugin.json) + CLI wiring (BUILD-01..06, CLI-02)
 
 ## Progress
 
@@ -75,4 +75,4 @@
 |-------|----------------|--------|-----------|
 | 1. Pure Core | 3/3 | Complete   | 2026-06-30 |
 | 2. motto lint | 1/1 | Complete   | 2026-06-30 |
-| 3. motto build | 0/1 | Not started | - |
+| 3. motto build | 1/1 | Complete   | 2026-06-30 |
