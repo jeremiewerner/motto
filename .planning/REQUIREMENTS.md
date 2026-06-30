@@ -19,8 +19,8 @@ This milestone proves the shipped v0.0.1 `motto lint` + `motto build` pipeline b
 
 - [x] **DOG-01**: `motto lint` reports Motto's own skills tree clean — exit 0, `✓ N skills OK`
 - [x] **DOG-02**: `motto build` emits the expected `dist/` from the real tree — `dist/public/` and `dist/private/` buckets, each skill verbatim, declared shared refs bundled, per-bucket `.claude-plugin/plugin.json` with `version`
-- [ ] **DOG-03**: A `node:test` dogfood test runs lint in-place on the repo root (read-only) and build against an isolated `mkdtemp` copy, asserting clean lint + the expected `dist/` artifacts — running on every commit via the husky pre-commit hook
-- [ ] **DOG-04**: A self-test enforces that the `NAME_KEBAB` regex is identical between `src/schema.js` and `src/config.js` (closes the v0.0.1 manual-sync tech debt)
+- [x] **DOG-03**: A `node:test` dogfood test runs lint in-place on the repo root (read-only) and build against an isolated `mkdtemp` copy, asserting clean lint + the expected `dist/` artifacts — running on every commit via the husky pre-commit hook
+- [x] **DOG-04**: A self-test enforces that the `NAME_KEBAB` regex is identical between `src/schema.js` and `src/config.js` (closes the v0.0.1 manual-sync tech debt)
 
 ## Future Requirements (deferred)
 
@@ -50,8 +50,8 @@ This milestone proves the shipped v0.0.1 `motto lint` + `motto build` pipeline b
 | SELF-05 | Phase 4 | Complete |
 | DOG-01 | Phase 4 | Complete |
 | DOG-02 | Phase 4 | Complete |
-| DOG-03 | Phase 5 | Pending |
-| DOG-04 | Phase 5 | Pending |
+| DOG-03 | Phase 5 | Complete |
+| DOG-04 | Phase 5 | Complete |
 
 **Coverage:**
 

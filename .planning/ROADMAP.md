@@ -20,7 +20,7 @@ Prove the v0.0.1 `motto lint` + `motto build` pipeline by having Motto author an
 ### Phases
 
 - [x] **Phase 4: Self-Hosted Skill Tree + Gap Fixes** - Author Motto's own skills tree, lint and build it clean, fix any surfaced schema/build gaps (completed 2026-06-30)
-- [ ] **Phase 5: Dogfood Regression Guard** - Wire a permanent dogfood test (lint in-place + build a temp copy) and close the NAME_KEBAB sync tech debt
+- [x] **Phase 5: Dogfood Regression Guard** - Wire a permanent dogfood test (lint in-place + build a temp copy) and close the NAME_KEBAB sync tech debt (completed 2026-06-30)
 
 ### Phase Details
 
@@ -55,16 +55,16 @@ Prove the v0.0.1 `motto lint` + `motto build` pipeline by having Motto author an
   3. A self-test asserts the `NAME_KEBAB` regex is identical between `src/schema.js` and `src/config.js`, failing if the two definitions ever drift.
   4. `npm test` passes green (54+ tests) and the husky pre-commit hook runs the dogfood test on every commit.
 
-**Plans**: 0/1 plans complete
+**Plans**: 1/1 plans complete
 
-- [ ] 05-01-PLAN.md — Wire test/dogfood.test.js (in-place lint + mkdtemp build guard) and export NAME_KEBAB to close DOG-04 drift debt
+- [x] 05-01-PLAN.md — Wire test/dogfood.test.js (in-place lint + mkdtemp build guard) and export NAME_KEBAB to close DOG-04 drift debt
 
 ### Progress
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 4. Self-Hosted Skill Tree + Gap Fixes | 1/1 | Complete   | 2026-06-30 |
-| 5. Dogfood Regression Guard | 0/1 | Planned | - |
+| 5. Dogfood Regression Guard | 1/1 | Complete   | 2026-06-30 |
 
 ## Backlog
 

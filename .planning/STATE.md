@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v0.0.2
 milestone_name: — Self-Hosting
-current_phase: 04
-current_phase_name: self-hosted-skill-tree-gap-fixes
-status: planning
+current_phase: 05
+current_phase_name: dogfood-regression-guard
+status: verifying
 stopped_at: v0.0.2 roadmap created — Phases 4-5 defined, 9/9 requirements mapped
-last_updated: "2026-06-30T14:38:27.670Z"
+last_updated: "2026-06-30T14:50:54.554Z"
 last_activity: 2026-06-30
-last_activity_desc: Phase 04 execution started
+last_activity_desc: Phase 05 execution started
 progress:
   total_phases: 2
-  completed_phases: 1
-  total_plans: 1
-  completed_plans: 1
-  percent: 50
+  completed_phases: 2
+  total_plans: 2
+  completed_plans: 2
+  percent: 100
 ---
 
 # Project State
@@ -24,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-30)
 
 **Core value:** A strict schema + linter that guarantees authored skills conform before they ship, then packages them into self-contained standard Agent Skill plugins.
-**Current focus:** Phase 04 — self-hosted-skill-tree-gap-fixes
+**Current focus:** Phase 05 — dogfood-regression-guard
 
 ## Current Position
 
-Phase: 04 (self-hosted-skill-tree-gap-fixes) — EXECUTING
+Phase: 05 (dogfood-regression-guard) — EXECUTING
 Plan: 1 of 1
-Status: planning
-Last activity: 2026-06-30 — Phase 04 execution started
+Status: Phase complete — ready for verification
+Last activity: 2026-06-30 — Phase 05 execution started
 
 ## Performance Metrics
 
@@ -55,6 +55,7 @@ Last activity: 2026-06-30 — Phase 04 execution started
 
 *Updated after each plan completion*
 | Phase 04 P01 | 8 | 2 tasks | 7 files |
+| Phase 05-dogfood-regression-guard P01 | 89 | - tasks | - files |
 
 ## Accumulated Context
 
@@ -72,6 +73,7 @@ Recent decisions affecting current work:
 - [v0.0.2 roadmap]: content-first ordering — author tree + lint + build + gap fixes (Phase 4) BEFORE writing the dogfood test (Phase 5), since the test's count assertions depend on the now-known skill/bucket counts
 - [v0.0.2 roadmap]: dogfood test lints REPO_ROOT in-place (read-only) but builds a `mkdtemp` COPY — `buildProject` destructively wipes `<root>/dist`; anchor via `import.meta.url`, not `process.cwd()`
 - [v0.0.2 roadmap]: zero new dependencies — all dogfood tooling is stdlib + existing `yaml`
+- [Phase ?]: Exported NAME_KEBAB from config.js for DOG-04 parity test
 
 ### Pending Todos
 
@@ -89,6 +91,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-06-30T14:15:32.441Z
+Last session: 2026-06-30T14:50:46.970Z
 Stopped at: v0.0.2 roadmap created — Phases 4-5 defined, 9/9 requirements mapped
 Resume file: None
