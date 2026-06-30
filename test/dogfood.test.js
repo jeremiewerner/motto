@@ -59,6 +59,17 @@ describe('dogfood build (DOG-03)', () => {
     await cp(join(REPO_ROOT, 'shared'), join(tempDir, 'shared'), { recursive: true });
     await cp(join(REPO_ROOT, 'motto.yaml'), join(tempDir, 'motto.yaml'));
     buildResult = await buildProject(tempDir);
+    // Fail fast with the root cause. buildProject is lint-gated: if lint rejects
+    // the tree it writes no dist/, and every artifact assertion below would then
+    // fail with a cryptic ENOENT. Throwing here collapses that cascade into one
+    // legible hook failure carrying the actual lint/build diagnostics. The
+    // per-artifact `it`s still pinpoint problems when the build SUCCEEDS but
+    // emits the wrong output — the case worth isolating.
+    if (!buildResult.ok) {
+      throw new Error(
+        `dogfood build failed — dist/ assertions skipped. Root cause:\n${JSON.stringify(buildResult.errors, null, 2)}`,
+      );
+    }
   });
 
   after(async () => {
