@@ -9,16 +9,16 @@ This milestone proves the shipped v0.0.1 `motto lint` + `motto build` pipeline b
 
 ### Self-Hosted Skill Tree (SELF)
 
-- [ ] **SELF-01**: A root `motto.yaml` declares Motto's project identity — `name`, `version`, `description`, `plugins.public`, and `plugins.private` (private set because a private skill exists)
-- [ ] **SELF-02**: A **public** skill `authoring-a-skill` documents how to write a conforming SKILL.md (frontmatter fields, kebab name = folder, Title + Role spine, shared_references)
-- [ ] **SELF-03**: A **public** skill `motto-project-setup` documents initializing a Motto project (source-tree layout, `motto.yaml` fields, `lint`/`build`, dist output)
-- [ ] **SELF-04**: A **private** skill `motto-release` provides the maintainer release checklist (exercises the private bucket end to end)
-- [ ] **SELF-05**: A shared reference `skill-schema` is declared via `shared_references` by the skills and bundled into each skill's `references/<...>.md` on build
+- [x] **SELF-01**: A root `motto.yaml` declares Motto's project identity — `name`, `version`, `description`, `plugins.public`, and `plugins.private` (private set because a private skill exists)
+- [x] **SELF-02**: A **public** skill `authoring-a-skill` documents how to write a conforming SKILL.md (frontmatter fields, kebab name = folder, Title + Role spine, shared_references)
+- [x] **SELF-03**: A **public** skill `motto-project-setup` documents initializing a Motto project (source-tree layout, `motto.yaml` fields, `lint`/`build`, dist output)
+- [x] **SELF-04**: A **private** skill `motto-release` provides the maintainer release checklist (exercises the private bucket end to end)
+- [x] **SELF-05**: A shared reference `skill-schema` is declared via `shared_references` by the skills and bundled into each skill's `references/<...>.md` on build
 
 ### Dogfood + Regression Guard (DOG)
 
-- [ ] **DOG-01**: `motto lint` reports Motto's own skills tree clean — exit 0, `✓ N skills OK`
-- [ ] **DOG-02**: `motto build` emits the expected `dist/` from the real tree — `dist/public/` and `dist/private/` buckets, each skill verbatim, declared shared refs bundled, per-bucket `.claude-plugin/plugin.json` with `version`
+- [x] **DOG-01**: `motto lint` reports Motto's own skills tree clean — exit 0, `✓ N skills OK`
+- [x] **DOG-02**: `motto build` emits the expected `dist/` from the real tree — `dist/public/` and `dist/private/` buckets, each skill verbatim, declared shared refs bundled, per-bucket `.claude-plugin/plugin.json` with `version`
 - [ ] **DOG-03**: A `node:test` dogfood test runs lint in-place on the repo root (read-only) and build against an isolated `mkdtemp` copy, asserting clean lint + the expected `dist/` artifacts — running on every commit via the husky pre-commit hook
 - [ ] **DOG-04**: A self-test enforces that the `NAME_KEBAB` regex is identical between `src/schema.js` and `src/config.js` (closes the v0.0.1 manual-sync tech debt)
 
@@ -43,17 +43,18 @@ This milestone proves the shipped v0.0.1 `motto lint` + `motto build` pipeline b
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SELF-01 | Phase 4 | Pending |
-| SELF-02 | Phase 4 | Pending |
-| SELF-03 | Phase 4 | Pending |
-| SELF-04 | Phase 4 | Pending |
-| SELF-05 | Phase 4 | Pending |
-| DOG-01 | Phase 4 | Pending |
-| DOG-02 | Phase 4 | Pending |
+| SELF-01 | Phase 4 | Complete |
+| SELF-02 | Phase 4 | Complete |
+| SELF-03 | Phase 4 | Complete |
+| SELF-04 | Phase 4 | Complete |
+| SELF-05 | Phase 4 | Complete |
+| DOG-01 | Phase 4 | Complete |
+| DOG-02 | Phase 4 | Complete |
 | DOG-03 | Phase 5 | Pending |
 | DOG-04 | Phase 5 | Pending |
 
 **Coverage:**
+
 - v0.0.2 requirements: 9 total
 - Mapped to phases: 9/9 (Phase 4: 7 · Phase 5: 2)
 - Unmapped: 0

@@ -27,9 +27,10 @@ decisions:
 metrics:
   duration_minutes: 8
   completed: "2026-06-30"
-  tasks_completed: 2
+  tasks_completed: 3
   tasks_total: 3
 status: complete
+checkpoint_approved: true
 ---
 
 # Phase 04 Plan 01: Self-Hosted Skill Tree Summary
@@ -118,6 +119,16 @@ The plan said "53 tests green" based on the pre-plan baseline. The fix required 
 ## Known Stubs
 
 **motto-release Step 5 (Publish):** Contains a `<!-- TODO: expand when npm packaging is configured -->` comment. This is intentional — npm packaging is not yet decided (see PROJECT.md Out of Scope). The stub is documented in the skill body and will be expanded in a future milestone.
+
+## Task 3: Human Verification — APPROVED
+
+The maintainer reviewed and signed off on the blocking checkpoint:
+- `node bin/motto.js lint` → `✓ 3 skills OK` (exit 0)
+- `node bin/motto.js build` → correct dist/ tree (both buckets, bundled refs, no references/ in motto-release)
+- Both plugin.json correct (names motto-skills / motto-private, version 0.0.2, description)
+- 54 tests green
+- Content quality confirmed genuine (real Role sentences, accurate schema rules)
+- parseFrontmatter `toJS()` alias-throw bug fix accepted
 
 ## Self-Check: PASSED
 
