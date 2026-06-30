@@ -57,9 +57,20 @@ if (sub === 'lint') {
     process.exitCode = 1; // D2-11; process.exit(1) NOT used (Pitfall 7)
   }
 } else if (sub === 'build') {
-  // Reserved for Phase 3 (BUILD-01..06, CLI-02) — not yet implemented
-  process.stderr.write('motto build: not yet implemented (Phase 3)\n');
-  process.exitCode = 1;
+  // cwd-only, mirrors lint branch (D3-15)
+  const { buildProject } = await import('../src/build.js');
+  const result = await buildProject(process.cwd());
+  if (result.ok) {
+    // D3-16: output dir + one-line summary
+    process.stdout.write(
+      `✓ built ${result.outDir} — ${result.skillCount} skills, ${result.bucketCount} plugin(s)\n`,
+    );
+  } else {
+    for (const e of result.errors) {
+      process.stdout.write(`✗ ${e.skill}: ${e.message}\n`);
+    }
+    process.exitCode = 1; // never process.exit(1) — preserves stdout flush (Pitfall 7)
+  }
 } else {
   // Unknown subcommand or no subcommand at all (D2-16)
   process.stderr.write('usage: motto <lint|build>\n');
