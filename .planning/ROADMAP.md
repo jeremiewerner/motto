@@ -47,7 +47,9 @@
   3. Skills are always discovered and reported in alphabetical order regardless of filesystem ordering
   4. A single SKILL.md with malformed YAML frontmatter is reported as an error while all other skills continue to be linted normally
 
-**Plans**: TBD
+**Plans**: 1 plan
+
+- [ ] 02-01-PLAN.md — lintProject orchestrator + motto CLI binary (LINT-06, LINT-07, CLI-01)
 
 ### Phase 3: motto build
 
