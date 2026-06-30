@@ -5,16 +5,16 @@ milestone_name: — Self-Hosting
 current_phase: 05
 current_phase_name: dogfood-regression-guard
 status: verifying
-stopped_at: v0.0.2 roadmap created — Phases 4-5 defined, 9/9 requirements mapped
-last_updated: "2026-06-30T14:50:54.554Z"
+stopped_at: Phase 6 context gathered
+last_updated: "2026-06-30T15:49:22.659Z"
 last_activity: 2026-06-30
 last_activity_desc: Phase 05 execution started
 progress:
-  total_phases: 2
+  total_phases: 3
   completed_phases: 2
   total_plans: 2
   completed_plans: 2
-  percent: 100
+  percent: 67
 ---
 
 # Project State
@@ -83,6 +83,10 @@ None yet.
 
 None yet.
 
+### Roadmap Evolution
+
+- Phase 6 added: Address tech debt: schema strictness + summary frontmatter
+
 ## Deferred Items
 
 | Category | Item | Status | Deferred At |
@@ -91,6 +95,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-06-30T14:50:46.970Z
-Stopped at: v0.0.2 roadmap created — Phases 4-5 defined, 9/9 requirements mapped
-Resume file: None
+Last session: 2026-06-30T15:49:22.655Z
+Stopped at: Phase 6 context gathered
+Resume file: .planning/phases/06-address-tech-debt-schema-strictness-summary-frontmatter/06-CONTEXT.md
