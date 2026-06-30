@@ -74,17 +74,36 @@ Explicitly excluded. Documented to prevent scope creep.
 
 ## Traceability
 
-Populated during roadmap creation (each requirement maps to exactly one phase).
-
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| (all v1 PARSE/LINT/CONF/BUILD/CLI) | TBD | Pending |
+| PARSE-01 | Phase 1 | Pending |
+| PARSE-02 | Phase 1 | Pending |
+| PARSE-03 | Phase 1 | Pending |
+| PARSE-04 | Phase 1 | Pending |
+| LINT-01 | Phase 1 | Pending |
+| LINT-02 | Phase 1 | Pending |
+| LINT-03 | Phase 1 | Pending |
+| LINT-04 | Phase 1 | Pending |
+| LINT-05 | Phase 1 | Pending |
+| LINT-06 | Phase 2 | Pending |
+| LINT-07 | Phase 2 | Pending |
+| CONF-01 | Phase 1 | Pending |
+| CONF-02 | Phase 1 | Pending |
+| CONF-03 | Phase 1 | Pending |
+| BUILD-01 | Phase 3 | Pending |
+| BUILD-02 | Phase 3 | Pending |
+| BUILD-03 | Phase 3 | Pending |
+| BUILD-04 | Phase 3 | Pending |
+| BUILD-05 | Phase 3 | Pending |
+| BUILD-06 | Phase 3 | Pending |
+| CLI-01 | Phase 2 | Pending |
+| CLI-02 | Phase 3 | Pending |
 
 **Coverage:**
 - v1 requirements: 22 total
-- Mapped to phases: 0 (pending roadmap)
-- Unmapped: 22 ⚠️
+- Mapped to phases: 22
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-06-30*
-*Last updated: 2026-06-30 after initial definition*
+*Last updated: 2026-06-30 after roadmap creation*
