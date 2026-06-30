@@ -35,7 +35,8 @@ Prove the v0.0.1 `motto lint` + `motto build` pipeline by having Motto author an
   3. Running `motto lint` at the repo root exits 0 and prints `✓ N skills OK` with no errors.
   4. Running `motto build` produces `dist/public/` and `dist/private/`, each skill copied verbatim, the declared shared ref bundled into each skill's `references/`, and a per-bucket `.claude-plugin/plugin.json` carrying `version`.
   5. Any schema or build gap surfaced by the real content is fixed in `src/`, with the existing 53 tests still green and zero new dependencies added.
-**Plans**: TBD
+**Plans**: 1 plan
+- [ ] 04-01-PLAN.md — Author Motto's own skills tree (motto.yaml + shared ref + 3 skills), lint clean, build dist/, 53 tests green
 
 #### Phase 5: Dogfood Regression Guard
 **Goal**: A permanent automated test guards the self-hosted tree on every commit, and the NAME_KEBAB sync tech debt is closed.
@@ -53,7 +54,7 @@ Prove the v0.0.1 `motto lint` + `motto build` pipeline by having Motto author an
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 4. Self-Hosted Skill Tree + Gap Fixes | 0/TBD | Not started | - |
+| 4. Self-Hosted Skill Tree + Gap Fixes | 0/1 | Not started | - |
 | 5. Dogfood Regression Guard | 0/TBD | Not started | - |
 
 ## Backlog
