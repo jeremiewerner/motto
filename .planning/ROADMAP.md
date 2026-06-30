@@ -65,7 +65,9 @@
   4. The private bucket is emitted only when at least one skill declares `audience: private` and `plugins.private` is set in `motto.yaml`; otherwise only `dist/public/` is written
   5. `motto build` on a lint-failing project exits 1, reports the same lint diagnostics as `motto lint`, and writes nothing to `dist/`
 
-**Plans**: TBD
+**Plans**: 1 plan
+
+- [ ] 03-01-PLAN.md — buildProject packager (lint gate, verbatim copy, shared-ref bundling, conditional buckets, plugin.json) + CLI wiring (BUILD-01..06, CLI-02)
 
 ## Progress
 
@@ -73,4 +75,4 @@
 |-------|----------------|--------|-----------|
 | 1. Pure Core | 3/3 | Complete   | 2026-06-30 |
 | 2. motto lint | 1/1 | Complete   | 2026-06-30 |
-| 3. motto build | 0/? | Not started | - |
+| 3. motto build | 0/1 | Not started | - |
