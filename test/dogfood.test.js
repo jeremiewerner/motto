@@ -90,34 +90,34 @@ describe('dogfood build (DOG-03)', () => {
   });
 
   // ── Public bucket skill files ─────────────────────────────────────────────────
-  it('dist/public/authoring-a-skill/SKILL.md exists', async () => {
-    await stat(join(tempDir, 'dist', 'public', 'authoring-a-skill', 'SKILL.md'));
+  it('dist/public/author-skill/SKILL.md exists', async () => {
+    await stat(join(tempDir, 'dist', 'public', 'author-skill', 'SKILL.md'));
     // stat throws ENOENT if missing; test fails with a clear error code
   });
 
-  it('dist/public/motto-project-setup/SKILL.md exists', async () => {
-    await stat(join(tempDir, 'dist', 'public', 'motto-project-setup', 'SKILL.md'));
+  it('dist/public/setup-project/SKILL.md exists', async () => {
+    await stat(join(tempDir, 'dist', 'public', 'setup-project', 'SKILL.md'));
   });
 
   // ── Shared reference bundling ─────────────────────────────────────────────────
-  it('authoring-a-skill has references/skill-schema.md bundled', async () => {
-    await stat(join(tempDir, 'dist', 'public', 'authoring-a-skill', 'references', 'skill-schema.md'));
+  it('author-skill has references/skill-schema.md bundled', async () => {
+    await stat(join(tempDir, 'dist', 'public', 'author-skill', 'references', 'skill-schema.md'));
   });
 
-  it('motto-project-setup has references/skill-schema.md bundled', async () => {
-    await stat(join(tempDir, 'dist', 'public', 'motto-project-setup', 'references', 'skill-schema.md'));
+  it('setup-project has references/skill-schema.md bundled', async () => {
+    await stat(join(tempDir, 'dist', 'public', 'setup-project', 'references', 'skill-schema.md'));
   });
 
   // ── Private bucket ────────────────────────────────────────────────────────────
-  it('dist/private/motto-release/SKILL.md exists', async () => {
-    await stat(join(tempDir, 'dist', 'private', 'motto-release', 'SKILL.md'));
+  it('dist/private/release/SKILL.md exists', async () => {
+    await stat(join(tempDir, 'dist', 'private', 'release', 'SKILL.md'));
   });
 
-  it('motto-release has no references/ directory (no shared_references declared)', async () => {
+  it('release has no references/ directory (no shared_references declared)', async () => {
     await assert.rejects(
-      () => stat(join(tempDir, 'dist', 'private', 'motto-release', 'references')),
+      () => stat(join(tempDir, 'dist', 'private', 'release', 'references')),
       { code: 'ENOENT' },
-      'motto-release must not have references/ — it declares no shared_references',
+      'release must not have references/ — it declares no shared_references',
     );
   });
 
