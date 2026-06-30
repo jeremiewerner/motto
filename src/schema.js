@@ -42,7 +42,7 @@ const RESERVED = ["anthropic", "claude"];
  * Validate a parsed skill object against the Motto schema.
  *
  * Error-aggregation model (D-13):
- *   - NAME checks CASCADE: missing → non-kebab → reserved-word → ≠folder.
+ *   - NAME checks CASCADE: missing → non-kebab → max-64 → reserved-word → ≠folder.
  *     The chain stops at the first failure; subsequent name checks are skipped
  *     because they are meaningless once an earlier check fails.
  *   - All OTHER checks (description, audience, body Title, body Role, each
@@ -81,19 +81,35 @@ export function validateSkill(skill, sharedRefs = new Set()) {
     err(
       `name must be letter-start kebab-case (/^[a-z][a-z0-9]*(-[a-z0-9]+)*$/): "${name}"`
     );
+  } else if (name.length > 64) {
+    // Step 3: name exceeds maximum length of 64 characters (D-03)
+    err(`name must not exceed 64 characters (got ${name.length}): "${name}"`);
   } else if (RESERVED.some((r) => name.includes(r))) {
-    // Step 3: contains a reserved substring (D-09)
+    // Step 4: contains a reserved substring (D-09)
     err(
       `name must not contain the reserved substrings "anthropic" or "claude": "${name}"`
     );
   } else if (name !== dirName) {
-    // Step 4: name does not match folder
+    // Step 5: name does not match folder
     err(`name "${name}" must equal its folder name "${dirName}"`);
   }
 
   // ── DESCRIPTION (LINT-01, independent) ────────────────────────────────────
   if (!data.description) {
     err("description is required");
+  } else {
+    // Both checks run independently — neither guards the other (D-13).
+    // Guards are inside the else branch so a falsy description cannot throw (D-01).
+    if (data.description.length > 1024) {
+      // D-03: description must not exceed 1024 characters
+      err(
+        `description must not exceed 1024 characters (got ${data.description.length})`
+      );
+    }
+    if (/<[^>]+>/.test(data.description)) {
+      // D-05: description must not contain XML-tag patterns
+      err("description must not contain XML tags (e.g. <example>)");
+    }
   }
 
   // ── AUDIENCE (LINT-03, D-11, independent) ─────────────────────────────────
