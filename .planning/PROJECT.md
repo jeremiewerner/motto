@@ -10,15 +10,20 @@ The **strict schema + linter**. Skills that always conform to one rigid-yet-crea
 
 ## Current State
 
-**Shipped: v0.0.2 (2026-07-01)** — Motto self-hosts. A real `skills/` tree (2 public: `author-skill`, `setup-project`; 1 private: `release`) + shared ref `skill-schema` lints clean and builds to standard Agent-Skill plugins, guarded by a permanent `node:test` dogfood test on every commit (husky). `validateSkill` is now spec-complete (name ≤64, description ≤1024, no-XML). 10/10 requirements, 75 tests, single dep `yaml`. Repo now has a remote (`jeremiewerner/motto`, private). See `milestones/v0.0.2-ROADMAP.md`.
+**Shipped: v0.0.3 (2026-07-01)** — Motto is installable and distributable. The CLI publishes to npm as `@jeremiewerner/motto` (scoped/public, `files` allowlist, global `motto` command); public skills ship via a self-hosted Claude Code marketplace (`.claude-plugin/marketplace.json`, `source: npm` → `dist/public/`, `strict: false`, install `/plugin install motto@motto`); the `release` skill runs the real publish flow (pack-verify → publish → `git push --follow-tags` → `motto.yaml` sync); and a first project README documents every install path (npm, marketplace, Claude Desktop symlink/zip). 13/13 requirements, 75 tests, single dep `yaml`. Merged to `main` @ `450274c`, tagged `v0.0.3`. Repo `jeremiewerner/motto` is private (sole-user). See `milestones/v0.0.3-ROADMAP.md`.
 
-**Prior:** v0.0.1 (2026-06-30) — core `motto lint` + `motto build` CLI (22 reqs, 53 tests). See `milestones/v0.0.1-ROADMAP.md`.
+**Prior:** v0.0.2 (2026-07-01) — Motto self-hosts: own `skills/` tree + dogfood guard + spec-complete `validateSkill` (10 reqs, 75 tests). See `milestones/v0.0.2-ROADMAP.md`. · v0.0.1 (2026-06-30) — core `motto lint` + `motto build` CLI (22 reqs, 53 tests). See `milestones/v0.0.1-ROADMAP.md`.
 
 **Hardening note:** post-merge `/code-review high` caught 3 D-01 never-throw violations the milestone tests missed (boolean name, unresolved YAML aliases in frontmatter/config); fixed + guarded. The never-throw invariant needs adversarial malformed-input tests — the GSD gates alone under-verified it.
 
-## Current Milestone: v0.0.3 — Distribution
+## Next Milestone
 
-**Goal:** Make Motto installable (npm) and its skills distributable (self-hosted Claude Code marketplace), wire the `release` skill's publish stub, and document Claude Desktop usage. Resolves the long-open install-mechanism decision.
+None active — start the next with `/gsd-new-milestone`. Backlog candidates in `.planning/ROADMAP.md` (CLI ergonomics, `[path]` arg, TMPL-01, CI, cleanup of v0.0.2 phase remnants, instructional-skills review).
+
+<details>
+<summary>Shipped: v0.0.3 — Distribution (2026-07-01)</summary>
+
+**Goal:** Make Motto installable (npm) and its skills distributable (self-hosted Claude Code marketplace), wire the `release` skill's publish stub, and document Claude Desktop usage. Resolves the long-open install-mechanism decision. ✅ Shipped — see `milestones/v0.0.3-ROADMAP.md`.
 
 **Locked decisions (research-backed — see `.planning/research/distribution.md`):**
 - **CLI distribution:** publish to npm as **`@jeremiewerner/motto`** (scoped/public; `motto` unscoped is taken). `bin` invokes as `motto`. `publishConfig.access: public` (scoped defaults private); `files` allowlist = `bin/`, `src/`, `dist/public/`. Fix `package.json` version drift (currently `0.0.1`, shipped is v0.0.2).
@@ -28,6 +33,8 @@ The **strict schema + linter**. Skills that always conform to one rigid-yet-crea
 - **Install-mechanism open decision → RESOLVED:** npm (CLI) + self-hosted marketplace (skills). No `.zip` build feature.
 
 **Out of scope this milestone:** `--zip` build feature (marketplace covers Desktop; zip is a documented shell one-liner for the web-upload edge case only), CLI ergonomics (`--quiet`, `--format json`), optional `[path]` arg, template mechanism validation (TMPL-01), CI — carry forward.
+
+</details>
 
 ## Requirements
 
@@ -98,4 +105,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-01 — v0.0.3 (Distribution) milestone opened*
+*Last updated: 2026-07-01 — v0.0.3 (Distribution) shipped + archived*

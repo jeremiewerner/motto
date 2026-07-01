@@ -2,6 +2,16 @@
 
 A historical record of shipped versions.
 
+## v0.0.3 — Distribution
+
+**Shipped:** 2026-07-01 · **Closeout:** verified (3/3 phases passed; merged to `main` @ `450274c`, tagged `v0.0.3`)
+
+Motto is now installable and distributable: the CLI publishes to npm as `@jeremiewerner/motto`, its public skills ship through a self-hosted Claude Code marketplace (`source: npm` → `dist/public/`), the `release` skill drives the real end-to-end publish flow (pack-verify → publish → `git push --follow-tags` → `motto.yaml` sync), and a first project README documents every install path (npm CLI, marketplace skills, Claude Desktop symlink/zip).
+
+- **Phases:** 3 (npm Packaging & Release · Marketplace Distribution · Documentation) · **Commits:** 33 · **Tests:** 75
+- **Requirements:** 13/13 (NPM-01..04, REL-01..03, MKT-01..03, DOC-01..03)
+- **Archives:** [roadmap](milestones/v0.0.3-ROADMAP.md) · [requirements](milestones/v0.0.3-REQUIREMENTS.md)
+
 ## v0.0.2 — Self-Hosting (Dogfood)
 
 **Shipped:** 2026-07-01 · **Closeout:** verified (3/3 phases passed, audit PASSED, hardened post-review)

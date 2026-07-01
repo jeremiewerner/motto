@@ -4,9 +4,9 @@ milestone: v0.0.3
 milestone_name: Distribution
 current_phase: 09
 current_phase_name: Documentation
-status: v0.0.3 merged to main (direct ff-merge, no PR — solo private repo) @ 221ae85
+status: completed
 stopped_at: Phase 9 context gathered
-last_updated: "2026-07-01T20:24:47.583Z"
+last_updated: "2026-07-01T20:36:00.566Z"
 last_activity: 2026-07-01
 progress:
   total_phases: 3
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-01)
 
 Phase: 09 — Documentation
 Plan: Not started
-Status: v0.0.3 merged to main (direct ff-merge, no PR — solo private repo) @ 221ae85
+Status: v0.0.3 (Distribution) COMPLETE — archived, tagged v0.0.3. No active milestone; next via /gsd-new-milestone
 Last activity: 2026-07-01
 
 ## Performance Metrics
