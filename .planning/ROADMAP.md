@@ -52,7 +52,9 @@ _Active milestone: v0.0.3 — Distribution_
   2. A user can run `/plugin marketplace add jeremiewerner/motto` and Motto's marketplace resolves from the repo.
   3. A user can run `/plugin install motto-skills@motto` and Motto's public skills (`author-skill`, `setup-project`) load in Claude Code.
 
-**Plans**: TBD
+**Plans**: 1 plan
+
+- [ ] 08-01-PLAN.md — Author `.claude-plugin/marketplace.json` (marketplace `motto`, plugin `motto-skills`, `source: npm` → `@jeremiewerner/motto`, skills override `dist/public/`, `strict: false`); validate with `claude plugin validate .`; live-install human checkpoint (MKT-01, MKT-02, MKT-03)
 
 ### Phase 9: Documentation
 
