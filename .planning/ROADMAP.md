@@ -34,7 +34,8 @@ _Active milestone: v0.0.3 — Distribution_
   2. `npm pack --dry-run` produces a tarball containing only the allowlisted paths (plus auto-included `package.json`/`README`/`LICENSE`) — no `skills/`, `test/`, or `.planning/` leakage.
   3. Installing the package globally (`npm i -g @jeremiewerner/motto`) exposes a working `motto` command that runs `lint`/`build` from any directory.
   4. The `release` skill's publish step runs the real flow — `npm pack --dry-run` verify → `npm publish` — with no TODO stub, pushes the release tag via `git push --follow-tags`, and bumps/notes the manual `motto.yaml` version alongside `package.json`.
-**Plans**: TBD
+**Plans**: 1 plan
+- [ ] 07-01-PLAN.md — MIT LICENSE + package.json packaging config (scoped name, files allowlist, publishConfig, lifecycle scripts) + wire release skill real publish flow
 
 ### Phase 8: Marketplace Distribution
 **Goal**: Motto's public skills are installable in Claude Code through a self-hosted marketplace that lives in the repo and resolves the plugin from the published npm package.
@@ -60,7 +61,7 @@ _Active milestone: v0.0.3 — Distribution_
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 7. npm Packaging & Release Flow | 0/? | Not started | - |
+| 7. npm Packaging & Release Flow | 0/1 | Not started | - |
 | 8. Marketplace Distribution | 0/? | Not started | - |
 | 9. Documentation | 0/? | Not started | - |
 
