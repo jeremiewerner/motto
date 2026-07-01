@@ -6,12 +6,12 @@ tags: [marketplace, claude-plugin, config-only, MKT-01, MKT-02, MKT-03]
 
 dependency_graph:
   requires:
-    - "07-01: @jeremiewerner/motto@0.0.3 published to npm with dist/public/ in tarball"
-    - "dist/public/.claude-plugin/plugin.json (name: motto-skills) emitted by motto build"
+    - "07-01: @jeremiewerner/motto published to npm with dist/public/ in tarball — NOT YET DONE (registry 404 as of 2026-07-01); Task 3 live test blocked on this"
+    - "dist/public/.claude-plugin/plugin.json (name: motto) emitted by motto build"
   provides:
     - ".claude-plugin/marketplace.json — motto marketplace catalog (repo root)"
     - "Marketplace name: motto (install suffix @motto)"
-    - "Plugin name: motto-skills (install command /plugin install motto-skills@motto)"
+    - "Plugin name: motto (install command /plugin install motto@motto; skills namespace /motto:*)"
   affects:
     - "Phase 9 README docs (DOC-02): install instructions reference /plugin marketplace add jeremiewerner/motto"
 
@@ -24,8 +24,12 @@ tech_stack:
 key_files:
   created:
     - path: ".claude-plugin/marketplace.json"
-      note: "Motto marketplace catalog — registers motto-skills plugin from @jeremiewerner/motto"
-  modified: []
+      note: "Motto marketplace catalog — registers motto plugin from @jeremiewerner/motto"
+  modified:
+    - path: "motto.yaml"
+      note: "plugins.public renamed motto-skills -> motto (namespace /motto:*)"
+    - path: "test/dogfood.test.js"
+      note: "public plugin.json name expectation motto-skills -> motto"
 
 decisions:
   - "Omitted source.version to always-resolve latest from npm (per RESEARCH anti-pattern note); add pinning later if required"
@@ -43,13 +47,22 @@ status: pending-human-verify
 
 # Phase 08 Plan 01: Marketplace Distribution Summary
 
-**One-liner:** Self-hosted Claude Code marketplace registering `motto-skills` from `@jeremiewerner/motto` npm package with skills override `./dist/public/` and `strict: false`.
+**One-liner:** Self-hosted Claude Code marketplace registering the `motto` plugin from `@jeremiewerner/motto` npm package with skills override `./dist/public/` and `strict: false`.
+
+---
+
+## AMENDMENT (2026-07-01, post-checkpoint)
+
+Two changes after the original executor run, before Task 3 verification:
+
+1. **Public plugin renamed `motto-skills` → `motto`** (commit `36607ab`). Namespace is now `/motto:author-skill`, `/motto:setup-project` (was `/motto-skills:*`); install command `/plugin install motto@motto`. Rationale: daily slash-command ergonomics beat install-string readability; marketplace-name == plugin-name is schema-valid (`claude plugin validate .` passes). Changed `motto.yaml` `plugins.public`, rebuilt (`plugin.json` name → `motto`), updated `marketplace.json` `plugins[0].name`, fixed dogfood test. All 75 tests pass. No npm republish needed — package is not yet published, so `prepublishOnly` will build the new name when Phase 7 publishes.
+2. **Blocker found: `@jeremiewerner/motto` is NOT on npm** (`npm view` → 404 as of 2026-07-01). Phase 7 was marked complete but the real `npm publish` never ran. **Task 3's live-install cannot pass until Phase 7 publishes** — `source: npm` resolves to a non-existent package. This is independent of the rename. The identifiers below reflect the new `motto` name.
 
 ---
 
 ## What Was Built
 
-Created `.claude-plugin/marketplace.json` at the repo root — a single configuration file that registers the `motto` marketplace, listing the `motto-skills` plugin sourced from the already-published `@jeremiewerner/motto` npm package, with a skills path override pointing at `dist/public/` and `strict: false`.
+Created `.claude-plugin/marketplace.json` at the repo root — a single configuration file that registers the `motto` marketplace, listing the `motto` plugin sourced from the `@jeremiewerner/motto` npm package (not yet published — see Amendment), with a skills path override pointing at `dist/public/` and `strict: false`.
 
 No code, no build changes, no new dependencies. Configuration-only phase.
 
@@ -75,7 +88,7 @@ marketplace.json OK; plugin name matches dist/public/.claude-plugin/plugin.json
 
 Exit 0. All fields verified:
 - `name === "motto"` ✓
-- `plugins[0].name === "motto-skills"` ✓ (matches `dist/public/.claude-plugin/plugin.json` `name`)
+- `plugins[0].name === "motto"` ✓ (matches `dist/public/.claude-plugin/plugin.json` `name`)
 - `plugins[0].source === { source: "npm", package: "@jeremiewerner/motto" }` ✓
 - no `source.version` key ✓
 - `plugins[0].skills === "./dist/public/"` ✓
@@ -107,7 +120,7 @@ No file changes from Task 2 — validation only; no separate commit.
 
 **Status:** Carried forward as documented assumption. The `claude plugin validate .` schema check passed (Task 2), but A1 can only be definitively confirmed by the live `/plugin install` run in Task 3.
 
-**Fallback path if A1 is wrong (RESEARCH Pitfall 1):** If `/plugin install motto-skills@motto` fails with a conflict error, apply one of:
+**Fallback path if A1 is wrong (RESEARCH Pitfall 1):** If `/plugin install motto@motto` fails with a conflict error, apply one of:
 1. Switch to `strict: true` and add a root-level `.claude-plugin/plugin.json` in the npm package that delegates via the `skills` field.
 2. Remove `dist/public/.claude-plugin/plugin.json` from `motto build`'s public output (build change).
 
@@ -121,7 +134,7 @@ Neither fallback is implemented now — only trigger condition and remedy are re
 
 ### What Was Built
 
-`.claude-plugin/marketplace.json` at repo root, schema-validated, committed at `babb7fb`. The file registers the `motto` marketplace pointing `motto-skills` at `@jeremiewerner/motto` npm package (already published at v0.0.3 by Phase 7).
+`.claude-plugin/marketplace.json` at repo root, schema-validated, committed at `babb7fb`. The file registers the `motto` marketplace pointing `motto` at `@jeremiewerner/motto` npm package (NOT yet published — see Amendment).
 
 ### Pending Human Verification Steps
 
@@ -131,19 +144,19 @@ In a live Claude Code session (maintainer account, `gh auth` credentials present
 ```
 /plugin marketplace add jeremiewerner/motto
 ```
-Expected: the `motto` marketplace resolves and lists the `motto-skills` plugin.
+Expected: the `motto` marketplace resolves and lists the `motto` plugin.
 
 **Step 2 — Install the plugin (MKT-02):**
 ```
-/plugin install motto-skills@motto
+/plugin install motto@motto
 ```
 Expected: install succeeds, pulling `@jeremiewerner/motto` from the public npm registry.
 
 **Step 3 — Confirm skills load (MKT-02 + A1):**
 
 Confirm the two public skills load and are invocable as:
-- `/motto-skills:author-skill`
-- `/motto-skills:setup-project`
+- `/motto:author-skill`
+- `/motto:setup-project`
 
 Expected outcome: marketplace adds cleanly, plugin installs, both slash commands appear.
 
@@ -171,7 +184,7 @@ None. `.claude-plugin/marketplace.json` is a complete configuration; all fields 
 
 ## Threat Surface Scan
 
-No new security-relevant surface beyond what is documented in the plan's threat model. The single new file (`.claude-plugin/marketplace.json`) is a static JSON configuration that does not introduce network endpoints, auth paths, file access patterns, or schema changes at trust boundaries. T-08-01 (high) is mitigated: exact package string `@jeremiewerner/motto` and plugin name `motto-skills` are verified by the automated field assertion (Task 1 exit 0).
+No new security-relevant surface beyond what is documented in the plan's threat model. The single new file (`.claude-plugin/marketplace.json`) is a static JSON configuration that does not introduce network endpoints, auth paths, file access patterns, or schema changes at trust boundaries. T-08-01 (high) is mitigated: exact package string `@jeremiewerner/motto` and plugin name `motto` are verified by the automated field assertion (Task 1 exit 0).
 
 ---
 
@@ -183,5 +196,6 @@ No new security-relevant surface beyond what is documented in the plan's threat 
 
 ### Commits Exist
 - `babb7fb` — chore(08-01): add .claude-plugin/marketplace.json for motto marketplace — FOUND
+- `36607ab` — refactor(08-01): rename public plugin motto-skills -> motto — FOUND
 
 ## Self-Check: PASSED
