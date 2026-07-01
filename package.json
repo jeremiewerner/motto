@@ -1,13 +1,21 @@
 {
-  "name": "motto",
-  "version": "0.0.1",
+  "name": "@jeremiewerner/motto",
+  "version": "0.0.3",
   "type": "module",
+  "description": "Framework for authoring, validating, and packaging Claude Code Agent Skills",
+  "author": "Jérémie Werner",
+  "license": "MIT",
+  "repository": "github:jeremiewerner/motto",
+  "homepage": "https://github.com/jeremiewerner/motto",
+  "keywords": ["claude", "agent-skills", "claude-code", "cli"],
   "engines": {
     "node": ">=20"
   },
   "bin": {
     "motto": "./bin/motto.js"
   },
+  "files": ["bin/", "src/", "dist/public/"],
+  "publishConfig": { "access": "public" },
   "scripts": {
     "prepare": "husky",
     "test": "node --test"
