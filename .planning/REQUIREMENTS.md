@@ -27,9 +27,9 @@
 
 ### Documentation (DOC)
 
-- [ ] **DOC-01**: README documents installing the CLI from npm
-- [ ] **DOC-02**: README documents adding the marketplace and installing Motto's skills into Claude Code
-- [ ] **DOC-03**: README documents Claude Desktop usage — symlink built skills into `~/.claude/skills/` (`ln -s dist/public/<skill> ~/.claude/skills/<skill>`) and the web-upload zip one-liner (`cd dist/public && zip -r <skill>.zip <skill>/`)
+- [x] **DOC-01**: README documents installing the CLI from npm
+- [x] **DOC-02**: README documents adding the marketplace and installing Motto's skills into Claude Code
+- [x] **DOC-03**: README documents Claude Desktop usage — symlink built skills into `~/.claude/skills/` (`ln -s dist/public/<skill> ~/.claude/skills/<skill>`) and the web-upload zip one-liner (`cd dist/public && zip -r <skill>.zip <skill>/`)
 
 ## Future Requirements (deferred)
 
@@ -57,6 +57,6 @@
 | MKT-01 | Phase 8 | Complete |
 | MKT-02 | Phase 8 | Complete |
 | MKT-03 | Phase 8 | Complete |
-| DOC-01 | Phase 9 | Pending |
-| DOC-02 | Phase 9 | Pending |
-| DOC-03 | Phase 9 | Pending |
+| DOC-01 | Phase 9 | Complete |
+| DOC-02 | Phase 9 | Complete |
+| DOC-03 | Phase 9 | Complete |

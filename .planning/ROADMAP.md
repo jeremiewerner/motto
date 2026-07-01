@@ -21,7 +21,7 @@ _Active milestone: v0.0.3 — Distribution_
 
 - [x] **Phase 7: npm Packaging & Release Flow** - Make the CLI publishable to npm as a scoped public package and wire the `release` skill's real publish flow (completed 2026-07-01)
 - [x] **Phase 8: Marketplace Distribution** - Distribute Motto's public skills through a self-hosted Claude Code marketplace in the repo (completed 2026-07-01)
-- [ ] **Phase 9: Documentation** - Document every install path (npm CLI, marketplace skills, Claude Desktop) in the README
+- [x] **Phase 9: Documentation** - Document every install path (npm CLI, marketplace skills, Claude Desktop) in the README (completed 2026-07-01)
 
 ## Phase Details
 
@@ -67,9 +67,9 @@ _Active milestone: v0.0.3 — Distribution_
   2. README documents adding the marketplace and installing Motto's skills into Claude Code (`/plugin marketplace add …` + `/plugin install motto@motto`).
   3. README documents Claude Desktop usage — the `~/.claude/skills/` symlink one-liner (`ln -s dist/public/<skill> ~/.claude/skills/<skill>`) and the web-upload zip one-liner (`cd dist/public && zip -r <skill>.zip <skill>/`).
 
-**Plans**: 1 plan
+**Plans**: 1/1 plans complete
 
-- [ ] 09-01-PLAN.md — Author README.md: what-is-Motto intro, author-first quickstart (npm CLI DOC-01), marketplace add/install (DOC-02), Claude Desktop symlink+zip one-liners (DOC-03), compact end-to-end example, brief dev section
+- [x] 09-01-PLAN.md — Author README.md: what-is-Motto intro, author-first quickstart (npm CLI DOC-01), marketplace add/install (DOC-02), Claude Desktop symlink+zip one-liners (DOC-03), compact end-to-end example, brief dev section
 
 ## Progress
 
@@ -77,7 +77,7 @@ _Active milestone: v0.0.3 — Distribution_
 |-------|----------------|--------|-----------|
 | 7. npm Packaging & Release Flow | 1/1 | Complete    | 2026-07-01 |
 | 8. Marketplace Distribution | 1/1 | Complete   | 2026-07-01 |
-| 9. Documentation | 0/1 | Not started | - |
+| 9. Documentation | 1/1 | Complete   | 2026-07-01 |
 
 ## Backlog
 
