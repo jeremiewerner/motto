@@ -5,10 +5,10 @@ milestone_name: Distribution
 current_phase: 8
 current_phase_name: Marketplace Distribution
 status: executing
-stopped_at: Phase 7 context gathered
-last_updated: "2026-07-01T09:41:35.857Z"
+stopped_at: Phase 8 complete & verified live; ship-gated on milestone-branch merge
+last_updated: "2026-07-01T19:20:00.000Z"
 last_activity: 2026-07-01
-last_activity_desc: Phase 07 complete, transitioned to Phase 8
+last_activity_desc: Phase 08 done; plugin renamed motto-skills→motto; npm published public; live install of /motto:* confirmed (A1 holds)
 progress:
   total_phases: 3
   completed_phases: 2
@@ -24,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-01)
 
 **Core value:** A strict schema + linter that guarantees authored skills conform before they ship, then packages them into self-contained standard Agent Skill plugins.
-**Current focus:** Phase 07 — npm-packaging-release-flow
+**Current focus:** Phase 08 complete — Marketplace Distribution (verified live)
 
 ## Current Position
 
 Phase: 8 — Marketplace Distribution
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-07-01 — Phase 07 complete, transitioned to Phase 8
+Plan: 08-01 complete (1/1)
+Status: Implementation complete & verified LIVE; SHIP-GATED on one item (see Blockers)
+Last activity: 2026-07-01 — 08-01 done; plugin renamed motto-skills→motto; @jeremiewerner/motto@0.0.3 published public; live `/plugin install motto@motto` loaded /motto:author-skill + /motto:setup-project (A1 confirmed, no strict:false conflict)
 
 ## Performance Metrics
 
@@ -88,6 +88,9 @@ None yet.
 ### Blockers/Concerns
 
 - Carried debt from v0.0.2: npm-publish stub in `release` skill (closed by REL-01 this milestone); no CI (husky-only, deferred).
+- **SHIP-GATED (Phase 8 SC2):** GitHub-form `/plugin marketplace add jeremiewerner/motto` fails until `.claude-plugin/marketplace.json` lands on the repo default branch (merge `gsd/v0.0.3-milestone` → main) AND the repo is public (T-08-04, Phase 9). Local-path add is verified; manifest is correct. Deployment step, not a defect.
+- **Phase 7 retro needed:** Phase 7 was marked "complete" but `@jeremiewerner/motto` was NOT actually on npm (404) until the maintainer manually ran `npm publish` on 2026-07-01. The `release` flow's publish step did not execute during Phase 7. Investigate so "complete" == "published" next milestone.
+- **Naming note:** public plugin renamed `motto-skills` → `motto` (namespace `/motto:*`) mid-Phase-8; motto.yaml `plugins.private` is still `motto-private` (asymmetric, acceptable — private bucket only emits when private skills exist).
 
 ### Roadmap Evolution
 

@@ -39,10 +39,10 @@ metrics:
   duration: "64 seconds"
   completed_date: "2026-07-01"
   task_count: 3
-  tasks_complete: 2
-  tasks_pending: 1
+  tasks_complete: 3
+  tasks_pending: 0
 
-status: pending-human-verify
+status: complete
 ---
 
 # Phase 08 Plan 01: Marketplace Distribution Summary
@@ -128,9 +128,18 @@ Neither fallback is implemented now — only trigger condition and remedy are re
 
 ---
 
-## Task 3 — Human-Verify Checkpoint (PENDING)
+## Task 3 — Human-Verify Checkpoint (PASSED 2026-07-01)
 
-**Status:** BLOCKED — requires live Claude Code session. Executor cannot install a plugin into a live Claude Code session.
+**Status:** VERIFIED LIVE by maintainer. `@jeremiewerner/motto@0.0.3` published public to npm; live install ran in a Claude Code session:
+- `/plugin marketplace add /Users/jeremie/Projects/motto` → `Successfully added marketplace: motto`
+- `/plugin install motto@motto` → `✓ Installed motto` (plugin source pulled from npm)
+- `/reload-plugins` → both `/motto:author-skill` and `/motto:setup-project` load and are invocable (skill content rendered).
+
+**Result:** MKT-02 and MKT-03 confirmed. **A1 CONFIRMED** — the nested `dist/public/.claude-plugin/plugin.json` did NOT trigger a `strict:false` conflict; the RESEARCH Pitfall 1 fallback is NOT needed.
+
+**MKT-01 caveat:** Verified via the LOCAL-PATH marketplace add (proves the manifest + npm plugin source end-to-end). The GitHub form `/plugin marketplace add jeremiewerner/motto` still fails ("Marketplace file not found") because `.claude-plugin/marketplace.json` is not yet on the repo's default branch (commits are on `gsd/v0.0.3-milestone`, unpushed). Landing it on the default branch is a ship/merge step (and external add also needs the repo public — T-08-04, deferred to Phase 9). Not a manifest defect.
+
+### Original checkpoint context (retained)
 
 ### What Was Built
 

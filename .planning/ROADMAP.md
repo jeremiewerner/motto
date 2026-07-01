@@ -49,12 +49,12 @@ _Active milestone: v0.0.3 — Distribution_
 **Success Criteria** (what must be TRUE):
 
   1. `.claude-plugin/marketplace.json` exists at the repo root with `source: npm` pointing at `@jeremiewerner/motto`, a skills path override to `dist/public/`, and `strict: false`.
-  2. A user can run `/plugin marketplace add jeremiewerner/motto` and Motto's marketplace resolves from the repo.
-  3. A user can run `/plugin install motto-skills@motto` and Motto's public skills (`author-skill`, `setup-project`) load in Claude Code.
+  2. A user can run `/plugin marketplace add jeremiewerner/motto` and Motto's marketplace resolves from the repo. ⚠️ SHIP-GATED: verified via local-path add (`/plugin marketplace add <repo-path>`); the GitHub form needs `.claude-plugin/marketplace.json` on the repo default branch (merge `gsd/v0.0.3-milestone` → main) and the repo public (T-08-04, Phase 9).
+  3. A user can run `/plugin install motto@motto` and Motto's public skills (`author-skill`, `setup-project`) load in Claude Code. ✅ VERIFIED LIVE 2026-07-01 (A1 confirmed, no strict:false conflict).
 
 **Plans**: 1/1 plans complete
 
-- [x] 08-01-PLAN.md — Author `.claude-plugin/marketplace.json` (marketplace `motto`, plugin `motto-skills`, `source: npm` → `@jeremiewerner/motto`, skills override `dist/public/`, `strict: false`); validate with `claude plugin validate .`; live-install human checkpoint (MKT-01, MKT-02, MKT-03)
+- [x] 08-01-PLAN.md — Author `.claude-plugin/marketplace.json` (marketplace `motto`, plugin `motto`, `source: npm` → `@jeremiewerner/motto`, skills override `dist/public/`, `strict: false`); validate with `claude plugin validate .`; live-install human checkpoint (MKT-01, MKT-02, MKT-03)
 
 ### Phase 9: Documentation
 
@@ -64,7 +64,7 @@ _Active milestone: v0.0.3 — Distribution_
 **Success Criteria** (what must be TRUE):
 
   1. README documents installing the CLI from npm (`npm i -g @jeremiewerner/motto`).
-  2. README documents adding the marketplace and installing Motto's skills into Claude Code (`/plugin marketplace add …` + `/plugin install motto-skills@motto`).
+  2. README documents adding the marketplace and installing Motto's skills into Claude Code (`/plugin marketplace add …` + `/plugin install motto@motto`).
   3. README documents Claude Desktop usage — the `~/.claude/skills/` symlink one-liner (`ln -s dist/public/<skill> ~/.claude/skills/<skill>`) and the web-upload zip one-liner (`cd dist/public && zip -r <skill>.zip <skill>/`).
 
 **Plans**: TBD
