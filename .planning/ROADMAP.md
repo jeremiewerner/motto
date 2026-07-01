@@ -77,7 +77,7 @@ _Active milestone: v0.0.3 — Distribution_
 |-------|----------------|--------|-----------|
 | 7. npm Packaging & Release Flow | 1/1 | Complete    | 2026-07-01 |
 | 8. Marketplace Distribution | 1/1 | Complete   | 2026-07-01 |
-| 9. Documentation | 1/1 | Complete   | 2026-07-01 |
+| 9. Documentation | 1/1 | Complete    | 2026-07-01 |
 
 ## Backlog
 
