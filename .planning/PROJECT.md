@@ -10,21 +10,19 @@ The **strict schema + linter**. Skills that always conform to one rigid-yet-crea
 
 ## Current State
 
-**Shipped: v0.0.1 (2026-06-30)** — the core `motto lint` + `motto build` CLI is complete and verified (22/22 requirements, 53 tests, single dep `yaml`). `src/` holds the pure validation core (`frontmatter.js`, `schema.js`, `config.js`) plus `lint.js` and `build.js`; `bin/motto.js` is the CLI. Output is portable standard Agent Skill plugins. See `milestones/v0.0.1-ROADMAP.md`.
+**Shipped: v0.0.2 (2026-07-01)** — Motto self-hosts. A real `skills/` tree (2 public: `author-skill`, `setup-project`; 1 private: `release`) + shared ref `skill-schema` lints clean and builds to standard Agent-Skill plugins, guarded by a permanent `node:test` dogfood test on every commit (husky). `validateSkill` is now spec-complete (name ≤64, description ≤1024, no-XML). 10/10 requirements, 75 tests, single dep `yaml`. Repo now has a remote (`jeremiewerner/motto`, private). See `milestones/v0.0.2-ROADMAP.md`.
 
-**Not yet validated:** Motto authors zero skills of its own — the tool has not been dogfooded on a real `skills/` tree. Top candidate for the next milestone.
+**Prior:** v0.0.1 (2026-06-30) — core `motto lint` + `motto build` CLI (22 reqs, 53 tests). See `milestones/v0.0.1-ROADMAP.md`.
 
-## Current Milestone: v0.0.2 Self-Hosting (Dogfood)
+**Hardening note:** post-merge `/code-review high` caught 3 D-01 never-throw violations the milestone tests missed (boolean name, unresolved YAML aliases in frontmatter/config); fixed + guarded. The never-throw invariant needs adversarial malformed-input tests — the GSD gates alone under-verified it.
 
-**Goal:** Motto authors and validates its own skills tree — proving the lint→build pipeline on real input, with a permanent regression guard in the test suite.
+## Next Milestone Goals (candidates — run `/gsd-new-milestone`)
 
-**Target features:**
-- A real `skills/` tree in Motto's own structure: skills *documenting Motto* (≥1 `public`, ≥1 `private`) + ≥1 `shared_reference`
-- A `motto.yaml` for the Motto project (`plugins.public` + `plugins.private`)
-- A dogfood test wired into `node:test` that runs `lintProject` + `buildProject` on the real tree and asserts clean lint + expected `dist/` output (husky catches regressions)
-- Fix any schema/tool gaps the real tree surfaces (in scope)
-
-**Key context:** Full schema surface exercised (public + private + shared ref). Gap-fixes in scope — discovering and closing schema holes is the point of dogfooding. CI deferred (no git remote yet). Phase numbering continues from v0.0.1 (next phase = 4).
+- **Distribution layer** — package Motto itself as a plugin, global install / per-project version pinning. Depends on the still-open install-mechanism decision.
+- **Real `npm publish` flow** — the `release` skill carries a stub until packaging is decided.
+- **CLI ergonomics** — `--quiet`, `--format json`, `--zip`; optional `[path]` arg for `lint`/`build`.
+- **Template mechanism validation** — against a first concrete template (TMPL-01).
+- **CI** — GitHub Actions now that a remote exists (husky-only through v0.0.2).
 
 ## Requirements
 
@@ -94,4 +92,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-30 after initialization*
+*Last updated: 2026-07-01 after v0.0.2 milestone completion*

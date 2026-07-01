@@ -4,10 +4,10 @@ milestone: v0.0.2
 milestone_name: — Self-Hosting
 current_phase: 05
 current_phase_name: dogfood-regression-guard
-status: "Milestone v0.0.2 shipped — PR #1"
+status: v0.0.2 shipped + archived — ready for next milestone
 stopped_at: Phase 6 context gathered
-last_updated: "2026-06-30T20:51:09.284Z"
-last_activity: 2026-06-30
+last_updated: "2026-07-01T05:47:18.839Z"
+last_activity: 2026-07-01
 progress:
   total_phases: 3
   completed_phases: 3
@@ -29,8 +29,8 @@ See: .planning/PROJECT.md (updated 2026-06-30)
 
 Phase: 05 (dogfood-regression-guard) — EXECUTING
 Plan: 1 of 1
-Status: Milestone v0.0.2 shipped — PR #1
-Last activity: 2026-06-30
+Status: v0.0.2 shipped + archived — ready for next milestone
+Last activity: 2026-07-01
 
 ## Performance Metrics
 
