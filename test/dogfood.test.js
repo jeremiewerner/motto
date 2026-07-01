@@ -15,18 +15,17 @@ import { NAME_KEBAB as configKebab } from '../src/config.js'; // requires export
 // test/dogfood.test.js lives one level inside the repo root, so '..' resolves correctly.
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
-// ── DOG-04: NAME_KEBAB parity ─────────────────────────────────────────────────
+// ── DOG-04: NAME_KEBAB single source (REVIEW-11) ─────────────────────────────
+// config.js now re-exports the regex imported from schema.js rather than holding
+// its own copy. The two imports must be the SAME RegExp instance (reference
+// identity), which proves config.js is wired to the single source of truth and
+// cannot silently diverge from it.
 describe('NAME_KEBAB parity (DOG-04)', () => {
-  it('NAME_KEBAB .source is identical in schema.js and config.js', () => {
+  it('NAME_KEBAB from schema.js and config.js are the same RegExp instance (REVIEW-11)', () => {
     assert.strictEqual(
-      schemaKebab.source,
-      configKebab.source,
-      'NAME_KEBAB source must match: schema.js is the source of truth',
-    );
-    assert.strictEqual(
-      schemaKebab.flags,
-      configKebab.flags,
-      'NAME_KEBAB flags must match between schema.js and config.js',
+      schemaKebab,
+      configKebab,
+      'NAME_KEBAB must be the same RegExp instance: config.js must re-export from schema.js',
     );
   });
 });

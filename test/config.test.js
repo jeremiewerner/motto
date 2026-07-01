@@ -100,6 +100,17 @@ describe("loadConfig", () => {
     );
   });
 
+  // C8: loadConfig must not throw on an unresolved YAML alias (D-01 regression)
+  it("C8: loadConfig does not throw on an unresolved YAML alias (D-01)", () => {
+    const aliasText =
+      "name: *foo\nversion: 0.1.0\ndescription: d\nplugins:\n  public: poems\n";
+    let result;
+    assert.doesNotThrow(() => {
+      result = loadConfig(aliasText);
+    }, "must not throw for unresolved alias");
+    assert.ok(result.errors.length > 0, "must return at least one error");
+  });
+
   // C7: malformed YAML — surfaces in errors[], NEVER throws (D-18, D-01)
   it("C7: malformed YAML text surfaces in errors[] and never throws (D-18, D-01)", () => {
     let result;

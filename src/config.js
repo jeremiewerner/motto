@@ -9,30 +9,14 @@
  */
 
 import { parseDocument } from "yaml";
+import { safeToJS } from "./frontmatter.js";
+// src/schema.js is the sole source of NAME_KEBAB (REVIEW-11, D-16).
+// schema.js has no imports, so there is no circular dependency.
+import { NAME_KEBAB } from "./schema.js";
 
-/**
- * Letter-start kebab-case regex for plugin names.
- *
- * Intentional duplicate of NAME_KEBAB exported from src/schema.js (D-08, D-16).
- * The two regex literals MUST stay identical; this comment is the cross-reference.
- * Source of truth: src/schema.js export `NAME_KEBAB`.
- *
- * Pattern: /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/
- *   - starts with exactly one lowercase letter (letter-start — D-08 fix; the
- *     prior-art /^[a-z0-9]+/ wrongly allowed a leading digit)
- *   - followed by zero or more lowercase letters or digits
- *   - then zero or more groups of (one hyphen + one or more lowercase letters/digits)
- *
- * Valid examples:   "poems", "poems-pro", "abc-def-123"
- * Invalid examples: "0bad" (leading digit), "Bad_Name" (uppercase/underscore),
- *                   "Bad/Name" (slash), "my--skill" (double dash)
- *
- * Anchored and unambiguous — no catastrophic backtracking (T-03-01): each `-`
- * unambiguously opens exactly one group; `-` cannot appear in [a-z0-9].
- *
- * @type {RegExp}
- */
-export const NAME_KEBAB = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/;
+// Re-export so config.js's public surface is preserved — dogfood DOG-04 imports
+// NAME_KEBAB from config.js to assert reference identity with schema.js.
+export { NAME_KEBAB };
 
 /**
  * Parse and validate a raw motto.yaml text string.
@@ -72,9 +56,14 @@ export function loadConfig(text) {
     errors.push({ message: yamlErr.message || String(yamlErr) });
   }
 
-  // Resolve to a plain JS object. doc.toJS() returns null for a null/empty document.
-  const parsed = doc.toJS();
-  config = parsed != null && typeof parsed === "object" ? parsed : {};
+  // Resolve to a plain JS object. safeToJS guards against toJS() throwing on an
+  // unresolved alias (e.g. `name: *foo` — D-01, REVIEW-03). src/schema.js is
+  // the sole source of NAME_KEBAB (REVIEW-11); safeToJS is the sole helper (REVIEW-02/03).
+  const { value, threw, message } = safeToJS(doc);
+  if (threw) {
+    errors.push({ message });
+  }
+  config = value != null && typeof value === "object" ? value : {};
 
   // ── REQUIRED FIELDS (CONF-01, D-15) ───────────────────────────────────────
   // Collect ALL missing required fields together — no short-circuit (D-15).

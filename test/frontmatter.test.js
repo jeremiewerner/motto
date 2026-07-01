@@ -83,6 +83,30 @@ describe("parseFrontmatter", () => {
     assert.ok(body.includes("\n---\n"), "body should retain the --- horizontal rule");
   });
 
+  // B9 (D-01 regression) — unresolved alias in the frontmatter block must not throw
+  it("B9: parseFrontmatter does not throw on an unresolved alias in the frontmatter block (D-01)", () => {
+    let result;
+    assert.doesNotThrow(() => {
+      result = parseFrontmatter("---\ndescription: *foo\n---\n# body");
+    }, "must not throw for unresolved frontmatter alias");
+    assert.ok(result.errors.length > 0, "must return at least one error");
+    assert.deepEqual(result.data, {}, "data must fall back to {}");
+  });
+
+  // B10 (REVIEW-05 guard) — a leaked mapping whose value is an alias must be flagged
+  // as a stray-delimiter error (node-shape detection, not toJS-based).
+  it("B10: leaked mapping with alias value is detected as stray-delimiter (REVIEW-05)", () => {
+    // Region between first and second --- is "leaked: *foo" — a mapping with an alias
+    // value. The old toJS-based check would throw on toJS() and silently skip the
+    // stray detection. Node-shape detection sees isMap + items.length > 0 and flags it.
+    const input = "---\nname: x\n---\nleaked: *foo\n---\n# body";
+    const { errors } = parseFrontmatter(input);
+    assert.ok(
+      errors.some((e) => /stray/i.test(e.message)),
+      `expected stray-delimiter error, got: ${JSON.stringify(errors)}`
+    );
+  });
+
   // B8 (D-01 backstop) — **Role:** before a body --- must not throw
   // Regression guard for the toJS() alias-throw bug: YAML parses "**Role:**"
   // as a *name alias reference; toJS() throws for unresolved aliases. The
