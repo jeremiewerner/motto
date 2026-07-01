@@ -16,13 +16,18 @@ The **strict schema + linter**. Skills that always conform to one rigid-yet-crea
 
 **Hardening note:** post-merge `/code-review high` caught 3 D-01 never-throw violations the milestone tests missed (boolean name, unresolved YAML aliases in frontmatter/config); fixed + guarded. The never-throw invariant needs adversarial malformed-input tests — the GSD gates alone under-verified it.
 
-## Next Milestone Goals (candidates — run `/gsd-new-milestone`)
+## Current Milestone: v0.0.3 — Distribution
 
-- **Distribution layer** — package Motto itself as a plugin, global install / per-project version pinning. Depends on the still-open install-mechanism decision.
-- **Real `npm publish` flow** — the `release` skill carries a stub until packaging is decided.
-- **CLI ergonomics** — `--quiet`, `--format json`, `--zip`; optional `[path]` arg for `lint`/`build`.
-- **Template mechanism validation** — against a first concrete template (TMPL-01).
-- **CI** — GitHub Actions now that a remote exists (husky-only through v0.0.2).
+**Goal:** Make Motto installable (npm) and its skills distributable (self-hosted Claude Code marketplace), wire the `release` skill's publish stub, and document Claude Desktop usage. Resolves the long-open install-mechanism decision.
+
+**Locked decisions (research-backed — see `.planning/research/distribution.md`):**
+- **CLI distribution:** publish to npm as **`@jeremiewerner/motto`** (scoped/public; `motto` unscoped is taken). `bin` invokes as `motto`. `publishConfig.access: public` (scoped defaults private); `files` allowlist = `bin/`, `src/`, `dist/public/`. Fix `package.json` version drift (currently `0.0.1`, shipped is v0.0.2).
+- **Skills → users:** self-hosted marketplace via `.claude-plugin/marketplace.json` **inside the repo** (no separate repo), `source: npm` type, skills path override to `dist/public/` with `strict: false`. One `npm publish` ships CLI + bundled skills plugin.
+- **Claude Desktop:** covered for free — the Desktop **Code tab IS Claude Code**, loads marketplaces + `~/.claude/skills/` identically. No build feature needed; document a symlink one-liner (`ln -s dist/public/<skill> ~/.claude/skills/`) + a web-upload zip one-liner (`cd dist/public && zip -r <skill>.zip <skill>/`) for the Chat/web edge case.
+- **Release skill fixes:** add `git push --follow-tags` (tag currently created locally, never pushed), replace the npm-publish TODO stub with the real flow, note the manual `motto.yaml` version bump.
+- **Install-mechanism open decision → RESOLVED:** npm (CLI) + self-hosted marketplace (skills). No `.zip` build feature.
+
+**Out of scope this milestone:** `--zip` build feature (marketplace covers Desktop; zip is a documented shell one-liner for the web-upload edge case only), CLI ergonomics (`--quiet`, `--format json`), optional `[path]` arg, template mechanism validation (TMPL-01), CI — carry forward.
 
 ## Requirements
 
@@ -46,7 +51,7 @@ The **strict schema + linter**. Skills that always conform to one rigid-yet-crea
 - MCP-dependency resolution — `dependencies` is linted as present but not resolved at build
 - Distribution layer (packaging Motto itself as a plugin, global install / per-project version pinning, the meta-skill content) — separate follow-up; depends on the open install-mechanism decision
 - Build-time content transform / inlining compiler — fights the maintainability principle
-- `--zip` output for Claude Desktop upload — trivial add, deferred until needed
+- `--zip` build feature — dropped: Claude Desktop's Code tab is Claude Code (marketplace/`~/.claude/skills/` covers it); zip only matters for the Chat/web upload UI, handled by a documented shell one-liner. No Node zip code, no new dep.
 
 ## Context
 
@@ -72,7 +77,8 @@ The **strict schema + linter**. Skills that always conform to one rigid-yet-crea
 | Spine = Title + Role, mandatory but template-waivable | The rigid-vs-creative dial; escape hatch is explicit | — Pending |
 | v1 ships zero concrete templates (mechanism only) | YAGNI — design templates against real skills | — Pending |
 | Config in `motto.yaml` | Project-specific, room for future prefs (output language…) | — Pending |
-| Install mechanism (global plugin vs repo-local `.motto/`) left open | Decide in the distribution follow-up plan | — Pending |
+| Install mechanism (global plugin vs repo-local `.motto/`) left open | Decide in the distribution follow-up plan | ✅ v0.0.3 — npm (CLI) + self-hosted marketplace (skills) |
+| No `--zip` build feature; document shell one-liner instead | Desktop Code tab is Claude Code → marketplace covers it; zip is web-upload-only edge case; keeps zero-dep + no Node zip code | ✅ v0.0.3 (research-backed) |
 
 ## Evolution
 
@@ -92,4 +98,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-01 after v0.0.2 milestone completion*
+*Last updated: 2026-07-01 — v0.0.3 (Distribution) milestone opened*
