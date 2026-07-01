@@ -1,88 +1,152 @@
-# Research Summary: Motto v0.0.2 Self-Hosting (Dogfood)
+# Research Summary: Motto v0.0.4 "Project Bootstrap"
 
-**Project:** Motto CLI — Node.js skill authoring & plugin packaging framework
-**Milestone:** v0.0.2 — Self-hosting dogfood milestone
-**Domain:** Meta-tooling — framework validating itself on its own project
-**Researched:** 2026-06-30
-**Confidence:** HIGH (all findings grounded in shipped v0.0.1 code + explicit milestone spec)
+**Project:** Motto CLI Tool
+**Domain:** Node.js scaffold/init command + CLI ergonomics (--help, [path] args)
+**Researched:** 2026-07-01
+**Confidence:** HIGH (verified against Node.js stdlib docs, official Claude Code docs, direct codebase inspection)
 
 ---
 
 ## Executive Summary
 
-Motto v0.0.2 is a self-hosting milestone: the CLI authors and packages real skills about itself (how to author a skill, how to set up a Motto project, and a private maintainer release checklist), bundling them with a shared schema reference. This exercises the full feature surface — public + private skill buckets, shared references, build packaging — and wires a permanent regression guard (dogfood test) into the pre-commit hook.
+Motto v0.0.4 adds three capabilities to the existing lint/build CLI: (1) a `motto init [name]` scaffold command that generates a complete, immediately-lintable project tree, (2) `--help` flag support, and (3) optional `[path]` positional arguments for `lint` and `build` to operate on directories other than cwd. The research confirms this can be built entirely with Node.js stdlib — **zero new dependencies** — extending Motto's existing pure-core/thin-I/O-shell architecture.
 
-The technical approach is proven and low-risk: **zero new dependencies**. The existing `lintProject` and `buildProject` need only be called from a test file. The core risk is **not** technical scope but **naming discipline**: Motto's skills document Claude Code, yet any skill `name` containing the substring "claude" or "anthropic" fails the reserved-word check. Use Motto-centric names (`authoring-a-skill`, `motto-project-setup`), not platform-centric ones.
+The critical success factor is the starter skill scaffolded by `motto init` — it must pass `motto lint` and `motto build` on the first run with zero user edits. This makes the starter skill template a high-risk artifact: any drift from the current schema causes every new project to fail lint immediately. The research identifies six critical pitfalls centered on this risk (schema drift, name validation inconsistency, .gitignore contradiction, marketplace.json three-way naming), all preventable with deliberate design choices and automated testing.
 
-One architectural decision: `buildProject` destructively wipes `<projectRoot>/dist/` before packing. Lint the real tree in-place (read-only, safe); build against a `mkdtemp` copy so the repo's `dist/` is never wiped on every `npm test`.
+**Recommended approach:** Build in three phases ordered by risk: (1) templates + pure-function tests to verify schema conformance early, (2) init orchestrator + scaffolding tests + integration round-trip, (3) CLI wiring + documentation. Use inline template strings (not separate files) to avoid npm allowlist bugs. Reuse the existing `NAME_KEBAB` regex for all name validation. Deploy a permanent "scaffold-dogfood" regression test to prevent schema drift. Sequence `setup-project` skill deletion and test-count updates as a single commit to avoid leaving main red.
 
 ---
 
 ## Key Findings
 
-### Recommended Stack — No changes
+### Recommended Stack
 
-v0.0.1 stack (Node ≥20, ESM, `node:test`, single dep `yaml`) is correct for this milestone. **No new dependencies.** All dogfood tooling is stdlib: `node:fs/promises`, `node:path`, `node:url` (`fileURLToPath` for `REPO_ROOT`), `node:os` (`tmpdir`), `node:assert/strict`, `node:test` (auto-discovers `*.test.js`).
+**Zero new runtime dependencies. All capabilities use Node.js stdlib already in use elsewhere.**
 
-### Expected Features — 3 skills + 1 shared reference (all LOW complexity)
+The v0.0.4 additions (init, --help, [path]) are entirely solvable with APIs stable since Node 20. See STACK.md for detailed analysis. Core technologies remain unchanged from v0.0.1–v0.0.3:
+
+- **Node.js ≥ 20 LTS** — stable `node:test`, `parseArgs`, native ESM `.js` without transpilation
+- **ESM (`"type": "module"`)** — zero build step, direct execution
+- **`yaml` 2.9.0** — YAML 1.2 core schema, error collection without throwing
+- **`node:test`** — stdlib runner, ESM-native, zero config
+- **`node:util parseArgs`** — stable subcommand + flag parsing, strict-mode, zero dependencies
+
+### Expected Features
+
+See FEATURES.md for comprehensive research. Verified via 5+ scaffold-tool precedents + official Claude Code docs.
 
 **Table stakes:**
-1. **`authoring-a-skill` (public)** — teaches the schema step-by-step with an annotated example; references `skill-schema`.
-2. **`motto-project-setup` (public)** — project initialization: directory layout, `motto.yaml` fields, dist output; references `skill-schema`.
-3. **`motto-release` (private)** — maintainer release checklist (tests, version bump, dogfood lint/build, tag, npm publish stub); exercises the private bucket.
-4. **`skill-schema` (shared reference)** — single source of truth for field rules; bundled into each skill's `references/`.
+- `motto init [name]` — non-empty-dir guard, --force override
+- Non-interactive, flag-driven scaffold
+- Complete, immediately-buildable tree (motto.yaml, marketplace.json, skills/example/, .gitignore)
+- Starter skill passes `motto lint` and `motto build` with zero edits
+- `--help` with real usage text, exit 0
+- `[path]` optional for `lint` and `build`, default cwd
+- README "ship your plugin" section
 
-**Anti-features (deferred):** pure schema-reference-as-skill, `troubleshooting-motto`, `distributing-a-motto-plugin` (distribution undecided), `motto-overview`.
+**Differentiators:**
+- Starter skill demonstrates schema (Title+Role spine, references/ layout) — documentation by example
+- Pre-filled `motto.yaml` defaults (name from arg/cwd basename, version 0.0.1, owner from git config)
+- Correct `marketplace.json` with relative-path source (`./dist/public/`), not npm
+- Three-way name consistency enforced by construction
 
-### Architecture — real tree at repo root, split dogfood test
+**Defer to v2+:** Interactive prompts, template flavors, `motto ship` command, auto-git-init.
 
-```
-skills/authoring-a-skill/SKILL.md
-skills/motto-project-setup/SKILL.md
-skills/motto-release/SKILL.md
-shared/references/skill-schema.md
-motto.yaml
-test/dogfood.test.js   (NEW)
-dist/                  (gitignored)
-```
+### Architecture Approach
 
-- **Lint** the real tree in-place: `lintProject(REPO_ROOT)` — read-only, safe.
-- **Build** against an isolated copy: copy `skills/` + `shared/` + `motto.yaml` to `mkdtemp(tmpdir())`, then `buildProject(tempDir)` — keeps the destructive `rm(dist)` off the repo root.
-- Compute `REPO_ROOT` via `resolve(dirname(fileURLToPath(import.meta.url)), '..')`, NOT `process.cwd()`.
-- `node --test` auto-discovers the test; `dist/` already gitignored; husky `npm test` makes it a free regression guard. No config/hook/.gitignore changes.
+See ARCHITECTURE.md for detailed design. Extends existing patterns without new paradigms.
+
+**Major components:**
+1. **`src/templates.js` (NEW, pure)** — Functions generating YAML, JSON, Markdown strings; unit-testable, zero I/O
+2. **`src/init.js` (NEW, I/O shell)** — Matches lint.js/build.js shape: `initProject(targetPath, name)` → `{ok, errors[], dir}`, never throws
+3. **Scaffold-dogfood test** — Permanent regression check: init → lint → build round trip
+
+**Starter skill strategy:** Fixed literal name (e.g. `skills/example/`) decoupled from user's project name, avoiding double-validation bugs.
 
 ### Critical Pitfalls
 
-1. **(HIGHEST) Reserved-substring ban on `name` only.** `validateSkill` rejects any `name` containing `claude`/`anthropic`. Applies to `name` ONLY — description and body may say "Claude Code" freely. Name skills after what Motto does (`authoring-a-skill`), check substrings before creating folders.
-2. **Dogfood build wipes `./dist/` every `npm test`** if run on REPO_ROOT — use the mkdtemp copy for the build test.
-3. **`process.cwd()` is the wrong anchor** — use `import.meta.url` resolution.
-4. Fixture skills counted as real → assert exact `count` against the temp copy.
-5. Body-spine forces a `**Role:**` line on reference-flavored skills → write honest role lines, accept it.
-6. `motto.yaml` config errors cascade → author config FIRST.
-7. `buildProject` re-lints internally → double-lint is correct; design assertions accordingly.
-8. `NAME_KEBAB` duplicated (schema.js vs config.js) → add an equality self-test this milestone.
-9. Private skill without `plugins.private` → set `plugins.private` in `motto.yaml` early.
-10. LINT-02 is not a global content ban → only `name` is restricted.
+See PITFALLS.md for complete analysis. Top six ranked by impact:
+
+1. **`.gitignore` contradicts README** — Blanket `dist/` rule hides `dist/public/` that users must commit. Solution: `dist/*` + `!dist/public/` negation pattern, tested via `git check-ignore`.
+
+2. **Templates excluded from npm package** — If templates live in separate folder, `package.json` `files` allowlist doesn't include them. Works locally, breaks for `npm i -g` users. Solution: Embed as JS strings in `src/init.js` (preferred), or add folder to `files` + test via `npm pack`.
+
+3. **parseArgs strict-mode + --help retrofit** — `--help` check must run BEFORE subcommand dispatch, or `motto lint --help` runs lint instead of printing help. Declare `--help` in options schema, check immediately after parseArgs.
+
+4. **Divergent name validation** — `validateSkill` has length + reserved-word checks; `loadConfig` has only length cap. Init must reuse skill-grade validation to avoid "init accepts what lint rejects" failure mode. Test: edge-case names must be accepted/rejected identically by init and lint.
+
+5. **Starter skill drifts from schema** — No automated test re-runs `motto lint` on fresh init output. Schema changes silently break the template for new users. Solution: Mandatory scaffold-dogfood test (init → lint → build → assert ok:true).
+
+6. **marketplace.json three-way name drift** — Plugin name must match across motto.yaml, marketplace.json, and built plugin.json. Also: relative `source` paths only resolve when marketplace is git-added. Solution: Interpolate name as single variable, use relative source, document git-add requirement.
 
 ---
 
 ## Implications for Roadmap
 
-**Phase 4 — content-first, then test wiring** (the roadmapper may split into 4a/4b or keep as one phase with ordered tasks):
+**Suggested three-phase structure, ordered by risk and dependency:**
 
-**4a — Author content + fix gaps:**
-1. Create `motto.yaml` (name, version, description, plugins.public, plugins.private).
-2. Author 3 SKILL.md files (public, public, private) — check names for `claude`/`anthropic` first.
-3. Author `shared/references/skill-schema.md`.
-4. Run `motto lint` → expect clean; fix any surfaced schema gaps in `src/`.
-5. Run `npm test` → 53 existing tests still green.
-6. Run `motto build` manually → inspect `dist/`; fix any build gaps.
-7. Add `NAME_KEBAB` equality self-test.
+### Phase 1: Template Functions + Verification
 
-**4b — Wire dogfood test:**
-1. `test/dogfood.test.js`: lint `REPO_ROOT` (read-only) + build a mkdtemp copy; assert clean lint, expected skill/bucket counts, `dist/` artifacts present (incl. bundled shared ref + per-bucket plugin.json).
-2. `npm test` green (54+).
-3. Commit — husky now guards forever.
+**Rationale:** Starter skill is highest-risk artifact — validate it early, before orchestration.
+
+**Delivers:**
+- `src/templates.js` with pure functions
+- `test/init.test.js` unit tests: feed template output through existing validators, assert no errors
+- Confidence in starter skill conformance
+
+**Avoids pitfalls:** 5 (schema drift), 4 (name validation)
+
+**Research needed:** None. Pure functions, existing validators, no external dependencies.
+
+### Phase 2: Init Orchestrator + Scaffolding Tests
+
+**Rationale:** Once templates proven conformant, build orchestrator. Test full init flow, guardrails, marketplace consistency.
+
+**Delivers:**
+- `src/init.js` (I/O shell, matches lint.js/build.js)
+- Non-empty-dir collision guard + `--force` override
+- Name validation (reuse NAME_KEBAB, apply skill-grade rules)
+- Integration tests: scaffold-dogfood round trip (init → lint → build)
+- Verification: marketplace.json three-way name consistency
+- Verification: `.gitignore` pattern (dist/private/ ignored, dist/public/ NOT ignored)
+
+**Avoids pitfalls:** 1 (.gitignore), 4 (name validation), 6 (marketplace consistency)
+
+**Research needed:** None. Patterns proven in lint.js/build.js, marketplace schema verified.
+
+### Phase 3: CLI Wiring + Documentation
+
+**Rationale:** Once init works standalone, integrate into CLI. Delete old instructional skill. Document ship flow.
+
+**Delivers:**
+- `bin/motto.js` mods: init dispatch, `--help`/`-h` option declaration + early check, `[path]` positional resolution
+- `test/dogfood.test.js` updates: count assertions 3→2, remove setup-project checks
+- Delete `skills/setup-project/` (same commit as test count fix)
+- README "ship your plugin" section
+- Optional: `npm pack` integration test
+
+**Avoids pitfalls:** 2 (npm files allowlist), 3 (parseArgs/--help)
+
+**Research needed:** None. bin/motto.js patterns established, --help integration verified.
+
+**Critical:** setup-project deletion and test-count fix MUST land together — no gap or main goes red.
+
+### Phase Ordering Rationale
+
+1. Templates first: Highest-risk, slowest feedback. Validate in isolation.
+2. Orchestrator second: Depends on templates; mirrors existing patterns, low-risk.
+3. CLI wiring last: Depends on init; orthogonal changes grouped for efficiency.
+4. Docs: Can parallelize but finalize after CLI for accuracy.
+
+### Research Flags
+
+**No additional research needed for any phase.** All required knowledge exists in:
+- Node.js v20+ stdlib docs (verified for parseArgs, execFileSync, fs/promises)
+- Direct codebase inspection (patterns proven in lint/build)
+- Official Claude Code docs (marketplace.json schema verified)
+
+**Optional low-priority smoke test (can defer if shipping urgent):**
+- Exact `marketplace.json` `skills` override semantics with relative-path source — manual `/plugin marketplace add ./` test to confirm skills discovery works as expected.
 
 ---
 
@@ -90,36 +154,43 @@ dist/                  (gitignored)
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | No new deps; all stdlib or existing `yaml` |
-| Features | HIGH | 3 skills + 1 shared ref, concrete, low complexity |
-| Architecture | HIGH | Patterns from existing v0.0.1 tests |
-| Pitfalls | HIGH | All grounded in actual v0.0.1 code |
+| **Stack** | HIGH | Verified against Node.js v20+ stdlib docs. Direct codebase inspection. Zero new dependencies; all APIs stable since Node 20 LTS. |
+| **Features** | HIGH | Table-stakes researched via 5+ ecosystem precedents (cargo, poetry, npm, vite, claude). Differentiators verified against working repo example. Official Claude Code docs consulted. |
+| **Architecture** | HIGH | Direct codebase inspection confirms patterns already established and proven. No new architectural concepts, extends existing pure-core/I/O-shell split. |
+| **Pitfalls** | HIGH | All six pitfalls derived from direct code inspection with concrete failure modes and recovery strategies. Each paired with specific test to catch it. |
 
-**Overall: HIGH.** Only unknown: whether real authoring surfaces additional schema gaps — gap discovery is the point of Phase 4a.
+**Overall confidence: HIGH**
 
----
+The milestone is well-scoped, dependencies satisfied by stdlib, architecture extends proven patterns. Primary execution risk is implementation detail (marketplace.json field interpolation, test count updates), not research uncertainty.
 
-## Gaps to Address
+### Gaps to Address
 
-1. **npm publish mechanism** — `motto-release` includes a TODO publish step; acceptable for a dogfood milestone, expand during a packaging follow-up.
-2. **Distribution mechanism** — how end-users install from `dist/` is deferred (PROJECT.md Out of Scope).
-3. **Real-world schema edge cases** — first exercise against non-synthetic content; design Phase 4a iteratively.
+**Gap 1: npm package distribution**
+- If templates deferred to separate files, add `npm pack` test as gating criterion. Recommended: inline JS strings per STACK.md.
+
+**Gap 2: marketplace.json `skills` override semantics**
+- Low priority. Manually test during Phase 2: `motto init → motto build → /plugin marketplace add ./dist/public/` to confirm skills discovery. If behavior differs from expectation, document exact field configuration.
+
+**Gap 3: git config fallback**
+- During Phase 2, handle both error cases (git not found, config empty). Fall back to placeholder string with visible TODO comment in generated marketplace.json.
 
 ---
 
 ## Sources
 
-### Primary (HIGH)
-- `src/` (all modules) — RESERVED check, build wipe, config validation, frontmatter/schema. Verified 2026-06-30.
-- `test/` (all modules) — mkdtemp + fs-assertion patterns. Verified 2026-06-30.
-- `.planning/PROJECT.md` — v0.0.2 scope, out-of-scope. Verified 2026-06-30.
-- Official Node.js docs (util.parseArgs, test runner, url.fileURLToPath). Verified 2026-06-30.
-- Official Claude Code docs (agent-skills overview, plugins-reference). Verified 2026-06-30.
+### Primary (HIGH confidence)
 
-### Secondary (MEDIUM)
-- `yaml` v2.9 docs (error accumulation, YAML 1.2). Verified 2026-06-30.
-- `.planning/milestones/v0.0.1-REQUIREMENTS.md` — locked schema. Verified 2026-06-30.
+- **Node.js Documentation** — nodejs.org/api/ (util parseArgs, child_process execFileSync, test runner). Verified 2026-07-01. All v20+ APIs stable.
+- **Direct Codebase Inspection** — bin/motto.js, src/lint.js, src/build.js, src/schema.js, src/config.js, test/dogfood.test.js, package.json, motto.yaml, .claude-plugin/marketplace.json. Read 2026-07-01. First-party ground truth.
+- **Official Claude Code Documentation** — code.claude.com/docs/en/plugins-reference, code.claude.com/docs/en/plugin-marketplaces. Fetched 2026-07-01. MEDIUM confidence (official but external; verify at implementation).
+- **`.planning/PROJECT.md`** — v0.0.4 milestone scope, Active requirements, locked decisions. First-party source of truth.
+
+### Secondary (MEDIUM confidence)
+
+- **Ecosystem Tool Research** — npm init, cargo init/new, poetry init/new, create-vite, claude plugin init. Researched via official docs + examples. Cross-checked across 5+ tools.
 
 ---
 
-*Research synthesis completed 2026-06-30. Ready for roadmap creation.*
+*Research completed: 2026-07-01*
+*Ready for roadmap: yes*
+*Ready for phase planning: yes*

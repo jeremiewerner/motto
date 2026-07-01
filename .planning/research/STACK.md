@@ -1,8 +1,141 @@
 # Stack Research
 
 **Domain:** Node.js CLI tool — YAML/Markdown linter and plugin packager
-**Researched:** 2026-06-30
-**Confidence:** MEDIUM (core stack validated against official docs; Claude Code plugin conventions verified against live Anthropic docs)
+**Researched:** 2026-06-30 (base) · 2026-07-01 (v0.0.4 addendum)
+**Confidence:** HIGH (v0.0.4 additions verified directly against official Node.js docs and the existing codebase; base stack MEDIUM per original research)
+
+---
+
+## v0.0.4 Project Bootstrap Addendum
+
+**Verdict: Zero new dependencies. `motto init`, `--help`, and `[path]` are built entirely on stdlib already in use elsewhere in this codebase.**
+
+This section answers the stack questions for the v0.0.4 milestone: `motto init [name]` scaffolding, `--help`, and the optional `[path]` arg for `lint`/`build`. The base stack (below) is unchanged.
+
+### New Capabilities → Stdlib Mapping
+
+| Needed for | How to get it | New dep? |
+|------------|----------------|----------|
+| Create scaffold directory tree (`skills/example/`, `shared/references/`) | `fs.mkdir(path, { recursive: true })` | No — already imported in `src/build.js` |
+| Write generated file bodies (`motto.yaml`, `marketplace.json`, `SKILL.md`, `.gitignore`) | `fs.writeFile` | No — already imported in `src/build.js` |
+| Guard against overwriting a non-empty target directory | `fs.stat` + `fs.readdir`, catch `ENOENT` | No — same idiom already used in `build.js`/`lint.js` |
+| Add `init` subcommand, `--help`/`-h`, `[path]` to `bin/motto.js` | `node:util parseArgs` with an explicit `help` option definition | No — `parseArgs` already drives `bin/motto.js`; `[path]` needs zero config change since `allowPositionals: true` is already set |
+| Read `git config user.name` / `user.email` for the marketplace `owner` field | `child_process.execFileSync('git', ['config', 'user.name'], { encoding: 'utf8' })` | No — `node:child_process` is stdlib |
+| Sanitize a derived project/plugin name into kebab-case | Reuse `NAME_KEBAB` exported from `src/schema.js` | No — already exists, do not duplicate |
+
+**Do not add:** `commander`/`yargs` (help text + subcommands), `inquirer`/`prompts` (interactive wizard), `degit`/`giget` (remote template fetch), `simple-git`/`execa` (git wrapper), any templating engine (`ejs`/`handlebars`/`mustache`). All are solvable with 1–5 lines of stdlib and would violate the project's single-dependency (`yaml`) constraint for no functional gain at this scope.
+
+### `--help` Integration with Existing `strict:true` parseArgs
+
+`bin/motto.js` currently declares `options: {}` with `strict: true, allowPositionals: true`. Under `strict: true`, an *undeclared* `--help` flag throws (caught today, printing generic usage). To make `--help` a first-class, exit-0 flag rather than an error path, declare it as a real option:
+
+```js
+const parsed = parseArgs({
+  args: process.argv.slice(2),
+  options: {
+    help: { type: 'boolean', short: 'h' },
+  },
+  allowPositionals: true,
+  strict: true,
+});
+
+if (parsed.values.help) {
+  process.stdout.write(USAGE_TEXT);
+  process.exitCode = 0;
+  process.exit();
+}
+```
+
+This is additive — the existing `try/catch` around `parseArgs` (for genuinely unknown flags) is untouched; only recognized flags are declared. `strict: true` still throws for anything *not* declared (e.g. `--bogus`), preserving current behavior.
+
+### `[path]` Positional — Zero parseArgs Config Change
+
+`allowPositionals: true` is already set, so `parsed.positionals[1]` (after the subcommand at `[0]`) is free today — no `options` change needed. The work is entirely in the dispatch body: swap the hardcoded `process.cwd()` calls in the `lint`/`build` branches for a resolved path:
+
+```js
+const targetDir = parsed.positionals[1]
+  ? resolve(process.cwd(), parsed.positionals[1])
+  : process.cwd();
+```
+
+`lintProject(targetDir)` / `buildProject(targetDir)` already accept a directory argument (they're called with `process.cwd()` today) — no signature change to `src/lint.js` or `src/build.js` is needed. A missing/invalid `[path]` should be left to surface as a normal lint/build error (e.g. "no skills found"), the same way a missing `motto.yaml` is handled today — no separate up-front existence check needed in `bin/motto.js`.
+
+### Reading Git Config Without a Dependency
+
+```js
+import { execFileSync } from 'node:child_process';
+
+function readGitConfig(key) {
+  try {
+    return execFileSync('git', ['config', key], { encoding: 'utf8' }).trim();
+  } catch {
+    return ''; // git not installed, or key unset — never throw, fall back
+  }
+}
+
+const owner = {
+  name: readGitConfig('user.name') || 'Your Name',
+  email: readGitConfig('user.email') || 'you@example.com',
+};
+```
+
+**Why `execFileSync`, not `execSync`:** `execFileSync` runs the named executable directly as a new process — it does **not** spawn a shell by default, so there is no shell-injection surface even though the arguments here are hardcoded. `execSync` always spawns `/bin/sh -c "<command>"`, which is the wrong default to normalize in this codebase. Verified against official Node.js docs (`nodejs.org/api/child_process.html`).
+
+**Error handling is a plain try/catch, not a D-01 never-throw validator concern.** `readGitConfig` covers two real-world cases — `git` not installed (`err.code === 'ENOENT'`) and `git` installed but `user.name`/`user.email` unset (non-zero exit, empty stdout) — by falling back to a placeholder the user is expected to hand-edit. This is best-effort scaffold enrichment, not schema validation; it doesn't need to join the aggregated-`errors[]` pattern used by `loadConfig`/`validateSkill`.
+
+### Scaffold File Generation — Plain Template Literals, Not a Templating Engine
+
+The scaffold is ~5 small, fixed-shape files (`motto.yaml`, `.claude-plugin/marketplace.json`, one starter `skills/example/SKILL.md`, `shared/references/` placeholder or none, `.gitignore`), each needing 2–3 interpolated values (project name, owner name/email, plugin name). Plain template-literal string constants in `src/init.js` cover this with zero new surface:
+
+```js
+function mottoYaml({ name, description, pluginName }) {
+  return `name: ${name}\nversion: "0.1.0"\ndescription: ${description}\nplugins:\n  public: ${pluginName}\n`;
+}
+```
+
+This mirrors how `src/build.js` already generates `plugin.json` content in-process (JSON.stringify of a plain object) — `init` is structurally the same category of "generate known-shape file content," just for YAML/Markdown instead of JSON. A templating engine (`ejs`, `handlebars`) would be a dependency for string concatenation the language already does natively, and directly contradicts "mechanism over features, YAGNI ruthlessly."
+
+**Generated `motto.yaml` must pass the existing validator, not a new one.** `src/config.js`'s `loadConfig` already validates `name`, `version`, `description`, and `plugins.public`/`plugins.private` against `NAME_KEBAB` (from `src/schema.js`). Derive the scaffolded plugin name through `NAME_KEBAB`-compatible sanitization (lowercase, strip invalid chars, collapse to kebab-case) so a freshly-scaffolded project lints clean immediately — this is also the acceptance bar the milestone specifies ("starter example skill lint+build pass immediately").
+
+### Testing Pattern
+
+Follow the existing `node --test` + `fs/promises` + `os.tmpdir()`/`fs.mkdtemp` pattern already used for build/lint unit tests (see base stack below): scaffold into a temp directory, then assert the generated tree exists and that `lintProject`/`buildProject` run clean against it — this is the strongest possible test for "the starter skill lints and builds immediately," since it exercises `init`'s own output through the real validators rather than asserting file contents in isolation.
+
+### Alternatives Considered (v0.0.4-specific)
+
+| Recommended | Alternative | Why Not |
+|-------------|-------------|---------|
+| `fs.mkdir`/`fs.writeFile`/`fs.cp` for scaffolding | `degit` / `giget` / `tiged` (remote template fetch) | Motto's starter skill content is fully known at authoring time and ships inside the package itself (already in `package.json` `files`). Nothing to fetch remotely — a network-fetching scaffolder is pure overhead. |
+| `parseArgs` with a declared `help` option | `commander` / `yargs` (auto `--help` generation, subcommand trees) | At 3 subcommands (`lint`, `build`, `init`) plus one flag, a hand-written `USAGE_TEXT` constant plus `parseArgs`'s native option declarations covers it with zero dependencies — same reasoning the base stack already used to reject `commander`. |
+| `execFileSync('git', [...])` | `simple-git` / `nodegit` / `execa` | A single synchronous read of two config values doesn't warrant a git wrapper library; `execFileSync` with an argv array is a 3-line, injection-safe read. |
+| Plain template-literal file bodies | `templates/*.ejs`/`.hbs` + rendering dependency | ~5 static files with 2–3 interpolated values each — a templating engine is a dependency for string concatenation the language already does. |
+| Non-interactive `[name]` positional (default: cwd basename) | `inquirer`/`prompts` interactive wizard | Not requested by the milestone; `motto init [name]` with a sane default is sufficient. Adding a prompt library for a feature not asked for is scope creep. |
+
+### What NOT to Use (v0.0.4-specific)
+
+| Avoid | Why | Use Instead |
+|-------|-----|--------------|
+| `child_process.exec` / `execSync` for git config reads | Both spawn a shell (`/bin/sh -c`) by default — normalizes an unsafe pattern even though today's args are hardcoded literals | `execFileSync('git', ['config', 'user.name'], { encoding: 'utf8' })` |
+| `commander` / `yargs` / `cac` / `sade` | Solves what `parseArgs` already does (declared `help` option + `strict:true`); a new dependency + transitive deps for auto-help text this project doesn't need | `node:util parseArgs` with an explicit `help: { type: 'boolean', short: 'h' }` option and a hand-written usage string |
+| `inquirer` / `prompts` / `enquirer` | No interactive-wizard requirement in scope; adds a dependency for a feature not requested | `[name]` positional with a cwd-basename default |
+| `degit` / `giget` / `tiged` | Starter skill content is local and known at build time, nothing to fetch remotely | Inline string templates in `src/init.js` |
+| `fs.existsSync` mixed into an otherwise `fs/promises`-only module | Style inconsistency — every other `src/*.js` file (`build.js`, `lint.js`, `config.js`) is 100% async `fs/promises` | `await stat(path)` in try/catch, checking `err.code === 'ENOENT'` |
+| A second kebab-case regex/validator specific to `init` | `NAME_KEBAB` already exists in `src/schema.js` and is the sole source of truth (per REVIEW-11/D-16 in `src/config.js`) | Import and reuse `NAME_KEBAB` from `src/schema.js` |
+
+### Version Compatibility (v0.0.4 additions)
+
+| API | Node.js | Notes |
+|-----|---------|-------|
+| `util.parseArgs` `help`/short-flag option declarations | ≥ 20.0.0 (stable) | Same floor as rest of project; no `engines` bump needed. Declaring `help` in `options` is required for `strict:true` to accept `--help`/`-h` without throwing (additive to the existing `options: {}`). |
+| `child_process.execFileSync` (`encoding` option) | Long-stable (pre-v10); no floor concern at Node ≥ 20 | Default `encoding` is `'buffer'` — must pass `{ encoding: 'utf8' }` to get a string. Does not spawn a shell by default (unlike `execSync`), so argv-array calls are injection-safe. |
+| `fs.mkdir({ recursive: true })` | ≥ 10.12 (stable) | No floor concern; already used in `src/build.js`. |
+
+### Sources (v0.0.4 addendum)
+
+- `nodejs.org/api/util.html#utilparseargsconfig` — confirms `parseArgs` stable since v20.0.0; `strict` default `true` throws on unknown args; `allowPositionals` defaults `false` under strict mode (must stay explicit, matching current `bin/motto.js`); option-declaration syntax for `help`/short flags. Verified 2026-07-01 (WebFetch, official Node.js docs). Confidence: HIGH.
+- `nodejs.org/api/child_process.html#child_processexecfilesyncfile-args-options` — confirms `execFileSync` does not spawn a shell by default (argv-array calls are injection-safe, unlike `execSync`), `encoding` option controls string vs Buffer return, error shapes for spawn failure (`err.code`) vs non-zero exit (`err.stdout`/`err.stderr`). Verified 2026-07-01 (WebFetch, official Node.js docs). Confidence: HIGH.
+- Direct codebase inspection — `bin/motto.js`, `src/build.js`, `src/config.js`, `src/schema.js`, `.claude-plugin/marketplace.json`, `motto.yaml`, `package.json` — confirms current `parseArgs` config, `fs/promises` call patterns, and existing `NAME_KEBAB`/`loadConfig` validators to reuse rather than duplicate. Verified 2026-07-01. Confidence: HIGH (primary source).
+- Node.js release schedule (web search synthesis, endoflife.date / nodejs.org release WG) — Node 24 is Active LTS through April 2028, Node 22 Maintenance LTS through April 2027; confirms `"engines": { "node": ">=20" }` remains a safe, current floor with no need to raise it for this milestone. Verified 2026-07-01. Confidence: LOW (not fetched directly from nodejs.org — treat as directional context only; the `>=20` floor decision doesn't hinge on this claim).
 
 ---
 
@@ -122,7 +255,7 @@ These are content authoring tasks, not stack changes. No new tooling needed.
 
 ## Verdict on Chosen Stack
 
-The project's chosen stack (Node ≥ 20, plain ESM, `node --test`, single dep `yaml`) is correct and defensible. No changes recommended for v0.0.2. Three gaps discovered in v0.0.1 research are documented below.
+The project's chosen stack (Node ≥ 20, plain ESM, `node --test`, single dep `yaml`) is correct and defensible. No changes recommended for v0.0.2 or v0.0.4. Three gaps discovered in v0.0.1 research are documented below.
 
 ---
 
@@ -132,22 +265,23 @@ The project's chosen stack (Node ≥ 20, plain ESM, `node --test`, single dep `y
 
 | Technology | Version | Purpose | Why Recommended |
 |------------|---------|---------|-----------------|
-| Node.js | ≥ 20 LTS | Runtime | First LTS with stable `node:test`, stable `parseArgs`, native ESM `.js` without loader flags. Node 22 is current LTS (April 2025) — `"engines": { "node": ">=20" }` covers both. |
+| Node.js | ≥ 20 LTS | Runtime | First LTS with stable `node:test`, stable `parseArgs`, native ESM `.js` without loader flags. Node 24 is current Active LTS (through April 2028), Node 22 Maintenance LTS (through April 2027) — `"engines": { "node": ">=20" }` covers both. |
 | ESM (`"type":"module"`) | — | Module format | Zero transpilation, native `import/export`, direct execution via `node`. No build step. |
 | `yaml` | 2.9.0 | YAML 1.2 parsing | Only runtime dep needed. YAML 1.2 core schema by default (no `yes`/`no` boolean surprises). `parseDocument()` accumulates errors in `doc.errors[]` without throwing — ideal for a linter that must report all errors, not just the first. |
 | `node:test` | stdlib (Node ≥ 20) | Test runner | Stable since Node 20. `describe`/`it`/`mock`/`beforeEach` all present. ESM-native. `node --test` auto-discovers `*.test.js`. No install. |
-| `node:util` `parseArgs` | stdlib (Node ≥ 20) | CLI arg parsing | Stable since Node 20 (was experimental in 18.3). Replaces `commander` for two-subcommand CLIs. Returns `{ values, positionals }`. Zero dependencies. |
+| `node:util` `parseArgs` | stdlib (Node ≥ 20) | CLI arg parsing | Stable since Node 20 (was experimental in 18.3). Replaces `commander` for a handful of subcommands. Returns `{ values, positionals }`. Zero dependencies. |
 
 ### Supporting Stdlib (no install needed)
 
 | Module | Purpose | Notes |
 |--------|---------|-------|
-| `node:fs/promises` | Async file I/O | `readFile`, `readdir`, `mkdir`, `cp`, `rm` — covers all build and lint I/O |
+| `node:fs/promises` | Async file I/O | `readFile`, `readdir`, `mkdir`, `cp`, `rm`, `writeFile`, `stat` — covers all lint, build, and (new in v0.0.4) init I/O |
 | `node:path` | Path manipulation | `join`, `resolve`, `relative`, `basename`, `extname` |
 | `node:process` | Exit codes, argv | `process.exit(1)` on lint failure; `process.argv` fed to `parseArgs` |
 | `node:assert` | Assertions in tests | `assert.strictEqual`, `assert.deepStrictEqual`, `assert.throws` — enough for all unit assertions |
 | `node:url` | `fileURLToPath` | Needed for `__dirname` equivalent in ESM: `path.dirname(fileURLToPath(import.meta.url))` |
 | `node:os` | `tmpdir()` | Used in unit tests for `mkdtemp`-based temp fixture directories |
+| `node:child_process` | `execFileSync` | New in v0.0.4 — reads `git config user.name`/`user.email` for `motto init`'s marketplace `owner` field, without spawning a shell |
 
 ### Development Tools
 
@@ -169,7 +303,8 @@ npm install yaml
 # One dev dependency (pre-commit hook runner)
 npm install -D husky
 
-# No other dependencies needed
+# No other dependencies needed — v0.0.4's init/--help/[path] additions are
+# built entirely on Node stdlib (fs/promises, util.parseArgs, child_process).
 ```
 
 ---
@@ -282,10 +417,10 @@ const { values, positionals } = parseArgs({
 });
 
 const [subcommand] = positionals;
-// dispatch to lint() or build()
+// dispatch to lint() or build() or init()
 ```
 
-`parseArgs` limitation: no built-in sub-command routing or help text generation. Write both manually — it is ~20 lines for two subcommands. Do not reach for `commander` to avoid this.
+`parseArgs` limitation: no built-in sub-command routing or help text generation. Write both manually — it is ~20–30 lines for three subcommands. Do not reach for `commander` to avoid this (see v0.0.4 addendum above for the concrete `--help` integration pattern with the existing `strict:true` config).
 
 ---
 
@@ -296,11 +431,12 @@ const [subcommand] = positionals;
 | `yaml` v2.9 | `js-yaml` v4 | `js-yaml` defaults to YAML 1.1 schema (treats `yes`/`no`/`on`/`off` as booleans — wrong for skill files). `yaml` defaults to YAML 1.2 core schema. `yaml` has superior error objects with position info. `js-yaml` weekly downloads are higher but the library is less actively maintained. |
 | `yaml` v2.9 | `gray-matter` | `gray-matter` wraps `js-yaml` (YAML 1.1 issues apply) and adds a dependency. The frontmatter extraction is 10 lines of regex + `yaml.parseDocument()`. Zero reason to add `gray-matter` when you already have `yaml`. |
 | `node:test` | Vitest / Jest / Mocha | All require installation, configuration, and (for Vitest/Jest) understand ESM only with additional config. `node:test` is zero-config for a pure-ESM project. The API surface (`describe`/`it`/`mock`) is sufficient for unit-testing a file I/O + schema validation CLI. |
-| `node:util parseArgs` | `commander` | `commander` is 50 kB and designed for complex CLI trees. Motto has two subcommands (`lint`, `build`) and a handful of flags. `parseArgs` handles this without a dependency. The only real loss is auto-generated help text — write it as a constant string. |
+| `node:util parseArgs` | `commander` | `commander` is 50 kB and designed for complex CLI trees. Motto has a handful of subcommands (`lint`, `build`, `init`) and a handful of flags. `parseArgs` handles this without a dependency. The only real loss is auto-generated help text — write it as a constant string. |
 | `node:fs/promises` | `glob` / `fast-glob` | Motto's directory structure is shallow and well-defined (`skills/<name>/`, `shared/references/`). A `readdir` + filter loop is 5 lines. `glob` adds a dependency for zero benefit on a known-shape tree. |
 | Plain JS (ESM) | TypeScript | TypeScript requires a build step, contradicting the project's "no build step" constraint. For a ~500-line CLI, JSDoc types on exported functions are sufficient for IDE support. |
 | Manual validation | `zod` / `ajv` | A YAML schema validator with custom error messages for two required fields is 20 lines. `zod`/`ajv` add a dependency and return generic error messages that would need custom formatting anyway. |
 | In-place dogfood test | Copy tree to `tmpdir` | Copying adds complexity, adds nothing (buildProject is already idempotent), and defeats the dogfood premise. Run against the real tree. |
+| `node:child_process execFileSync` (v0.0.4) | `simple-git` / `execa` | A single synchronous read of two git config values doesn't warrant a git wrapper library. |
 
 ---
 
@@ -311,13 +447,16 @@ const [subcommand] = positionals;
 | `chalk` / `kleur` / `picocolors` | Terminal color adds a dependency for cosmetic output. Lint errors must be machine-parseable anyway; color is a nice-to-have. | Plain string formatting; add color only if a user requests it post-MVP |
 | `js-yaml` | YAML 1.1 schema by default — treats `yes`/`no`/`on`/`off`/`true`/`false` inconsistently; no position-aware error objects | `yaml` v2 |
 | `gray-matter` | Wraps `js-yaml` (inheriting its schema issues); adds a dep for 10 lines of work; last major release 2019 | Inline frontmatter extraction with `yaml` |
-| `commander` / `yargs` | Heavyweight for two subcommands | `node:util parseArgs` |
+| `commander` / `yargs` | Heavyweight for a handful of subcommands | `node:util parseArgs` |
 | `zod` / `ajv` / `joi` | Schema validation frameworks; add dependency + generic error messages that still need custom formatting | Manual validation functions with specific, actionable error messages |
 | TypeScript | Requires `tsc` build step; contradicts no-build-step constraint | Plain ESM JavaScript with JSDoc |
 | `jest` / `vitest` | Require install + ESM config; not needed when `node:test` is stable and sufficient | `node:test` + `node:assert` |
 | `glob` / `fast-glob` | Overkill for a fixed-shape source tree | `node:fs/promises readdir` with `recursive: true` option (Node 18.17+) |
 | `mkdirp` / `rimraf` | Both superseded by Node stdlib | `fs.mkdir(path, {recursive:true})` and `fs.rm(path, {recursive:true,force:true})` |
 | Snapshot libraries | Over-engineering; live assertions on the real dist/ are the ground truth | `node:assert/strict` + `fs.stat` / `fs.readFile` |
+| `child_process.exec` / `execSync` (v0.0.4) | Both spawn a shell by default — shell-injection surface, even for hardcoded args | `child_process.execFileSync(file, args, opts)` — argv array, no shell |
+| `inquirer` / `prompts` / `enquirer` (v0.0.4) | No interactive-wizard requirement in scope | `[name]` positional with a cwd-basename default |
+| `degit` / `giget` / `tiged` (v0.0.4) | Starter skill content is local and known at build time — nothing to fetch remotely | Inline string templates in `src/init.js` |
 
 ---
 
@@ -340,6 +479,7 @@ const [subcommand] = positionals;
 | `node:util parseArgs` | ≥ 20.0 (stable) | Available in 18.3 but experimental; use ≥ 20 |
 | `fs.readdir({recursive:true})` | ≥ 18.17 | Required for recursive directory scan without `glob` |
 | `fs.cp()` | ≥ 16.7 | Available and stable in Node 20 |
+| `child_process.execFileSync` (`encoding` option) | Long-stable (pre-v10) | No floor concern at Node ≥ 20; does not spawn a shell by default (v0.0.4) |
 
 ---
 
@@ -349,11 +489,12 @@ const [subcommand] = positionals;
 - `code.claude.com/docs/en/plugins-reference` — plugin.json manifest complete schema, plugin directory layout, version management behavior. Verified 2026-06-30. Confidence: MEDIUM (official Claude Code docs).
 - `eemeli.org/yaml/` — yaml v2 API: parse, parseDocument, error handling, schema options. Verified 2026-06-30. Confidence: MEDIUM.
 - `registry.npmjs.org/yaml/latest` — confirmed yaml@2.9.0 as current latest. Verified 2026-06-30. Confidence: HIGH.
-- `nodejs.org/api/util.html#utilparseargsconfig` — parseArgs stable since Node v20.0.0, full option schema. Verified 2026-06-30. Confidence: HIGH (official Node.js docs).
+- `nodejs.org/api/util.html#utilparseargsconfig` — parseArgs stable since Node v20.0.0, full option schema. Verified 2026-06-30 (re-verified 2026-07-01 for v0.0.4). Confidence: HIGH (official Node.js docs).
 - `nodejs.org/learn/test-runner/using-test-runner` — node:test stable in Node 20, ESM support, describe/it/mock/coverage. Confidence: HIGH (official Node.js docs).
-- Direct codebase inspection — `src/build.js`, `src/lint.js`, `test/build.test.js`, `package.json`, `.gitignore`. Verified 2026-06-30. Confidence: HIGH.
+- `nodejs.org/api/child_process.html#child_processexecfilesyncfile-args-options` — execFileSync does not spawn a shell by default, encoding option, error shapes. Verified 2026-07-01. Confidence: HIGH (official Node.js docs).
+- Direct codebase inspection — `bin/motto.js`, `src/build.js`, `src/lint.js`, `src/config.js`, `src/schema.js`, `test/build.test.js`, `package.json`, `.gitignore`, `motto.yaml`, `.claude-plugin/marketplace.json`. Verified 2026-06-30 (re-verified 2026-07-01). Confidence: HIGH.
 
 ---
 
-*Stack research for: Motto CLI (Node ESM, YAML linter, Claude Code plugin packager)*
-*Researched: 2026-06-30 (v0.0.2 dogfood addendum)*
+*Stack research for: Motto CLI (Node ESM, YAML linter, Claude Code plugin packager) — base + v0.0.2 dogfood addendum + v0.0.4 project bootstrap addendum*
+*Researched: 2026-06-30 (base) · 2026-07-01 (v0.0.4 addendum)*
