@@ -20,7 +20,7 @@
 _Active milestone: v0.0.3 — Distribution_
 
 - [x] **Phase 7: npm Packaging & Release Flow** - Make the CLI publishable to npm as a scoped public package and wire the `release` skill's real publish flow (completed 2026-07-01)
-- [ ] **Phase 8: Marketplace Distribution** - Distribute Motto's public skills through a self-hosted Claude Code marketplace in the repo
+- [x] **Phase 8: Marketplace Distribution** - Distribute Motto's public skills through a self-hosted Claude Code marketplace in the repo (completed 2026-07-01)
 - [ ] **Phase 9: Documentation** - Document every install path (npm CLI, marketplace skills, Claude Desktop) in the README
 
 ## Phase Details
@@ -52,9 +52,9 @@ _Active milestone: v0.0.3 — Distribution_
   2. A user can run `/plugin marketplace add jeremiewerner/motto` and Motto's marketplace resolves from the repo.
   3. A user can run `/plugin install motto-skills@motto` and Motto's public skills (`author-skill`, `setup-project`) load in Claude Code.
 
-**Plans**: 1 plan
+**Plans**: 1/1 plans complete
 
-- [ ] 08-01-PLAN.md — Author `.claude-plugin/marketplace.json` (marketplace `motto`, plugin `motto-skills`, `source: npm` → `@jeremiewerner/motto`, skills override `dist/public/`, `strict: false`); validate with `claude plugin validate .`; live-install human checkpoint (MKT-01, MKT-02, MKT-03)
+- [x] 08-01-PLAN.md — Author `.claude-plugin/marketplace.json` (marketplace `motto`, plugin `motto-skills`, `source: npm` → `@jeremiewerner/motto`, skills override `dist/public/`, `strict: false`); validate with `claude plugin validate .`; live-install human checkpoint (MKT-01, MKT-02, MKT-03)
 
 ### Phase 9: Documentation
 
@@ -74,7 +74,7 @@ _Active milestone: v0.0.3 — Distribution_
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 7. npm Packaging & Release Flow | 1/1 | Complete    | 2026-07-01 |
-| 8. Marketplace Distribution | 0/? | Not started | - |
+| 8. Marketplace Distribution | 1/1 | Complete   | 2026-07-01 |
 | 9. Documentation | 0/? | Not started | - |
 
 ## Backlog
