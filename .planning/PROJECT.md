@@ -16,9 +16,18 @@ The **strict schema + linter**. Skills that always conform to one rigid-yet-crea
 
 **Hardening note:** post-merge `/code-review high` caught 3 D-01 never-throw violations the milestone tests missed (boolean name, unresolved YAML aliases in frontmatter/config); fixed + guarded. The never-throw invariant needs adversarial malformed-input tests — the GSD gates alone under-verified it.
 
-## Next Milestone
+## Current Milestone: v0.0.4 Project Bootstrap
 
-None active — start the next with `/gsd-new-milestone`. Backlog candidates in `.planning/ROADMAP.md` (CLI ergonomics, `[path]` arg, TMPL-01, CI, cleanup of v0.0.2 phase remnants, instructional-skills review).
+**Goal:** A stranger with only `npm i -g @jeremiewerner/motto` can scaffold, build, and distribute their own skills project — no Claude Code skills required, no reverse-engineering.
+
+**Target features:**
+- `motto init [name]` — scaffolds `motto.yaml`, `.claude-plugin/marketplace.json` (relative source → `dist/public/`), `skills/` + `shared/references/` structure, a starter example skill (lint+build pass immediately), `.gitignore`
+- Delete `setup-project` instructional skill — folded into `motto init` + README
+- README "ship your plugin" section — commit `dist/public/`, push public, `/plugin marketplace add` one-liner
+- `--help` — real usage text, exit 0
+- `[path]` arg for `lint`/`build` — default cwd
+
+**Explicitly not building:** `motto ship` command — after init + build, shipping is two git commands; marketplace.json is already scaffolded by init. Backlog until real friction shows (needs clarification of what it would even do).
 
 <details>
 <summary>Shipped: v0.0.3 — Distribution (2026-07-01)</summary>
@@ -40,16 +49,21 @@ None active — start the next with `/gsd-new-milestone`. Backlog candidates in 
 
 ### Validated
 
-(None yet — ship to validate)
+- [x] `motto lint` enforces the skill schema: frontmatter fields, kebab `name` = folder, Title + Role spine, `shared_references` resolve — v0.0.1–v0.0.2 (verified, dogfooded)
+- [x] `motto build` produces self-contained `dist/` plugins (public + optional private), named per project, with shared refs bundled in — v0.0.1–v0.0.2 (verified, dogfooded)
+- [x] `motto.yaml` carries project identity (name/version/description), plugin names, and preferences — v0.0.1
+- [x] Single shared scope (`shared/references/`) bundled into each skill at build — v0.0.1
+- [x] Universal body spine: `# Title` + `**Role:**`, mandatory, template-waivable — v0.0.1–v0.0.2
+- [x] Motto installable (npm) + skills distributable (self-hosted marketplace) — v0.0.3
 
 ### Active
 
-- [ ] `motto lint` enforces the skill schema: frontmatter fields, kebab `name` = folder, Title + Role spine, `shared_references` resolve
-- [ ] `motto build` produces self-contained `dist/` plugins (public + optional private), named per project, with shared refs bundled in
-- [ ] `motto.yaml` carries project identity (name/version/description), plugin names, and preferences
-- [ ] Single shared scope (`shared/references/`) bundled into each skill at build
-- [ ] Universal body spine: `# Title` + `**Role:**`, mandatory, template-waivable
-- [ ] Template *mechanism* exists (schema add-ons via `template:`), with zero concrete templates shipped
+- [ ] `motto init [name]` scaffolds a complete, buildable skills project (structure + motto.yaml + marketplace.json + starter skill + .gitignore)
+- [ ] `--help` prints usage, exit 0
+- [ ] `lint`/`build` accept optional `[path]` arg (default cwd)
+- [ ] README documents the full ship-your-plugin path
+- [ ] `setup-project` skill removed (superseded by init + README)
+- [ ] Template *mechanism* exists (schema add-ons via `template:`), with zero concrete templates shipped — mechanism shipped v0.0.1; concrete-template validation deferred (TMPL-01)
 
 ### Out of Scope
 
@@ -105,4 +119,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-01 — v0.0.3 (Distribution) shipped + archived*
+*Last updated: 2026-07-01 — v0.0.4 (Project Bootstrap) milestone started*
