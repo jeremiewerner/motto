@@ -3,3 +3,6 @@ dist/
 
 # GSD scheduler lock (runtime, not source)
 .claude/scheduled_tasks.lock
+
+# GSD research tool cache (regenerated, not source)
+.planning/research/.cache/
