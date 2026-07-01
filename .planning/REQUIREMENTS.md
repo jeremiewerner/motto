@@ -45,4 +45,18 @@
 
 ## Traceability
 
-*(filled by roadmap — REQ-ID → phase)*
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| NPM-01 | Phase 7 | Pending |
+| NPM-02 | Phase 7 | Pending |
+| NPM-03 | Phase 7 | Pending |
+| NPM-04 | Phase 7 | Pending |
+| REL-01 | Phase 7 | Pending |
+| REL-02 | Phase 7 | Pending |
+| REL-03 | Phase 7 | Pending |
+| MKT-01 | Phase 8 | Pending |
+| MKT-02 | Phase 8 | Pending |
+| MKT-03 | Phase 8 | Pending |
+| DOC-01 | Phase 9 | Pending |
+| DOC-02 | Phase 9 | Pending |
+| DOC-03 | Phase 9 | Pending |

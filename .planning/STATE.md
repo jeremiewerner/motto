@@ -6,7 +6,7 @@ status: planning
 last_updated: "2026-07-01T06:16:41.334Z"
 last_activity: 2026-07-01
 progress:
-  total_phases: 0
+  total_phases: 3
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -17,17 +17,17 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-06-30)
+See: .planning/PROJECT.md (updated 2026-07-01)
 
 **Core value:** A strict schema + linter that guarantees authored skills conform before they ship, then packages them into self-contained standard Agent Skill plugins.
-**Current focus:** Phase 05 — dogfood-regression-guard
+**Current focus:** Phase 7 — npm Packaging & Release Flow
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 7 — npm Packaging & Release Flow (not started)
 Plan: —
-Status: Defining requirements
-Last activity: 2026-07-01 — Milestone v0.0.3 started
+Status: Roadmap created; ready to plan Phase 7
+Last activity: 2026-07-01 — v0.0.3 roadmap created (Phases 7-9)
 
 ## Performance Metrics
 
@@ -41,8 +41,9 @@ Last activity: 2026-07-01 — Milestone v0.0.3 started
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 4. Self-Hosted Skill Tree + Gap Fixes | 0 | - | - |
-| 5. Dogfood Regression Guard | 0 | - | - |
+| 7. npm Packaging & Release Flow | 0 | - | - |
+| 8. Marketplace Distribution | 0 | - | - |
+| 9. Documentation | 0 | - | - |
 
 **Recent Trend:**
 
@@ -50,9 +51,6 @@ Last activity: 2026-07-01 — Milestone v0.0.3 started
 - Trend: -
 
 *Updated after each plan completion*
-| Phase 04 P01 | 8 | 2 tasks | 7 files |
-| Phase 05-dogfood-regression-guard P01 | 89 | - tasks | - files |
-| Phase 06-address-tech-debt-schema-strictness-summary-frontmatter P01 | 8m | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -61,18 +59,14 @@ Last activity: 2026-07-01 — Milestone v0.0.3 started
 Decisions are logged in PROJECT.md Key Decisions table.
 Recent decisions affecting current work:
 
-- Output = standard Agent Skills (verbatim SKILL.md copy, no content stripping)
-- Build = lint-first; throws on failure, writes nothing
-- `audience` binary (public|private); private plugin emitted only when private skills exist and `plugins.private` is set
-- Zero concrete templates in v1; template mechanism accepted but not validated
-- [Phase 01-02]: NAME_KEBAB = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/ (letter-start, D-08); exported from schema.js for config.js reuse (D-16) — manual sync point, DOG-04 closes it
-- [Phase 01-02]: validateSkill name cascade (missing->non-kebab->reserved->folder); reserved-substring ban (`claude`/`anthropic`) applies to `name` ONLY
-- [v0.0.2 roadmap]: content-first ordering — author tree + lint + build + gap fixes (Phase 4) BEFORE writing the dogfood test (Phase 5), since the test's count assertions depend on the now-known skill/bucket counts
-- [v0.0.2 roadmap]: dogfood test lints REPO_ROOT in-place (read-only) but builds a `mkdtemp` COPY — `buildProject` destructively wipes `<root>/dist`; anchor via `import.meta.url`, not `process.cwd()`
-- [v0.0.2 roadmap]: zero new dependencies — all dogfood tooling is stdlib + existing `yaml`
-- [Phase ?]: Exported NAME_KEBAB from config.js for DOG-04 parity test
-- [Phase ?]: cascade placement ensures single error per name failure
-- [Phase ?]: guards both new checks from falsy-description TypeError
+- [v0.0.3]: Install mechanism RESOLVED — npm (CLI) + self-hosted marketplace (skills). No `.zip` build feature.
+- [v0.0.3]: CLI publishes as scoped public `@jeremiewerner/motto` (`motto` unscoped is taken); `bin` invokes as `motto`; `publishConfig.access: public`; `files` allowlist = `bin/`, `src/`, `dist/public/`.
+- [v0.0.3]: One `npm publish` ships both the CLI and the bundled `dist/public/` skills plugin; marketplace `source: npm` points at the published package with a `dist/public/` skills override and `strict: false`.
+- [v0.0.3]: `.claude-plugin/marketplace.json` lives inside the repo root (no separate marketplace repo).
+- [v0.0.3]: Claude Desktop's Code tab IS Claude Code → marketplace/`~/.claude/skills/` cover it; symlink + zip are documented shell one-liners, not features (`--zip` dropped, YAGNI).
+- [v0.0.3]: `release` skill fixes — real `npm publish` flow, `git push --follow-tags`, manual `motto.yaml` bump.
+- [v0.0.2]: Output = standard Agent Skills (verbatim SKILL.md copy, no content stripping)
+- [v0.0.2]: `audience` binary (public|private); private plugin emitted only when private skills exist and `plugins.private` is set
 
 ### Pending Todos
 
@@ -80,17 +74,20 @@ None yet.
 
 ### Blockers/Concerns
 
-None yet.
+- Carried debt from v0.0.2: npm-publish stub in `release` skill (closed by REL-01 this milestone); no CI (husky-only, deferred).
 
 ### Roadmap Evolution
 
-- Phase 6 added: Address tech debt: schema strictness + summary frontmatter
+- v0.0.3 roadmap created: Phase 7 (npm Packaging & Release Flow), Phase 8 (Marketplace Distribution), Phase 9 (Documentation). Numbering continues from v0.0.2 (ended at Phase 6).
 
 ## Deferred Items
 
 | Category | Item | Status | Deferred At |
 |----------|------|--------|-------------|
-| *(none)* | | | |
+| Build feature | `--zip` output | Dropped (documented one-liner instead) | v0.0.3 |
+| CLI | `--quiet`, `--format json`, `[path]` arg | Deferred | v0.0.3 |
+| CI | GitHub Actions workflow | Deferred | v0.0.3 |
+| Templates | TMPL-01 concrete-template validation | Deferred | v0.0.3 |
 
 ## Quick Tasks Completed
 
@@ -101,6 +98,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-06-30T20:06:09.630Z
-Stopped at: Phase 6 context gathered; quick task UXC-STANDARDIZE-NAMES complete
-Resume file: .planning/phases/06-address-tech-debt-schema-strictness-summary-frontmatter/06-CONTEXT.md
+Last session: 2026-07-01
+Stopped at: v0.0.3 roadmap created (Phases 7-9); ready to plan Phase 7
+Resume file: .planning/ROADMAP.md
