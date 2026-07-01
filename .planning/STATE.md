@@ -4,11 +4,10 @@ milestone: v0.0.3
 milestone_name: Distribution
 current_phase: 09
 current_phase_name: Documentation
-status: verifying
+status: v0.0.3 merged to main (direct ff-merge, no PR — solo private repo) @ 221ae85
 stopped_at: Phase 9 context gathered
-last_updated: "2026-07-01T20:20:58.664Z"
+last_updated: "2026-07-01T20:24:47.583Z"
 last_activity: 2026-07-01
-last_activity_desc: Phase 08 complete, transitioned to Phase 09
 progress:
   total_phases: 3
   completed_phases: 3
@@ -30,8 +29,8 @@ See: .planning/PROJECT.md (updated 2026-07-01)
 
 Phase: 09 — Documentation
 Plan: Not started
-Status: Implementation complete & verified LIVE; SHIP-GATED on one item (see Blockers)
-Last activity: 2026-07-01 — Phase 08 complete, transitioned to Phase 09
+Status: v0.0.3 merged to main (direct ff-merge, no PR — solo private repo) @ 221ae85
+Last activity: 2026-07-01
 
 ## Performance Metrics
 
