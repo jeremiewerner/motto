@@ -89,7 +89,7 @@ None yet.
 
 - Carried debt from v0.0.2: npm-publish stub in `release` skill (closed by REL-01 this milestone); no CI (husky-only, deferred).
 - **SHIP-GATED (Phase 8 SC2):** GitHub-form `/plugin marketplace add jeremiewerner/motto` fails until `.claude-plugin/marketplace.json` lands on the repo default branch (merge `gsd/v0.0.3-milestone` → main) AND the repo is public (T-08-04, Phase 9). Local-path add is verified; manifest is correct. Deployment step, not a defect.
-- **Phase 7 retro needed:** Phase 7 was marked "complete" but `@jeremiewerner/motto` was NOT actually on npm (404) until the maintainer manually ran `npm publish` on 2026-07-01. The `release` flow's publish step did not execute during Phase 7. Investigate so "complete" == "published" next milestone.
+- **Phase 7 retro needed:** Phase 7 was marked "complete" but `@jeremiewerner/motto` was NOT actually on npm (404) until the maintainer manually ran `npm publish` on 2026-07-01, and `v0.0.3` was never git-tagged (only v0.0.1/v0.0.2 existed). The `release` flow's publish+tag steps did not execute during Phase 7. FIXED (partial): `v0.0.3` annotated tag now created locally at `1cf4ea8` (push deferred to ship). Still: retro why the release script never ran, so "complete" == "published+tagged" next milestone.
 - **Naming note:** public plugin renamed `motto-skills` → `motto` (namespace `/motto:*`) mid-Phase-8; motto.yaml `plugins.private` is still `motto-private` (asymmetric, acceptable — private bucket only emits when private skills exist).
 
 ### Roadmap Evolution
