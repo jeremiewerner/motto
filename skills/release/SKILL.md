@@ -35,7 +35,7 @@ Replace `X.Y.Z` with the new version (e.g. `0.0.4`). This single command:
 
 The husky pre-commit hook re-runs all tests during this commit — if they fail the commit is aborted. To skip hooks only when tests were just confirmed in Step 1: add `--no-commit-hooks` (escape hatch; use sparingly).
 
-**Note on v0.0.3:** The very first release using this script is v0.0.4 onward. v0.0.3 was drift-corrected manually in Phase 7 and is already committed and tagged separately.
+**Note on v0.0.3:** The very first release using this script is v0.0.4 onward. v0.0.3's version was drift-corrected manually in Phase 7 (committed 451f92e) and first published to npm on 2026-07-01; its `v0.0.3` git tag was created retroactively at that first publish, not by this script. From v0.0.4 on, `npm version` creates the tag as part of the flow.
 
 ## Step 3 — Dogfood Check
 
