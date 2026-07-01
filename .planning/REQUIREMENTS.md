@@ -16,7 +16,7 @@
 ### Marketplace (MKT)
 
 - [x] **MKT-01**: A user can run `/plugin marketplace add jeremiewerner/motto` and Motto's marketplace resolves from the repo
-- [x] **MKT-02**: A user can run `/plugin install motto-skills@motto` and Motto's public skills load in Claude Code
+- [x] **MKT-02**: A user can run `/plugin install motto@motto` and Motto's public skills load in Claude Code
 - [x] **MKT-03**: `.claude-plugin/marketplace.json` lives in the repo root, uses `source: npm`, and overrides the skills path to `dist/public/` with `strict: false`
 
 ### Release skill (REL)
