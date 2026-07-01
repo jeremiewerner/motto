@@ -67,7 +67,9 @@ _Active milestone: v0.0.3 — Distribution_
   2. README documents adding the marketplace and installing Motto's skills into Claude Code (`/plugin marketplace add …` + `/plugin install motto@motto`).
   3. README documents Claude Desktop usage — the `~/.claude/skills/` symlink one-liner (`ln -s dist/public/<skill> ~/.claude/skills/<skill>`) and the web-upload zip one-liner (`cd dist/public && zip -r <skill>.zip <skill>/`).
 
-**Plans**: TBD
+**Plans**: 1 plan
+
+- [ ] 09-01-PLAN.md — Author README.md: what-is-Motto intro, author-first quickstart (npm CLI DOC-01), marketplace add/install (DOC-02), Claude Desktop symlink+zip one-liners (DOC-03), compact end-to-end example, brief dev section
 
 ## Progress
 
@@ -75,7 +77,7 @@ _Active milestone: v0.0.3 — Distribution_
 |-------|----------------|--------|-----------|
 | 7. npm Packaging & Release Flow | 1/1 | Complete    | 2026-07-01 |
 | 8. Marketplace Distribution | 1/1 | Complete   | 2026-07-01 |
-| 9. Documentation | 0/? | Not started | - |
+| 9. Documentation | 0/1 | Not started | - |
 
 ## Backlog
 
