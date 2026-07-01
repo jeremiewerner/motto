@@ -19,49 +19,59 @@
 
 _Active milestone: v0.0.3 — Distribution_
 
-- [ ] **Phase 7: npm Packaging & Release Flow** - Make the CLI publishable to npm as a scoped public package and wire the `release` skill's real publish flow
+- [x] **Phase 7: npm Packaging & Release Flow** - Make the CLI publishable to npm as a scoped public package and wire the `release` skill's real publish flow (completed 2026-07-01)
 - [ ] **Phase 8: Marketplace Distribution** - Distribute Motto's public skills through a self-hosted Claude Code marketplace in the repo
 - [ ] **Phase 9: Documentation** - Document every install path (npm CLI, marketplace skills, Claude Desktop) in the README
 
 ## Phase Details
 
 ### Phase 7: npm Packaging & Release Flow
+
 **Goal**: Motto is publishable to npm as a scoped public package, and the `release` skill drives the real end-to-end publish workflow instead of a TODO stub.
 **Depends on**: Nothing (first phase of this milestone; builds on shipped v0.0.2)
 **Requirements**: NPM-01, NPM-02, NPM-03, NPM-04, REL-01, REL-02, REL-03
 **Success Criteria** (what must be TRUE):
+
   1. `package.json` declares the scoped name `@jeremiewerner/motto`, version `0.0.3` (drift from `0.0.1` corrected), `publishConfig.access: "public"`, and a `files` allowlist of `bin/`, `src/`, `dist/public/`.
   2. `npm pack --dry-run` produces a tarball containing only the allowlisted paths (plus auto-included `package.json`/`README`/`LICENSE`) — no `skills/`, `test/`, or `.planning/` leakage.
   3. Installing the package globally (`npm i -g @jeremiewerner/motto`) exposes a working `motto` command that runs `lint`/`build` from any directory.
   4. The `release` skill's publish step runs the real flow — `npm pack --dry-run` verify → `npm publish` — with no TODO stub, pushes the release tag via `git push --follow-tags`, and bumps/notes the manual `motto.yaml` version alongside `package.json`.
-**Plans**: 1 plan
-- [ ] 07-01-PLAN.md — MIT LICENSE + package.json packaging config (scoped name, files allowlist, publishConfig, lifecycle scripts) + wire release skill real publish flow
+
+**Plans**: 1/1 plans complete
+
+- [x] 07-01-PLAN.md — MIT LICENSE + package.json packaging config (scoped name, files allowlist, publishConfig, lifecycle scripts) + wire release skill real publish flow
 
 ### Phase 8: Marketplace Distribution
+
 **Goal**: Motto's public skills are installable in Claude Code through a self-hosted marketplace that lives in the repo and resolves the plugin from the published npm package.
 **Depends on**: Phase 7 (the marketplace's `source: npm` entry resolves to the published `@jeremiewerner/motto` package)
 **Requirements**: MKT-01, MKT-02, MKT-03
 **Success Criteria** (what must be TRUE):
+
   1. `.claude-plugin/marketplace.json` exists at the repo root with `source: npm` pointing at `@jeremiewerner/motto`, a skills path override to `dist/public/`, and `strict: false`.
   2. A user can run `/plugin marketplace add jeremiewerner/motto` and Motto's marketplace resolves from the repo.
   3. A user can run `/plugin install motto-skills@motto` and Motto's public skills (`author-skill`, `setup-project`) load in Claude Code.
+
 **Plans**: TBD
 
 ### Phase 9: Documentation
+
 **Goal**: The README documents every supported install path so a new user can install the CLI, install the skills, and use the built skills in Claude Desktop without guesswork.
 **Depends on**: Phase 7, Phase 8 (documents the npm and marketplace mechanisms those phases deliver)
 **Requirements**: DOC-01, DOC-02, DOC-03
 **Success Criteria** (what must be TRUE):
+
   1. README documents installing the CLI from npm (`npm i -g @jeremiewerner/motto`).
   2. README documents adding the marketplace and installing Motto's skills into Claude Code (`/plugin marketplace add …` + `/plugin install motto-skills@motto`).
   3. README documents Claude Desktop usage — the `~/.claude/skills/` symlink one-liner (`ln -s dist/public/<skill> ~/.claude/skills/<skill>`) and the web-upload zip one-liner (`cd dist/public && zip -r <skill>.zip <skill>/`).
+
 **Plans**: TBD
 
 ## Progress
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 7. npm Packaging & Release Flow | 0/1 | Not started | - |
+| 7. npm Packaging & Release Flow | 1/1 | Complete   | 2026-07-01 |
 | 8. Marketplace Distribution | 0/? | Not started | - |
 | 9. Documentation | 0/? | Not started | - |
 

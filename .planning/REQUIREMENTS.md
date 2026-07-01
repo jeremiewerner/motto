@@ -8,10 +8,10 @@
 
 ### npm publish (NPM)
 
-- [ ] **NPM-01**: A user can install the CLI with `npm i -g @jeremiewerner/motto` and invoke it as `motto`
-- [ ] **NPM-02**: `package.json` declares the scoped name, `publishConfig.access: "public"`, and a `files` allowlist restricting the tarball to `bin/`, `src/`, `dist/public/` (README/LICENSE auto-included)
-- [ ] **NPM-03**: `package.json` version matches the shipped release (drift from `0.0.1` corrected; bumped to `0.0.3`)
-- [ ] **NPM-04**: `npm pack --dry-run` produces a tarball containing only allowlisted paths — no `skills/`, `test/`, or `.planning/` leakage
+- [x] **NPM-01**: A user can install the CLI with `npm i -g @jeremiewerner/motto` and invoke it as `motto`
+- [x] **NPM-02**: `package.json` declares the scoped name, `publishConfig.access: "public"`, and a `files` allowlist restricting the tarball to `bin/`, `src/`, `dist/public/` (README/LICENSE auto-included)
+- [x] **NPM-03**: `package.json` version matches the shipped release (drift from `0.0.1` corrected; bumped to `0.0.3`)
+- [x] **NPM-04**: `npm pack --dry-run` produces a tarball containing only allowlisted paths — no `skills/`, `test/`, or `.planning/` leakage
 
 ### Marketplace (MKT)
 
@@ -21,9 +21,9 @@
 
 ### Release skill (REL)
 
-- [ ] **REL-01**: The `release` skill runs the real publish flow (`npm pack --dry-run` verify → `npm publish`) instead of the current TODO stub
-- [ ] **REL-02**: The `release` skill pushes the release tag to the remote via `git push --follow-tags`
-- [ ] **REL-03**: The `release` skill bumps/notes the manual `motto.yaml` version alongside `package.json`
+- [x] **REL-01**: The `release` skill runs the real publish flow (`npm pack --dry-run` verify → `npm publish`) instead of the current TODO stub
+- [x] **REL-02**: The `release` skill pushes the release tag to the remote via `git push --follow-tags`
+- [x] **REL-03**: The `release` skill bumps/notes the manual `motto.yaml` version alongside `package.json`
 
 ### Documentation (DOC)
 
@@ -47,13 +47,13 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| NPM-01 | Phase 7 | Pending |
-| NPM-02 | Phase 7 | Pending |
-| NPM-03 | Phase 7 | Pending |
-| NPM-04 | Phase 7 | Pending |
-| REL-01 | Phase 7 | Pending |
-| REL-02 | Phase 7 | Pending |
-| REL-03 | Phase 7 | Pending |
+| NPM-01 | Phase 7 | Complete |
+| NPM-02 | Phase 7 | Complete |
+| NPM-03 | Phase 7 | Complete |
+| NPM-04 | Phase 7 | Complete |
+| REL-01 | Phase 7 | Complete |
+| REL-02 | Phase 7 | Complete |
+| REL-03 | Phase 7 | Complete |
 | MKT-01 | Phase 8 | Pending |
 | MKT-02 | Phase 8 | Pending |
 | MKT-03 | Phase 8 | Pending |
