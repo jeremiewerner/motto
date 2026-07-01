@@ -3,7 +3,7 @@
   "owner": { "name": "Jérémie Werner", "email": "jeremiew@pm.me" },
   "plugins": [
     {
-      "name": "motto-skills",
+      "name": "motto",
       "source": { "source": "npm", "package": "@jeremiewerner/motto" },
       "description": "Motto skill authoring and packaging tools",
       "skills": "./dist/public/",

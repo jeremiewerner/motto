@@ -121,13 +121,13 @@ describe('dogfood build (DOG-03)', () => {
   });
 
   // ── plugin.json contents ──────────────────────────────────────────────────────
-  it('public plugin.json has name=motto-skills, version present, description present', async () => {
+  it('public plugin.json has name=motto, version present, description present', async () => {
     const raw = await readFile(
       join(tempDir, 'dist', 'public', '.claude-plugin', 'plugin.json'),
       'utf8',
     );
     const manifest = JSON.parse(raw);
-    assert.strictEqual(manifest.name, 'motto-skills');
+    assert.strictEqual(manifest.name, 'motto');
     assert.ok(manifest.version, 'version must be present in public plugin.json');
     assert.ok(manifest.description, 'description must be present in public plugin.json');
     // version intentionally checked via assert.ok, not strictEqual('0.0.2'),
