@@ -20,7 +20,7 @@
 ## Phases
 
 - [x] **Phase 10: Project Scaffold (`motto init`)** - Scaffold a complete, immediately-buildable skills project in one command (completed 2026-07-02)
-- [ ] **Phase 11: CLI Ergonomics (--help, [path])** - Usage text on demand and lint/build against any directory
+- [x] **Phase 11: CLI Ergonomics (--help, [path])** - Usage text on demand and lint/build against any directory (completed 2026-07-02)
 - [ ] **Phase 12: Docs & Cleanup** - Document the ship-your-plugin path and retire the superseded `setup-project` skill
 
 ## Phase Details
@@ -64,11 +64,11 @@
   2. `motto <subcommand> --help` (e.g. `motto lint --help`) prints that subcommand's usage instead of running the subcommand
   3. `motto lint [path]` and `motto build [path]` operate on the given directory, defaulting to the current working directory when the path is omitted
 
-**Plans**: 1 plan
+**Plans**: 1/1 plans complete
 
 **Wave 1**
 
-- [ ] 11-01-PLAN.md — bin/motto.js --help/-h + per-subcommand help + [path] wiring + directory guard (CLIX-03/04); new test/cli.test.js spawn-based coverage
+- [x] 11-01-PLAN.md — bin/motto.js --help/-h + per-subcommand help + [path] wiring + directory guard (CLIX-03/04); new test/cli.test.js spawn-based coverage
 
 **UI hint**: no
 
@@ -91,7 +91,7 @@
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 10. Project Scaffold (`motto init`) | 3/3 | Complete    | 2026-07-02 |
-| 11. CLI Ergonomics (--help, [path]) | 0/1 | Planned | - |
+| 11. CLI Ergonomics (--help, [path]) | 1/1 | Complete   | 2026-07-02 |
 | 12. Docs & Cleanup | 0/? | Not started | - |
 
 ## Backlog

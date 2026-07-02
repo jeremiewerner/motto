@@ -3,18 +3,18 @@ gsd_state_version: 1.0
 milestone: v0.0.4
 milestone_name: Project Bootstrap
 current_phase: 11
-current_phase_name: --help, [path]
-status: executing
-stopped_at: Phase 11 context gathered
-last_updated: "2026-07-02T08:33:10.524Z"
+current_phase_name: cli-ergonomics-help-path
+status: verifying
+stopped_at: Completed 11-01-PLAN.md
+last_updated: "2026-07-02T08:41:51.294Z"
 last_activity: 2026-07-02
-last_activity_desc: Phase 10 complete, transitioned to Phase 11
+last_activity_desc: Phase 11 execution started
 progress:
   total_phases: 3
-  completed_phases: 1
-  total_plans: 3
-  completed_plans: 3
-  percent: 33
+  completed_phases: 2
+  total_plans: 4
+  completed_plans: 4
+  percent: 67
 ---
 
 # Project State
@@ -24,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-01)
 
 **Core value:** A strict schema + linter that guarantees authored skills conform before they ship, then packages them into self-contained standard Agent Skill plugins.
-**Current focus:** Phase 10 — project-scaffold-motto-init
+**Current focus:** Phase 11 — cli-ergonomics-help-path
 
 ## Current Position
 
-Phase: 11 — CLI Ergonomics (--help, [path])
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-07-02 — Phase 10 complete, transitioned to Phase 11
+Phase: 11 (cli-ergonomics-help-path) — EXECUTING
+Plan: 1 of 1
+Status: Phase complete — ready for verification
+Last activity: 2026-07-02 — Phase 11 execution started
 
 ## Performance Metrics
 
@@ -65,6 +65,7 @@ Last activity: 2026-07-02 — Phase 10 complete, transitioned to Phase 11
 | Phase 10 P01 | 8min | 2 tasks | 2 files |
 | Phase 10 P02 | 6min | 2 tasks | 2 files |
 | Phase 10 P03 | 1min 20s | 2 tasks | 2 files |
+| Phase 11 P01 | 6min | 3 tasks tasks | 2 files files |
 
 ## Accumulated Context
 
@@ -91,6 +92,9 @@ Recent decisions affecting current work:
 - [Phase ?]: Scaffolded .gitignore/marketplace.json deliberately differ from this repo's own root files — dist/public/ stays trackable; marketplace.json uses bare relative-path source
 - [Phase 10]: mkdtemp random basename is not guaranteed NAME_KEBAB-valid (can include uppercase); tests needing a deterministic effective name nest a fixed kebab subdirectory or pass an explicit name
 - [Phase 10]: Pre-commit hook runs full suite against working tree (not staged files) — TDD RED commits are impossible in this repo; fix applied to disk before the RED test commit lands so both task commits see a green working tree while git diffs still separate test-add from fix
+- [Phase 11]: Help routing folded into the existing dispatch if/else chain (no early process.exit()) so no new no-arg process.exit() calls were introduced beyond the pre-existing parseArgs catch block — Plan explicitly forbade new no-arg process.exit() calls
+- [Phase 11]: sub === undefined single branch covers both D-01 (bare --help/-h) and D-03 (bare motto, no flags) since both render identical global help to stdout exit 0 — Simplifies dispatch chain, avoids duplicated help-printing branches
+- [Phase 11]: Task 2 plan verify script assumed motto init <path> scaffolds AT that path; current init CLI wiring only scaffolds into cwd (positional is the name field, out of CLIX-04 scope). Verified equivalent behavior via mkdir+cd and scaffoldProject(targetDir, name) API directly instead — init target-dir semantics unchanged this phase; CLIX-04 covers lint/build [path] only
 
 ### Pending Todos
 
@@ -126,7 +130,7 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-02T08:15:38.287Z
-Stopped at: Phase 11 context gathered
+Last session: 2026-07-02T08:41:51.290Z
+Stopped at: Completed 11-01-PLAN.md
 Resume file: 
-.planning/phases/11-cli-ergonomics-help-path/11-CONTEXT.md
+None

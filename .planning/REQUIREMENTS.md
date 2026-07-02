@@ -19,8 +19,8 @@ Each maps to roadmap phases. REQ-IDs continue from v0.0.3 (NPM/REL/MKT/DOC used;
 
 ### CLI Ergonomics (CLIX)
 
-- [ ] **CLIX-03**: User can run `motto --help` / `-h` (globally and per subcommand) and get usage text on stdout, exit 0
-- [ ] **CLIX-04**: User can run `motto lint [path]` / `motto build [path]` against another directory; defaults to cwd
+- [x] **CLIX-03**: User can run `motto --help` / `-h` (globally and per subcommand) and get usage text on stdout, exit 0
+- [x] **CLIX-04**: User can run `motto lint [path]` / `motto build [path]` against another directory; defaults to cwd
 
 ### Docs & Cleanup (DOC)
 
@@ -71,8 +71,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | INIT-04 | Phase 10 | Complete |
 | INIT-05 | Phase 10 | Complete |
 | INIT-06 | Phase 10 | Complete |
-| CLIX-03 | Phase 11 | Pending |
-| CLIX-04 | Phase 11 | Pending |
+| CLIX-03 | Phase 11 | Complete |
+| CLIX-04 | Phase 11 | Complete |
 | DOC-04 | Phase 12 | Pending |
 | DOC-05 | Phase 12 | Pending |
 
