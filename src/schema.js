@@ -2,13 +2,17 @@
  * Motto skill-schema validator.
  *
  * Pure object validator — no filesystem, no YAML parsing, no imports beyond
- * this file's own scope. NEVER throws (D-01). All validation failures surface
- * through the returned errors[].
+ * this file's own scope (except the pure-data `./templates.js` registry).
+ * NEVER throws (D-01). All validation failures surface through the returned
+ * errors[].
  *
  * Exports:
  *   - NAME_KEBAB {RegExp}  — canonical letter-start kebab regex (D-08, D-16)
- *   - validateSkill(skill, sharedRefs?) -> Array<{ skill, message }>
+ *   - hasClosedSection(body, tagName) -> boolean
+ *   - validateSkill(skill, sharedRefs?, templatesRegistry?) -> Array<{ skill, message }>
  */
+
+import { SECTIONS, TEMPLATES } from "./templates.js";
 
 /**
  * Canonical letter-start kebab-case regex for skill and plugin names.
@@ -96,12 +100,17 @@ const RESERVED = ["anthropic", "claude"];
  *   - NAME checks CASCADE: missing/falsy → non-string → non-kebab → max-64 → reserved-word → ≠folder.
  *     The chain stops at the first failure; subsequent name checks are skipped
  *     because they are meaningless once an earlier check fails.
+ *   - TEMPLATE (`data.template`, TMPL-01/02/04/05) is its own internal
+ *     CASCADE: non-string → stop; unknown template name → stop; else check
+ *     each required section. Resolves `waivedSections`, consulted by the
+ *     Title/Role checks below, BEFORE they run.
  *   - All OTHER checks (description, audience, body Title, body Role, each
  *     shared_references entry) are INDEPENDENT: they all run and all errors
  *     are collected together regardless of what other checks find.
  *
- * Unknown frontmatter keys (`template`, `dependencies`, …) are accepted
- * without error (D-14).
+ * `dependencies` (and any other unknown frontmatter key) is accepted without
+ * error (D-14). `template` is no longer a passthrough key as of TMPL-01 — see
+ * the TEMPLATE cascade below.
  *
  * @param {{ dirName: string, data: object, body: string }} skill
  *   `dirName` — the skill's source folder name (cascade anchor + error.skill)
@@ -110,13 +119,22 @@ const RESERVED = ["anthropic", "claude"];
  * @param {Set<string>} [sharedRefs]
  *   Set of available shared-reference basenames (without `.md`). Defaults to
  *   an empty Set; entries in data.shared_references are resolved against it.
+ * @param {{ SECTIONS: object, TEMPLATES: object }} [templatesRegistry]
+ *   Injectable template registry, defaulting to the real `./templates.js`
+ *   exports. Tests use this to exercise the `waives` merge logic via a
+ *   fixture template without mutating `src/templates.js` (TMPL-02).
  * @returns {Array<{ skill: string, message: string }>}
  *   Empty array when the skill is fully valid; one object per error otherwise.
  *   Each object's `skill` field equals `dirName`.
  */
-export function validateSkill(skill, sharedRefs = new Set()) {
+export function validateSkill(
+  skill,
+  sharedRefs = new Set(),
+  templatesRegistry = { SECTIONS, TEMPLATES }
+) {
   const { dirName, data, body } = skill;
   const errors = [];
+  const { SECTIONS: SEC, TEMPLATES: TPL } = templatesRegistry;
 
   /** Push one error attributed to this skill's dirName. */
   const err = (message) => errors.push({ skill: dirName, message });
@@ -179,23 +197,62 @@ export function validateSkill(skill, sharedRefs = new Set()) {
     err("audience must be public|private");
   }
 
-  // ── BODY SPINE (LINT-04, D-12) — two INDEPENDENT checks ──────────────────
   const bodyStr = body || "";
   const bodyLines = bodyStr.split("\n");
 
+  // ── TEMPLATE (TMPL-01, TMPL-02, TMPL-04, TMPL-05) ──────────────────────────
+  // Own internal cascade (non-string → stop; unknown name → stop; else check
+  // sections), independent of NAME/DESCRIPTION/AUDIENCE (D-13). Must run and
+  // resolve `waivedSections` BEFORE the Title/Role checks below so waives can
+  // gate them (Pitfall 2). hasOwnProperty, NOT a truthy check — an explicitly
+  // present falsy value (empty string, YAML null, etc.) must error, never
+  // silently skip (D-07 intent-declared).
+  const hasTemplateKey = Object.prototype.hasOwnProperty.call(data, "template");
+  let waivedSections = new Set();
+
+  if (hasTemplateKey) {
+    const tpl = data.template;
+    if (typeof tpl !== "string") {
+      // Guard BEFORE any string-only method / coercion — mirrors the NAME
+      // non-string guard above. Short-circuits a throwing toString/
+      // Symbol.toPrimitive before it is ever invoked (D-01, T-14-03).
+      err(`template must be a string (got ${typeof tpl})`);
+    } else if (!Object.prototype.hasOwnProperty.call(TPL, tpl)) {
+      const available = Object.keys(TPL).sort().join(", ");
+      err(`unknown template "${tpl}" (available: ${available})`);
+    } else {
+      const { requiredSections = [], waives = [] } = TPL[tpl];
+      waivedSections = new Set(waives);
+      for (const section of requiredSections) {
+        if (!hasClosedSection(bodyStr, section)) {
+          err(
+            `template "${tpl}" requires <${section}>…</${section}> section — ${SEC[section] ?? ""}`
+          );
+        }
+      }
+    }
+  }
+
+  // ── BODY SPINE (LINT-04, D-12) — two INDEPENDENT checks ──────────────────
   // Title check: the first non-blank line must be an H1 ("# " + non-space char).
-  // Regex is anchored and linear-time (T-02-01).
-  const firstNonBlankLine = bodyLines.find((l) => l.trim() !== "");
-  if (!firstNonBlankLine || !/^# \S/.test(firstNonBlankLine)) {
-    err(
-      "body must begin with an H1 title line (# Title) as its first non-blank line"
-    );
+  // Regex is anchored and linear-time (T-02-01). Skipped when a template
+  // waives "title".
+  if (!waivedSections.has("title")) {
+    const firstNonBlankLine = bodyLines.find((l) => l.trim() !== "");
+    if (!firstNonBlankLine || !/^# \S/.test(firstNonBlankLine)) {
+      err(
+        "body must begin with an H1 title line (# Title) as its first non-blank line"
+      );
+    }
   }
 
   // Role check: body must contain at least one line starting with "**Role:".
-  // Anchored multiline regex; `^` matches start of any line with the `m` flag (T-02-01).
-  if (!/^\*\*Role:/m.test(bodyStr)) {
-    err("body must contain a **Role:** line");
+  // Anchored multiline regex; `^` matches start of any line with the `m` flag
+  // (T-02-01). Skipped when a template waives "role".
+  if (!waivedSections.has("role")) {
+    if (!/^\*\*Role:/m.test(bodyStr)) {
+      err("body must contain a **Role:** line");
+    }
   }
 
   // ── SHARED_REFERENCES (LINT-05, D-10) — each entry is independent ─────────

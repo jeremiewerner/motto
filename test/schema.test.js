@@ -255,8 +255,25 @@ describe("validateSkill", () => {
     );
   });
 
-  // B13: template and dependencies keys are IGNORED (D-14)
-  it("B13: template and dependencies keys in data cause no errors (D-14)", () => {
+  // B13a: dependencies key alone is IGNORED (D-14 still applies to that field)
+  it("B13a: dependencies key in data causes no errors (D-14)", () => {
+    const skill = {
+      dirName: "my-skill",
+      data: {
+        name: "my-skill",
+        description: "use when X",
+        audience: "public",
+        dependencies: ["some-dep"],
+      },
+      body: VALID_BODY,
+    };
+    const errors = validateSkill(skill);
+    assert.deepEqual(errors, []);
+  });
+
+  // B13b: unknown template value now errors (TMPL-04) — template is no
+  // longer a passthrough key as of TMPL-01.
+  it("B13b: unknown template value now errors (TMPL-04)", () => {
     const skill = {
       dirName: "my-skill",
       data: {
@@ -264,12 +281,14 @@ describe("validateSkill", () => {
         description: "use when X",
         audience: "public",
         template: "standard",
-        dependencies: ["some-dep"],
       },
       body: VALID_BODY,
     };
     const errors = validateSkill(skill);
-    assert.deepEqual(errors, []);
+    assert.ok(
+      errors.some((e) => /unknown template "standard"/.test(e.message)),
+      `expected unknown-template error, got: ${JSON.stringify(errors)}`
+    );
   });
 
   // B14: description exactly 1024 chars — boundary value is valid (D-03)
@@ -499,5 +518,228 @@ describe("hasClosedSection", () => {
     assert.doesNotThrow(() => hasClosedSection(undefined, "process"));
     assert.equal(hasClosedSection(undefined, "process"), false);
     assert.equal(hasClosedSection("", "process"), false);
+  });
+});
+
+describe("validateSkill — template cascade (TMPL-01, TMPL-04, TMPL-05)", () => {
+  const PROCEDURE_BODY_MISSING_SUCCESS =
+    "# My Skill\n\n**Role:** helper.\n\n<process>\ndo it\n</process>\n";
+  const PROCEDURE_BODY_VALID =
+    "# My Skill\n\n**Role:** helper.\n\n<process>\ndo it\n</process>\n\n<success_criteria>\ndone\n</success_criteria>\n";
+
+  // template: procedure missing <success_criteria> -> one named error quoting SECTIONS description
+  it("template: procedure missing <success_criteria> reports one named error with the SECTIONS description (D-07)", () => {
+    const skill = {
+      dirName: "my-skill",
+      data: {
+        name: "my-skill",
+        description: "use when X",
+        audience: "public",
+        template: "procedure",
+      },
+      body: PROCEDURE_BODY_MISSING_SUCCESS,
+    };
+    const errors = validateSkill(skill);
+    assert.equal(errors.length, 1, `expected 1 error, got: ${JSON.stringify(errors)}`);
+    assert.ok(
+      errors[0].message.includes('template "procedure" requires'),
+      `expected template-requires message, got: "${errors[0].message}"`
+    );
+    assert.ok(
+      errors[0].message.includes("Checkable conditions that define done."),
+      `expected SECTIONS description quoted, got: "${errors[0].message}"`
+    );
+  });
+
+  // template: procedure with both required sections + valid base spine -> zero errors
+  it("template: procedure with both required sections and a valid spine returns zero errors", () => {
+    const skill = {
+      dirName: "my-skill",
+      data: {
+        name: "my-skill",
+        description: "use when X",
+        audience: "public",
+        template: "procedure",
+      },
+      body: PROCEDURE_BODY_VALID,
+    };
+    assert.deepEqual(validateSkill(skill), []);
+  });
+
+  // unknown template -> one error, sorted names, cascade stops (no section errors)
+  it('template: "standard" (unknown) reports one error with sorted available names, no section errors (TMPL-04)', () => {
+    const skill = {
+      dirName: "my-skill",
+      data: {
+        name: "my-skill",
+        description: "use when X",
+        audience: "public",
+        template: "standard",
+      },
+      body: VALID_BODY,
+    };
+    const errors = validateSkill(skill);
+    assert.equal(errors.length, 1, `expected 1 error, got: ${JSON.stringify(errors)}`);
+    assert.ok(
+      /unknown template "standard" \(available: procedure\)/.test(errors[0].message),
+      `expected unknown-template message, got: "${errors[0].message}"`
+    );
+  });
+
+  // non-string template values -> error, cascade stops
+  it("template: number/array/object reports a 'must be a string' error and stops the cascade", () => {
+    for (const [tpl, typeLabel] of [
+      [123, "number"],
+      [["procedure"], "object"],
+      [{ x: 1 }, "object"],
+    ]) {
+      const skill = {
+        dirName: "my-skill",
+        data: {
+          name: "my-skill",
+          description: "use when X",
+          audience: "public",
+          template: tpl,
+        },
+        body: VALID_BODY,
+      };
+      const errors = validateSkill(skill);
+      assert.equal(
+        errors.length,
+        1,
+        `expected 1 error for template ${JSON.stringify(tpl)}, got: ${JSON.stringify(errors)}`
+      );
+      assert.ok(
+        errors[0].message.includes(`template must be a string (got ${typeLabel})`),
+        `expected string-type error for ${typeLabel}, got: "${errors[0].message}"`
+      );
+    }
+  });
+
+  // empty-string template -> treated as unknown, never silently skipped (D-07)
+  it('template: "" (empty string, key present) is treated as unknown, never silently skipped (D-07)', () => {
+    const skill = {
+      dirName: "my-skill",
+      data: {
+        name: "my-skill",
+        description: "use when X",
+        audience: "public",
+        template: "",
+      },
+      body: VALID_BODY,
+    };
+    const errors = validateSkill(skill);
+    assert.equal(errors.length, 1, `expected 1 error, got: ${JSON.stringify(errors)}`);
+    assert.ok(
+      /unknown template ""/.test(errors[0].message),
+      `expected unknown-template error for empty string, got: "${errors[0].message}"`
+    );
+  });
+
+  // template: null (YAML null, key present) -> non-string branch, never throws (D-01)
+  it("template: null (key present) reports the non-string error and never throws (D-01)", () => {
+    const skill = {
+      dirName: "my-skill",
+      data: {
+        name: "my-skill",
+        description: "use when X",
+        audience: "public",
+        template: null,
+      },
+      body: VALID_BODY,
+    };
+    assert.doesNotThrow(() => validateSkill(skill));
+    const errors = validateSkill(skill);
+    assert.equal(errors.length, 1, `expected 1 error, got: ${JSON.stringify(errors)}`);
+    assert.ok(
+      errors[0].message.includes("template must be a string (got object)"),
+      `expected non-string error, got: "${errors[0].message}"`
+    );
+  });
+
+  // throwing toString/Symbol.toPrimitive -> typeof guard short-circuits before coercion
+  it("template: object with a throwing toString/Symbol.toPrimitive never throws; returns an error (T-14-03)", () => {
+    const throwingTpl = {
+      toString() {
+        throw new Error("boom");
+      },
+      [Symbol.toPrimitive]() {
+        throw new Error("boom");
+      },
+    };
+    const skill = {
+      dirName: "my-skill",
+      data: {
+        name: "my-skill",
+        description: "use when X",
+        audience: "public",
+        template: throwingTpl,
+      },
+      body: VALID_BODY,
+    };
+    assert.doesNotThrow(() => validateSkill(skill));
+    const errors = validateSkill(skill);
+    assert.equal(errors.length, 1, `expected 1 error, got: ${JSON.stringify(errors)}`);
+    assert.ok(
+      errors[0].message.includes("template must be a string (got object)"),
+      `expected non-string error, got: "${errors[0].message}"`
+    );
+  });
+
+  // TMPL-05 regression: no template key -> identical errors to v0.0.4
+  it("TMPL-05 regression: a skill with no template key returns the same errors as v0.0.4 (valid skill -> [])", () => {
+    const skill = {
+      dirName: "my-skill",
+      data: { name: "my-skill", description: "use when X", audience: "public" },
+      body: VALID_BODY,
+    };
+    assert.deepEqual(validateSkill(skill), []);
+  });
+
+  it("TMPL-05 regression: a skill with no template key and an invalid body returns the same base-spine errors as v0.0.4", () => {
+    const skill = {
+      dirName: "my-skill",
+      data: { name: "my-skill", description: "use when X", audience: "public" },
+      body: "no title\nno role\n",
+    };
+    const errors = validateSkill(skill);
+    assert.equal(
+      errors.length,
+      2,
+      `expected exactly 2 errors (Title + Role), got: ${JSON.stringify(errors)}`
+    );
+    assert.ok(errors.some((e) => /title|H1/i.test(e.message)));
+    assert.ok(errors.some((e) => /role/i.test(e.message)));
+  });
+
+  // waives via injected fixture: fixture template waiving "role" suppresses the Role error;
+  // the real registry's "procedure" template waives nothing.
+  const FIXTURE_TEMPLATES = {
+    SECTIONS: { process: "steps" },
+    TEMPLATES: {
+      "no-role-needed": { requiredSections: ["process"], waives: ["role"] },
+    },
+  };
+
+  it("waives: a fixture template waiving 'role' suppresses the Role error for a role-less body", () => {
+    const skill = {
+      dirName: "x",
+      data: { name: "x", description: "d", audience: "public", template: "no-role-needed" },
+      body: "# Title\n\n<process>\ndo it\n</process>\n",
+    };
+    assert.deepEqual(validateSkill(skill, new Set(), FIXTURE_TEMPLATES), []);
+  });
+
+  it("waives: procedure (real registry) waives nothing — a role-less body still errors", () => {
+    const skill = {
+      dirName: "my-skill",
+      data: { name: "my-skill", description: "use when X", audience: "public", template: "procedure" },
+      body: "# My Skill\n\n<process>\ndo it\n</process>\n\n<success_criteria>\ndone\n</success_criteria>\n",
+    };
+    const errors = validateSkill(skill);
+    assert.ok(
+      errors.some((e) => /role/i.test(e.message)),
+      `expected Role error since procedure does not waive it, got: ${JSON.stringify(errors)}`
+    );
   });
 });
