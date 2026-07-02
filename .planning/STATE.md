@@ -3,17 +3,17 @@ gsd_state_version: 1.0
 milestone: v0.0.4
 milestone_name: Project Bootstrap
 current_phase: 10
-current_phase_name: `motto init`
-status: roadmap-complete
+current_phase_name: project-scaffold-motto-init
+status: executing
 stopped_at: Phase 10 context gathered
-last_updated: "2026-07-02T05:15:28.615Z"
+last_updated: "2026-07-02T05:54:49.868Z"
 last_activity: 2026-07-02
-last_activity_desc: v0.0.4 roadmap created (Phases 10-12)
+last_activity_desc: Phase 10 execution started
 progress:
   total_phases: 3
   completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  total_plans: 2
+  completed_plans: 1
   percent: 0
 ---
 
@@ -24,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-01)
 
 **Core value:** A strict schema + linter that guarantees authored skills conform before they ship, then packages them into self-contained standard Agent Skill plugins.
-**Current focus:** v0.0.4 roadmap set (Phases 10-12); ready to plan Phase 10 (Project Scaffold `motto init`)
+**Current focus:** Phase 10 — project-scaffold-motto-init
 
 ## Current Position
 
-Phase: Phase 10 — Project Scaffold (`motto init`) — not started
-Plan: —
-Status: Roadmap complete (3 phases, 10/10 requirements mapped); awaiting phase planning
-Last activity: 2026-07-02 — v0.0.4 roadmap created (Phases 10-12)
+Phase: 10 (project-scaffold-motto-init) — EXECUTING
+Plan: 2 of 2
+Status: Ready to execute
+Last activity: 2026-07-02 — Phase 10 execution started
 
 ## Performance Metrics
 
@@ -61,6 +61,7 @@ Last activity: 2026-07-02 — v0.0.4 roadmap created (Phases 10-12)
 | Phase 07 P01 | 253 | 3 tasks | 4 files |
 | Phase 08 P01 | 64s | 3 tasks | 1 files |
 | Phase 09 P01 | 8 | 2 tasks | 1 files |
+| Phase 10 P01 | 8min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -83,6 +84,8 @@ Recent decisions affecting current work:
 - [v0.0.3]: `release` skill fixes — real `npm publish` flow, `git push --follow-tags`, manual `motto.yaml` bump.
 - [v0.0.2]: Output = standard Agent Skills (verbatim SKILL.md copy, no content stripping)
 - [v0.0.2]: `audience` binary (public|private); private plugin emitted only when private skills exist and `plugins.private` is set
+- [Phase ?]: Templates stored as inline strings in src/init.js (not skills/ or src/templates/) — avoids Motto's own dogfood skill count and dist/public/
+- [Phase ?]: Scaffolded .gitignore/marketplace.json deliberately differ from this repo's own root files — dist/public/ stays trackable; marketplace.json uses bare relative-path source
 
 ### Pending Todos
 
@@ -118,6 +121,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-02T05:15:28.612Z
+Last session: 2026-07-02T05:54:23.008Z
 Stopped at: Phase 10 context gathered
 Resume file: .planning/phases/10-project-scaffold-motto-init/10-CONTEXT.md

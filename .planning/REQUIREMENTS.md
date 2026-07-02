@@ -10,12 +10,12 @@ Each maps to roadmap phases. REQ-IDs continue from v0.0.3 (NPM/REL/MKT/DOC used;
 
 ### Scaffold (INIT)
 
-- [ ] **INIT-01**: User can run `motto init [name]` to scaffold a complete project into the current directory — `skills/`, `shared/references/`, `motto.yaml`, `.gitignore` (`[name]` fills `motto.yaml` fields; defaults to cwd basename)
+- [x] **INIT-01**: User can run `motto init [name]` to scaffold a complete project into the current directory — `skills/`, `shared/references/`, `motto.yaml`, `.gitignore` (`[name]` fills `motto.yaml` fields; defaults to cwd basename)
 - [ ] **INIT-02**: Scaffolded starter skill passes `motto lint` and `motto build` with zero edits, guarded by a permanent scaffold-dogfood test (init → lint → build)
-- [ ] **INIT-03**: init writes `.claude-plugin/marketplace.json` — relative source pointing at `dist/public/`, owner from git config (placeholder fallback when unset), plugin name consistent with `motto.yaml` by construction
-- [ ] **INIT-04**: init refuses to scaffold over an existing project (non-empty target guard); `--force` overrides
-- [ ] **INIT-05**: init validates the project name with the same rules lint enforces (single source: `schema.js` — no "init accepts, lint rejects")
-- [ ] **INIT-06**: Scaffolded `.gitignore` ignores `dist/private/` but NOT `dist/public/` (ship flow requires committing `dist/public/`)
+- [x] **INIT-03**: init writes `.claude-plugin/marketplace.json` — relative source pointing at `dist/public/`, owner from git config (placeholder fallback when unset), plugin name consistent with `motto.yaml` by construction
+- [x] **INIT-04**: init refuses to scaffold over an existing project (non-empty target guard); `--force` overrides
+- [x] **INIT-05**: init validates the project name with the same rules lint enforces (single source: `schema.js` — no "init accepts, lint rejects")
+- [x] **INIT-06**: Scaffolded `.gitignore` ignores `dist/private/` but NOT `dist/public/` (ship flow requires committing `dist/public/`)
 
 ### CLI Ergonomics (CLIX)
 
@@ -65,18 +65,19 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| INIT-01 | Phase 10 | Pending |
+| INIT-01 | Phase 10 | Complete |
 | INIT-02 | Phase 10 | Pending |
-| INIT-03 | Phase 10 | Pending |
-| INIT-04 | Phase 10 | Pending |
-| INIT-05 | Phase 10 | Pending |
-| INIT-06 | Phase 10 | Pending |
+| INIT-03 | Phase 10 | Complete |
+| INIT-04 | Phase 10 | Complete |
+| INIT-05 | Phase 10 | Complete |
+| INIT-06 | Phase 10 | Complete |
 | CLIX-03 | Phase 11 | Pending |
 | CLIX-04 | Phase 11 | Pending |
 | DOC-04 | Phase 12 | Pending |
 | DOC-05 | Phase 12 | Pending |
 
 **Coverage:**
+
 - v0.0.4 requirements: 10 total
 - Mapped to phases: 10 ✓
 - Unmapped: 0
