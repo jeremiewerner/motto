@@ -12,7 +12,7 @@ The **strict schema + linter**. Skills that always conform to one rigid-yet-crea
 
 **Shipped: v0.0.3 (2026-07-01)** — Motto is installable and distributable. The CLI publishes to npm as `@jeremiewerner/motto` (scoped/public, `files` allowlist, global `motto` command); public skills ship via a self-hosted Claude Code marketplace (`.claude-plugin/marketplace.json`, `source: npm` → `dist/public/`, `strict: false`, install `/plugin install motto@motto`); the `release` skill runs the real publish flow (pack-verify → publish → `git push --follow-tags` → `motto.yaml` sync); and a first project README documents every install path (npm, marketplace, Claude Desktop symlink/zip). 13/13 requirements, 75 tests, single dep `yaml`. Merged to `main` @ `450274c`, tagged `v0.0.3`. Repo `jeremiewerner/motto` is private (sole-user). See `milestones/v0.0.3-ROADMAP.md`.
 
-**In progress: v0.0.4** — Phase 10 complete (2026-07-02): `motto init [name]` scaffolds a complete, buildable skills project — starter skill passes lint+build with zero edits (permanent init→lint→build dogfood test), non-empty-dir guard with `--force`, name validation via the same `schema.js` rule lint enforces, never-throw orchestrator contract verified 9/9 after gap closure. Next: Phase 11 CLI ergonomics (`--help`, `[path]`).
+**In progress: v0.0.4** — Phase 11 complete (2026-07-02): CLI ergonomics shipped — `motto --help`/`-h`/bare `motto` print compact global help (stdout, exit 0), `motto <cmd> --help` prints focused per-command usage without running the command, unknown commands/flags get named-token errors, and `lint`/`build` accept an optional `[path]` arg (default cwd) with a pre-dispatch directory guard; 15 new spawn-based CLI tests (133 total). Verified 8/8 must-haves. Next: Phase 12 docs & cleanup (README ship path, remove `setup-project` skill).
 
 **Prior:** v0.0.2 (2026-07-01) — Motto self-hosts: own `skills/` tree + dogfood guard + spec-complete `validateSkill` (10 reqs, 75 tests). See `milestones/v0.0.2-ROADMAP.md`. · v0.0.1 (2026-06-30) — core `motto lint` + `motto build` CLI (22 reqs, 53 tests). See `milestones/v0.0.1-ROADMAP.md`.
 
@@ -58,11 +58,11 @@ The **strict schema + linter**. Skills that always conform to one rigid-yet-crea
 - [x] Universal body spine: `# Title` + `**Role:**`, mandatory, template-waivable — v0.0.1–v0.0.2
 - [x] Motto installable (npm) + skills distributable (self-hosted marketplace) — v0.0.3
 - [x] `motto init [name]` scaffolds a complete, buildable skills project (structure + motto.yaml + marketplace.json + starter skill + .gitignore) — Validated in Phase 10 (v0.0.4)
+- [x] `--help`/`-h` (global, per-subcommand, bare `motto`) prints usage to stdout, exit 0 — Validated in Phase 11 (v0.0.4)
+- [x] `lint`/`build` accept optional `[path]` arg (default cwd), with directory-existence guard — Validated in Phase 11 (v0.0.4)
 
 ### Active
 
-- [ ] `--help` prints usage, exit 0
-- [ ] `lint`/`build` accept optional `[path]` arg (default cwd)
 - [ ] README documents the full ship-your-plugin path
 - [ ] `setup-project` skill removed (superseded by init + README)
 - [ ] Template *mechanism* exists (schema add-ons via `template:`), with zero concrete templates shipped — mechanism shipped v0.0.1; concrete-template validation deferred (TMPL-01)
@@ -121,4 +121,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-02 — Phase 10 (Project Scaffold / `motto init`) complete*
+*Last updated: 2026-07-02 — Phase 11 (CLI Ergonomics: `--help`, `[path]`) complete*
