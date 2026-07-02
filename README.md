@@ -170,7 +170,7 @@ Consumers then add your marketplace and install your plugin:
 
 ## Publish to npm
 
-The `release` skill (`/motto:release`) carries the full maintainer checklist. The short version:
+The release skill at `skills/release/SKILL.md` carries the full maintainer checklist. The short version:
 
 ```sh
 npm version X.Y.Z -m "chore: release v%s"   # bumps package.json + motto.yaml, creates tag
