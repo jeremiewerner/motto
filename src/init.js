@@ -91,7 +91,10 @@ async function listNonIgnorableEntries(targetDir) {
  */
 function resolveGitOwnerName() {
   try {
-    const name = execFileSync('git', ['config', 'user.name'], { encoding: 'utf8' }).trim();
+    const name = execFileSync('git', ['config', 'user.name'], {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim();
     return name || 'Your Name';
   } catch {
     return 'Your Name';
