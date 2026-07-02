@@ -80,7 +80,7 @@ plugins:
 | `name` | Yes | Truthy string; project identifier |
 | `version` | Yes | Truthy string; recommend quoting to preserve as YAML string |
 | `description` | Yes | Truthy string; feeds into each built `plugin.json` |
-| `plugins.public` | Yes | Letter-start kebab-case; must not contain `anthropic` or `claude` |
+| `plugins.public` | Yes | Letter-start kebab-case (Claude Code plugin `name` requirement — no reserved-word restriction, unlike skill `name`) |
 | `plugins.private` | When private skills exist | Same kebab-case rule |
 
 Two guards protect the scaffold:

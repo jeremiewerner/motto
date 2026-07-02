@@ -33,7 +33,15 @@
 export const NAME_KEBAB = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/;
 
 /**
- * Reserved substrings that must not appear in skill or plugin names (LINT-02, D-09).
+ * Reserved substrings that must not appear in a skill's SKILL.md `name`
+ * frontmatter field (LINT-02, D-09).
+ *
+ * Scope: SKILL.md `name` ONLY. Claude Code's `plugin.json` `name` field
+ * (motto.yaml's `plugins.public`/`plugins.private`) has no reserved-word restriction
+ * — see code.claude.com/docs/en/plugins-reference (verified 2026-07-02).
+ * Do NOT reuse RESERVED for plugins.public/plugins.private validation in
+ * src/config.js or src/init.js.
+ *
  * @type {string[]}
  */
 const RESERVED = ["anthropic", "claude"];
