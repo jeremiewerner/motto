@@ -519,6 +519,22 @@ describe("hasClosedSection", () => {
     assert.equal(hasClosedSection(undefined, "process"), false);
     assert.equal(hasClosedSection("", "process"), false);
   });
+
+  // Mixed backtick and tilde fences: a stray ~~~ content line inside an open
+  // backtick fence must not be mistaken for a fence boundary of its own —
+  // the tags stay excluded until a matching backtick fence actually closes
+  // it (WR-02)
+  it("returns false for tags inside a backtick fence containing an unrelated tilde marker line (mixed backtick and tilde fences)", () => {
+    const body = "# t\n```\n~~~\n<process>\nx\n</process>\n```\n";
+    assert.equal(hasClosedSection(body, "process"), false);
+  });
+
+  // Reversed tag order: close tag appears before the open tag -> not a
+  // matched pair, even though both are present and unfenced (WR-01)
+  it("returns false when the close tag precedes the open tag", () => {
+    const body = "# t\n</process>\nx\n<process>\n";
+    assert.equal(hasClosedSection(body, "process"), false);
+  });
 });
 
 describe("validateSkill — template cascade (TMPL-01, TMPL-04, TMPL-05)", () => {
