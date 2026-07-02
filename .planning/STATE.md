@@ -3,17 +3,17 @@ gsd_state_version: 1.0
 milestone: v0.0.5
 milestone_name: Skill Builder
 current_phase: 14
-current_phase_name: Template Mechanism
+current_phase_name: template-mechanism
 status: executing
-stopped_at: Phase 14 context gathered
-last_updated: "2026-07-02T22:54:07.942Z"
-last_activity: 2026-07-03
-last_activity_desc: v0.0.5 roadmap created (Phases 14-17), 19/19 requirements mapped
+stopped_at: Completed 14-01-PLAN.md
+last_updated: "2026-07-02T23:02:17.103Z"
+last_activity: 2026-07-02
+last_activity_desc: Phase 14 execution started
 progress:
   total_phases: 4
   completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  total_plans: 2
+  completed_plans: 1
   percent: 0
 ---
 
@@ -24,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-02 after v0.0.4)
 
 **Core value:** A strict schema + linter that guarantees authored skills conform before they ship, then packages them into self-contained standard Agent Skill plugins.
-**Current focus:** Phase 14 — Template Mechanism
+**Current focus:** Phase 14 — template-mechanism
 
 ## Current Position
 
-Phase: 14 of 17 (Template Mechanism) — first phase of v0.0.5
-Plan: 2 plans, 2 waves (14-01 mechanism, 14-02 dogfood)
+Phase: 14 (template-mechanism) — EXECUTING
+Plan: 2 of 2
 Status: Ready to execute
-Last activity: 2026-07-03 — Phase 14 planned (research + patterns + 2 plans, checker passed iteration 2)
+Last activity: 2026-07-02 — Phase 14 execution started
 Note: decision-coverage-plan gate overridden (could-not-parse: CONTEXT.md decisions are category bullets without D-NN IDs; checker Dimension 7 manually verified all locked decisions covered) — verify-phase may re-surface
 
 Progress: [░░░░░░░░░░] 0%
@@ -59,6 +59,7 @@ Progress: [░░░░░░░░░░] 0%
 - Trend: -
 
 *Updated after each plan completion*
+| Phase 14 P01 | 24min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -70,6 +71,8 @@ Recent decisions affecting current work:
 - [v0.0.5 design spec]: D-01..D-08 govern the template mechanism, field validators, and build-skill (see `.planning/superpowers/specs/2026-07-02-skill-builder-design.md`).
 - [v0.0.4]: Templates stored as inline strings in `src/init.js` — the v0.0.5 template *mechanism* (`src/templates.js`) is a distinct, data-driven schema-profile registry, not the init scaffold strings.
 - [v0.0.2]: Output = standard Agent Skills (verbatim SKILL.md copy, no content stripping); `audience` binary (public|private).
+- [Phase 14]: Template cascade resolves waivedSections before Title/Role checks so a template's waives can gate them (TMPL-01/04/05)
+- [Phase 14]: template-key presence gated with hasOwnProperty (not truthy) so template: "" or null errors instead of silently passing (D-07)
 
 ### Pending Todos
 
@@ -97,9 +100,9 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-02T22:27:16.463Z
-Stopped at: Phase 14 context gathered
-Resume file: .planning/phases/14-template-mechanism/14-CONTEXT.md
+Last session: 2026-07-02T23:02:17.099Z
+Stopped at: Completed 14-01-PLAN.md
+Resume file: None
 
 ## Operator Next Steps
 

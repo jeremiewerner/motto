@@ -6,11 +6,11 @@
 
 ### Template Mechanism (TMPL)
 
-- [ ] **TMPL-01**: Author can declare `template: <name>` and lint enforces that template's extra rules (closes deferred TMPL-01)
-- [ ] **TMPL-02**: Template + section-tag registry is pure data (`src/templates.js`); adding a template requires no mechanism change
-- [ ] **TMPL-03**: `procedure` template requires `<process>` + `<success_criteria>` body sections — matching ignores fenced code blocks
-- [ ] **TMPL-04**: Unknown template name yields a lint error listing available templates
-- [ ] **TMPL-05**: Skills without `template:` behave exactly as v0.0.4 (regression-guarded)
+- [x] **TMPL-01**: Author can declare `template: <name>` and lint enforces that template's extra rules (closes deferred TMPL-01)
+- [x] **TMPL-02**: Template + section-tag registry is pure data (`src/templates.js`); adding a template requires no mechanism change
+- [x] **TMPL-03**: `procedure` template requires `<process>` + `<success_criteria>` body sections — matching ignores fenced code blocks
+- [x] **TMPL-04**: Unknown template name yields a lint error listing available templates
+- [x] **TMPL-05**: Skills without `template:` behave exactly as v0.0.4 (regression-guarded)
 
 ### Field Validation (VAL)
 
@@ -62,11 +62,11 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| TMPL-01 | Phase 14 | Pending |
-| TMPL-02 | Phase 14 | Pending |
-| TMPL-03 | Phase 14 | Pending |
-| TMPL-04 | Phase 14 | Pending |
-| TMPL-05 | Phase 14 | Pending |
+| TMPL-01 | Phase 14 | Complete |
+| TMPL-02 | Phase 14 | Complete |
+| TMPL-03 | Phase 14 | Complete |
+| TMPL-04 | Phase 14 | Complete |
+| TMPL-05 | Phase 14 | Complete |
 | VAL-01 | Phase 15 | Pending |
 | VAL-02 | Phase 15 | Pending |
 | VAL-03 | Phase 15 | Pending |

@@ -59,10 +59,10 @@ Full phase details: [milestones/v0.0.4-ROADMAP.md](milestones/v0.0.4-ROADMAP.md)
   4. A skill with no `template:` field lints byte-for-byte identically to v0.0.4 (regression-guarded).
   5. Adding a new template requires only editing the `src/templates.js` data map — no linter/mechanism code change.
 
-**Plans**: 2 plans
+**Plans**: 1/2 plans executed
 **Wave 1**
 
-- [ ] 14-01-PLAN.md — Data-driven template mechanism: `src/templates.js` registry + `validateSkill` cascade + fence-aware `hasClosedSection` scanner + full test guard (TMPL-01..05)
+- [x] 14-01-PLAN.md — Data-driven template mechanism: `src/templates.js` registry + `validateSkill` cascade + fence-aware `hasClosedSection` scanner + full test guard (TMPL-01..05)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -124,7 +124,7 @@ Phases execute in numeric order: 14 → 15 → 16 → 17
 | 11. CLI Ergonomics (--help, [path]) | v0.0.4 | 1/1 | Complete | 2026-07-02 |
 | 12. Docs & Cleanup | v0.0.4 | 3/3 | Complete | 2026-07-02 |
 | 13. Tech-Debt Closure | v0.0.4 | 2/2 | Complete | 2026-07-02 |
-| 14. Template Mechanism | v0.0.5 | 0/2 | Not started | - |
+| 14. Template Mechanism | v0.0.5 | 1/2 | In Progress|  |
 | 15. Field Validation & Integrity Guards | v0.0.5 | 0/TBD | Not started | - |
 | 16. build-skill & author-skill Retirement | v0.0.5 | 0/TBD | Not started | - |
 | 17. Docs Audit | v0.0.5 | 0/TBD | Not started | - |
