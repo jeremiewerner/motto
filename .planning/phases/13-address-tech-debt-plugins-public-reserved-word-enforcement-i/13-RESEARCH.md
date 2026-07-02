@@ -248,17 +248,19 @@ describe(`name "${name}"`, () => {
 
 **If this table is empty:** N/A — see A1 above; everything else in this research is either read directly from source/tests in this repository or fetched fresh from official docs this session (HIGH confidence throughout, no other `[ASSUMED]`-tagged claims).
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Should Phase 13 also sweep the lower-priority INFO-level findings from `10-REVIEW.md` (IN-01..IN-06) and `11-REVIEW.md` (IN-01..IN-05) that were explicitly marked out-of-scope for their originating phases (`fix_scope: critical_warning`)?**
+   - **RESOLVED:** Scope stays at the 5 audit-tracked items; the INFO backlog is NOT swept in Phase 13 (plans 13-01/13-02 cover only DEBT-01..DEBT-05). The 11 INFO items remain deferred per the recommendation below.
    - What we know: None of these 11 info-level items appear in the milestone audit's `tech_debt` list — the audit only rolled up WARNING-severity items. They range from cosmetic (`localeCompare` locale-dependence, an unused `withFileTypes: true`) to genuinely useful UX gaps (extra positionals silently ignored, `--force` accepted-and-ignored by `lint`/`build`).
    - What's unclear: Whether "init/CLI review items" in the phase name is meant to mean "the tracked tech-debt list" (narrow — 5 items) or "everything flagged during init/CLI code review" (broad — 5 + 11 = 16 items).
    - Recommendation: Scope Phase 13 to the 5 audit-tracked items (this research's primary focus) unless the user explicitly wants the INFO backlog swept too — the INFO items are individually cheap but numerous, and several (e.g. IN-03 in 11-REVIEW: extra positionals) are closer to product-behavior decisions than pure "review items," so bundling them without a decision point would silently expand phase scope. If the user does want them included, this research's inventory above (both REVIEW.md files, quoted in full) is sufficient — no further research pass is needed to plan them.
 
 2. **Does the correct fix for README.md:173 depend on a fact only the maintainer knows (see A1)?**
+   - **RESOLVED:** Plan 13-02 gates the fix with a `checkpoint:human-verify` task that asks the maintainer to try `/motto-private:release` in their own session; the checkpoint result selects the branch (private-namespace vs. file-path reference) before Task 1 edits README.md. The maintainer-dependent fact is resolved at execution time by the checkpoint, not guessed now.
    - What we know: The invocation namespace math (`audience: private` → `motto-private` plugin → `/motto-private:release`) is fully verifiable from the repo and is not in question.
-   - What's unclear: Whether the maintainer actually has a working local-load path for the private plugin today (making "fix the command to `/motto-private:release`" correct) or not (making "drop the slash-command claim" correct).
-   - Recommendation: Plan a `checkpoint:human-verify` task asking the maintainer to try the corrected command in their own session before committing to either fix.
+   - What's unclear (until the checkpoint runs): Whether the maintainer actually has a working local-load path for the private plugin today (making "fix the command to `/motto-private:release`" correct) or not (making "drop the slash-command claim" correct).
+   - Recommendation: Plan a `checkpoint:human-verify` task asking the maintainer to try the corrected command in their own session before committing to either fix. **(Implemented in plan 13-02.)**
 
 ## Environment Availability
 
