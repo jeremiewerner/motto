@@ -65,22 +65,22 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| INIT-01 | — | Pending |
-| INIT-02 | — | Pending |
-| INIT-03 | — | Pending |
-| INIT-04 | — | Pending |
-| INIT-05 | — | Pending |
-| INIT-06 | — | Pending |
-| CLIX-03 | — | Pending |
-| CLIX-04 | — | Pending |
-| DOC-04 | — | Pending |
-| DOC-05 | — | Pending |
+| INIT-01 | Phase 10 | Pending |
+| INIT-02 | Phase 10 | Pending |
+| INIT-03 | Phase 10 | Pending |
+| INIT-04 | Phase 10 | Pending |
+| INIT-05 | Phase 10 | Pending |
+| INIT-06 | Phase 10 | Pending |
+| CLIX-03 | Phase 11 | Pending |
+| CLIX-04 | Phase 11 | Pending |
+| DOC-04 | Phase 12 | Pending |
+| DOC-05 | Phase 12 | Pending |
 
 **Coverage:**
 - v0.0.4 requirements: 10 total
-- Mapped to phases: 0 (roadmap pending)
-- Unmapped: 10 ⚠️
+- Mapped to phases: 10 ✓
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-07-02*
-*Last updated: 2026-07-02 after initial definition*
+*Last updated: 2026-07-02 after roadmap creation (Phases 10-12 mapped)*

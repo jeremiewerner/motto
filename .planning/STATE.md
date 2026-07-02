@@ -2,11 +2,11 @@
 gsd_state_version: 1.0
 milestone: v0.0.4
 milestone_name: Project Bootstrap
-status: planning
-last_updated: "2026-07-01T21:06:55.238Z"
-last_activity: 2026-07-01
+status: roadmap-complete
+last_updated: "2026-07-02T00:00:00.000Z"
+last_activity: 2026-07-02
 progress:
-  total_phases: 0
+  total_phases: 3
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -20,14 +20,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-01)
 
 **Core value:** A strict schema + linter that guarantees authored skills conform before they ship, then packages them into self-contained standard Agent Skill plugins.
-**Current focus:** Phase 08 complete — Marketplace Distribution (verified live)
+**Current focus:** v0.0.4 roadmap set (Phases 10-12); ready to plan Phase 10 (Project Scaffold `motto init`)
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: Phase 10 — Project Scaffold (`motto init`) — not started
 Plan: —
-Status: Defining requirements
-Last activity: 2026-07-01 — Milestone v0.0.4 started
+Status: Roadmap complete (3 phases, 10/10 requirements mapped); awaiting phase planning
+Last activity: 2026-07-02 — v0.0.4 roadmap created (Phases 10-12)
 
 ## Performance Metrics
 
@@ -94,6 +94,7 @@ None yet.
 ### Roadmap Evolution
 
 - v0.0.3 roadmap created: Phase 7 (npm Packaging & Release Flow), Phase 8 (Marketplace Distribution), Phase 9 (Documentation). Numbering continues from v0.0.2 (ended at Phase 6).
+- v0.0.4 roadmap created: Phase 10 (Project Scaffold `motto init` — INIT-01..06), Phase 11 (CLI Ergonomics `--help`/`[path]` — CLIX-03..04), Phase 12 (Docs & Cleanup — DOC-04..05). Numbering continues from v0.0.3 (ended at Phase 9). Coarse granularity: research's template/orchestrator risk split folded into Phase 10's plans rather than separate roadmap phases so each phase owns user-observable requirements. 10/10 requirements mapped.
 
 ## Deferred Items
 
