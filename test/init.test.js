@@ -220,6 +220,53 @@ describe('scaffoldProject --force overwrite-only (INIT-04, D-06)', () => {
   });
 });
 
+describe('scaffoldProject never-throws when target is a file (WR-01, ENOTDIR)', () => {
+  it('resolves ok:false without throwing when targetDir is a file', async () => {
+    const scratchDir = await mkdtemp(join(tmpdir(), 'motto-init-test-'));
+    try {
+      const fileAsTarget = join(scratchDir, 'target-file');
+      await writeFile(fileAsTarget, 'not a directory');
+
+      let result;
+      try {
+        result = await scaffoldProject(fileAsTarget, { name: 'hello-proj' });
+      } catch (e) {
+        assert.fail(`never-throw contract violated — scaffoldProject threw: ${e.message}`);
+      }
+
+      assert.strictEqual(result.ok, false);
+      assert.ok(Array.isArray(result.errors), 'expected result.errors to be an array');
+    } finally {
+      await rm(scratchDir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('scaffoldProject never-throws when a scaffold write fails (WR-01, STEP 4)', () => {
+  it('resolves ok:false without throwing when a write-blocking file occupies a scaffold path', async () => {
+    const scratchDir = await mkdtemp(join(tmpdir(), 'motto-init-test-'));
+    try {
+      // Pre-create a FILE named `skills` so writeScaffold's first mkdir
+      // (skills/hello-world) fails with ENOTDIR — deterministic on every
+      // platform/uid, unlike a chmod/EACCES approach (root bypasses EACCES).
+      await writeFile(join(scratchDir, 'skills'), 'blocks the skills/ directory');
+
+      let result;
+      try {
+        result = await scaffoldProject(scratchDir, { name: 'hello-proj', force: true });
+      } catch (e) {
+        assert.fail(`never-throw contract violated — scaffoldProject threw: ${e.message}`);
+      }
+
+      assert.strictEqual(result.ok, false);
+      assert.ok(Array.isArray(result.errors), 'expected result.errors to be an array');
+      assert.ok(result.errors.length >= 1, 'expected at least one error');
+    } finally {
+      await rm(scratchDir, { recursive: true, force: true });
+    }
+  });
+});
+
 describe('scaffoldProject content shape', () => {
   let tempDir;
 
