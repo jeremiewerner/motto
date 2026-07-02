@@ -21,7 +21,7 @@
 
 - [x] **Phase 10: Project Scaffold (`motto init`)** - Scaffold a complete, immediately-buildable skills project in one command (completed 2026-07-02)
 - [x] **Phase 11: CLI Ergonomics (--help, [path])** - Usage text on demand and lint/build against any directory (completed 2026-07-02)
-- [x] **Phase 12: Docs & Cleanup** - Document the ship-your-plugin path and retire the superseded `setup-project` skill (completed 2026-07-02)
+- [ ] **Phase 12: Docs & Cleanup** - Document the ship-your-plugin path and retire the superseded `setup-project` skill (plans 2/2 executed; verification found gaps — see 12-VERIFICATION.md)
 
 ## Phase Details
 
