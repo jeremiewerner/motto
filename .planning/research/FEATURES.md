@@ -1,184 +1,168 @@
 # Feature Research
 
-**Domain:** CLI scaffold/init command for a skills-authoring build tool (`motto init`)
-**Researched:** 2026-07-01
-**Confidence:** MEDIUM (ecosystem conventions cross-checked across 5+ tools; marketplace.json schema verified against official Claude Code docs + motto's own working example)
+**Domain:** Skill-generator / meta-skill ("a skill that writes skills") + schema fields for declaring skill outputs and inter-skill dependencies
+**Researched:** 2026-07-02
+**Confidence:** HIGH (primary sources read in full: official spec + two real, widely-used skill-generators + Motto's own prior-art research target)
+
+## Sources studied (full text read, not summarized secondhand)
+
+| Source | What it is | Location |
+|---|---|---|
+| **Anthropic `skill-creator`** | Anthropic's own official meta-skill, ships in `anthropics/skills` | Local checkout `/Users/jeremie/Projects/ai-workspace/skills/skill-creator/` — canonical: [github.com/anthropics/skills/blob/main/skills/skill-creator/SKILL.md](https://github.com/anthropics/skills/blob/main/skills/skill-creator/SKILL.md) |
+| **`obra/superpowers` `writing-skills`** | Jesse Vincent's TDD-for-skills meta-skill, v6.1.0 | Local plugin cache — canonical: [github.com/obra/superpowers](https://github.com/obra/superpowers) |
+| **agentskills.io specification** | The open SKILL.md format spec both of the above (and Motto) target | [agentskills.io/specification](https://agentskills.io/specification) |
+| **gsd-core installed skills** (55 real `SKILL.md` files, incl. this researcher's own prompt) | Live corpus of `allowed-tools`, `argument-hint`, `<output>` block usage in production | `/Users/jeremie/.claude/skills/*/SKILL.md`, `/Users/jeremie/.claude/gsd-core/` |
+| **Motto design spec** | Locked decisions D-01..D-08 for this milestone | `.planning/superpowers/specs/2026-07-02-skill-builder-design.md` |
+
+**Key cross-check finding (HIGH confidence, verified two independent ways — official spec text + Anthropic's own validator source code):** neither the official agentskills.io spec nor any surveyed real-world skill has an `outputs:` or `dependencies:` frontmatter field. Anthropic's own `scripts/quick_validate.py` in `skill-creator` hard-codes an **allowlist** of frontmatter keys — `{name, description, license, allowed-tools, metadata, compatibility}` — and *rejects* any other key as "unexpected". `template:`, `outputs:`, and `dependencies:` are **Motto-original extensions**, not things being standardized elsewhere. This is a genuine differentiator, not a gap Motto is late to close — but it also means these fields are 100% Motto's own field to design well, with zero prior art to lean on for their exact shape. It also means output produced by `motto build` (which copies `SKILL.md` verbatim) would carry frontmatter keys that Anthropic's own upload-side validator (if ever run against it) would flag — worth a README/docs note, not a blocker (Motto's own no-content-stripping principle already accepts this tradeoff for portability).
 
 ## Feature Landscape
 
 ### Table Stakes (Users Expect These)
 
-Features users assume exist. Missing these = product feels incomplete or unsafe to run twice.
+Features a "skill that writes skills" is expected to have, based on both surveyed implementations converging independently on the same shape.
 
 | Feature | Why Expected | Complexity | Notes |
 |---------|--------------|------------|-------|
-| Non-destructive by default on an existing/non-empty directory | Every scaffold tool researched (`cargo init`, `poetry new`, `create-vite`, `claude plugin init`) refuses to silently overwrite. Users run scaffolds inside repos they already care about. | LOW | Simplest safe rule: if target dir exists and is non-empty, abort with a clear error listing what already exists. No need for interactive overwrite/ignore/merge menu (that's `create-vite`-level complexity, YAGNI for a single-audience CLI) — see Anti-Features. |
-| `--force` / explicit override flag | `claude plugin init` (the closest official precedent, same ecosystem) ships `-f, --force` to overwrite an existing `.claude-plugin/`. `create-vite` ships `--overwrite`. Users need an escape hatch for re-running after a mistake, without a second interactive tool. | LOW | One boolean flag. Non-interactive (matches Motto's existing zero-prompt `lint`/`build` UX — no Inquirer dependency to add). |
-| Name argument with validation, defaulting to current directory name | `cargo new <name>` requires a name; `cargo init` (no name arg) defaults to the directory name; `claude plugin init <name>` requires a name and rejects spaces/path separators. Motto already validates skill `name` as kebab-case in `motto lint` — same rule should apply to the project/plugin name written into `motto.yaml` and `marketplace.json`. | LOW | `motto init [name]` — optional positional arg (per PROJECT.md), default to `path.basename(cwd)`; validate against the same kebab pattern (`[a-z][a-z0-9-]*`) already enforced for skill names, reject early with an actionable message (not a stack trace). |
-| Scaffolds a complete, immediately-buildable project | Every scaffold tool's core promise is "run one command, get a working thing," not "run one command, get a half-finished stub you must hand-edit before anything works." | MEDIUM | This is Motto's stated MVP bar: `motto init` output must pass `motto lint` and `motto build` with zero edits (PROJECT.md: "starter example skill (lint+build pass immediately)"). This is the single hardest-to-get-wrong requirement — the starter skill is generated content that must satisfy the strict schema Motto itself enforces. |
-| Clear, itemized completion output | `cargo new`/`cargo init` print what was created; `claude plugin init` reports the scaffolded path and next steps. Silent success (exit 0, no output) reads as broken in a CLI tool whose entire value prop is transparency/rigor. | LOW | List files created (motto.yaml, .claude-plugin/marketplace.json, skills/<starter>/, shared/references/, .gitignore) + a one-line "next steps" hint (e.g. `motto lint`, `motto build`). Keep it plain-text, matching the project's existing "no chalk/colors" constraint. |
-| `--help` with real usage text, exit 0 | Table stakes for any CLI; explicitly in scope this milestone (PROJECT.md Active requirements). Every tool researched (npm, cargo, poetry, vite, claude) supports `--help`. | LOW | Constant string per the STACK.md decision (no `commander`/`yargs`); must cover `init`, `lint [path]`, `build [path]`, `--help` itself. |
-| `[path]` positional arg for `lint`/`build`, default cwd | Matches every researched tool's pattern of "operate on cwd unless told otherwise" (`cargo init [path]`, `poetry` commands accept `--directory`). Already an explicit Active requirement. | LOW | Small, orthogonal to `init` — just resolve `path.resolve(pathArg ?? process.cwd())` before existing lint/build logic. |
-| `.gitignore` scaffolded with `dist/` (or the split public/private convention) excluded appropriately | Standard for any tool that generates build output into the repo. Motto's own repo does this (private dist must never leak; public dist gets committed per README "ship your plugin" flow). | LOW | Must match the emerging convention (PROJECT.md: commit `dist/public/`, not `dist/private/`) — so `.gitignore` should ignore `dist/private/` but *not* `dist/public/`, since public dist is the thing marketplace.json's relative-path source points at and must be committed to be installable. Getting this backwards silently breaks the whole distribution story. |
+| **Ingest free-form input first** (existing conversation, pasted doc, or verbal description) before asking anything | Both skill-creator and writing-skills open with "extract what's already known from context first, fill gaps second" — asking a blank-slate interview when the workflow is already in the transcript is the #1 UX complaint pattern this avoids | LOW | Matches D-03 exactly: build-skill is a structurer, input can be "any form" |
+| **Gap-filling interview, not blank-slate interview** — only ask what the input didn't already answer | skill-creator's "Capture Intent" step explicitly says extract from conversation history first, "user may need to fill the gaps, and should confirm before proceeding" | LOW–MED | Confirm-don't-reask is the differentiator vs. a generic form |
+| **Fixed minimum question set**: name, trigger/when-to-use, output format/shape, edge cases | skill-creator's 4 canonical questions (what should it do / when trigger / what output format / need test cases) map 1:1 onto SKILL.md's required fields (`name`, `description`) + Motto's new fields (`outputs`) | LOW | Directly reusable as build-skill's question checklist |
+| **Description quality coaching, not just presence-check** | Both sources spend enormous effort on `description` — it's the *only* thing loaded at all times and the sole trigger mechanism. skill-creator explicitly recommends "pushy" descriptions naming symptoms; writing-skills has a whole "Description = When to Use, NOT What it Does" section with tested before/after pairs | LOW (as a prompt instruction) | `motto lint` already checks length/format; build-skill should *additionally* coach description content quality at write-time, since lint can only check structure, not persuasiveness |
+| **Generate a complete, schema-conformant `SKILL.md`, not a stub** | Both produce a full file with frontmatter + body sections in one pass, not scaffolding for the user to fill in later | LOW–MED | Matches D-03's "generate skill" step |
+| **Self-verify against the schema before handing back to the user** | skill-creator runs `quick_validate.py`; writing-skills' Iron Law is literally "NO SKILL WITHOUT" verification; Motto's own equivalent is `motto lint` | LOW | Already have the validator — build-skill's job is to call it and iterate, not reinvent it. Cleanest possible reuse of existing Motto infrastructure |
+| **Iterate-until-clean loop on the generator's own output** | Same as above — both sources treat "write once, ship" as an anti-pattern; the loop is draft → validate → fix → re-validate | LOW–MED | `motto lint` returns machine-parseable errors already (per PROJECT.md); build-skill parses them and patches |
+| **Bundled-resource awareness** (`scripts/`, `references/`, `assets/`) — knows when to split content out vs. keep inline | Both sources have an explicit "Anatomy of a Skill" / "File Organization" section with the same three-bucket split and the same trigger ("heavy reference >300 lines → separate file") | LOW | Motto's shared refs mechanism (`shared/references/`) already exists — build-skill should point at it, not duplicate |
+| **Name/folder-match enforcement** | Universal across spec + both tools — `name` frontmatter must equal folder name, kebab-case, no reserved words | Already built | Motto's `motto lint` already enforces this (v0.0.1) — build-skill inherits it for free |
 
 ### Differentiators (Competitive Advantage)
 
-Features that set the product apart. Not required for MVP, but align with Motto's core value (strict schema + linter).
+Where Motto's build-skill should intentionally diverge from both surveyed tools — these map to the locked design decisions (D-01..D-08) and to what neither Anthropic's nor obra's tool does at all.
 
 | Feature | Value Proposition | Complexity | Notes |
 |---------|-------------------|------------|-------|
-| Starter skill that demonstrates the schema, not just a stub | Most scaffold tools (`npm init -y`, `cargo new`) emit minimal boilerplate. A starter skill that showcases the Title+Role spine, a `references/` file, and passes lint is itself documentation — "show, don't tell" for the strict schema that is Motto's whole differentiator. | MEDIUM | Directly serves Core Value from PROJECT.md. Low marginal cost since the schema/spine already exists; the work is authoring one good example, not new mechanism. |
-| `motto.yaml` pre-filled with sane project defaults (name, version `0.0.1`, description prompt-free) derived from `[name]` arg / directory / `package.json` if present | `claude plugin init` derives author identity from `git config user.name`/`user.email` — same low-friction pattern: derive what's derivable, ask for nothing. | LOW–MEDIUM | Optional enrichment: if a `package.json` exists in the target dir, pre-fill `description` from it. Not required for MVP; nice zero-question polish. |
-| `marketplace.json` scaffolded with the *relative-path* (git-hosted) source variant, correctly wired to `dist/public/` | This is the actual hard, easy-to-get-wrong part (see verified schema below) — most competing scaffold tools don't have an equivalent "cross-file consistency" concern. Getting the `source`/`skills`/`strict` triangle right by construction (not by user trial-and-error) is a genuine differentiator vs. hand-authoring it, which is exactly the friction v0.0.3 exposed. | MEDIUM | See verified schema below. This is the one place `motto init` output needs to be *correct*, not just present — a malformed marketplace.json fails silently/late (at `/plugin marketplace add` time), far from when it was generated. |
+| **Structurer, not ideator (D-03)** | Neither surveyed tool draws this line explicitly — skill-creator actively co-designs "what should the skill do", writing-skills assumes the user already knows and is testing rigor. Motto's differentiator is refusing the ideation role entirely: users bring GSD/superpowers/their own brainstorm, build-skill only maps it onto the schema. This is a scope discipline no competitor enforces, and it's what keeps build-skill "lightweight" per standing principle 3 | LOW (it's a constraint, not a feature to build) | Directly prevents build-skill from growing into a second brainstorming tool — the single most important anti-scope-creep decision in the design doc |
+| **`template: procedure` self-application (dogfood)** | Neither tool applies a formal template mechanism to itself this way — skill-creator's own SKILL.md has no template/type system at all. build-skill being `template: procedure` proves the template mechanism on day one against its most complex consumer | MED | Also closes TMPL-01 (deferred since v0.0.1) with a real, load-bearing consumer instead of a speculative one |
+| **Named `outputs:` map (D-04)** | Neither tool has a machine-checkable declaration of "this skill produces these files." skill-creator's evals.json/grading.json/benchmark.json family gets close (declares *test* output shapes) but nothing declares the skill's own *production* outputs as validated, existing files. Genuinely novel among surveyed tools | MED | "Same skill, different output parameters" — single-output is a one-entry map, so it doesn't burden simple skills |
+| **`dependencies:` resolved in-tree (D-05)** | No surveyed tool validates skill-to-skill dependencies at all — `compatibility:` (the closest official field) is a free-text string about *environment*, not other skills. Bare-kebab-name resolution against the project's `skills/` tree is unique to Motto | MED | Format-only for namespaced (`plugin:skill`) deps is the right scope cut — matches D-05's "lint what's verifiable" |
+| **Verbatim, portable output** | skill-creator's output only runs correctly with skill-creator's supporting scripts and workspace conventions present at *authoring* time; a skill it wrote is portable, but skill-creator's own tooling is not something Motto is trying to replicate. Motto's build-skill output must be plain SKILL.md + refs, loadable with zero Motto present, same as every other Motto output | LOW | Consistent with the project's existing Core Value — no new decision needed, just don't regress it |
+| **CLI-verifiable self-check, not LLM-graded evals** | skill-creator's self-verify is `quick_validate.py` (deterministic) *plus* an entire optional LLM-judged eval/benchmark harness (grading.json, benchmark.json, blind comparator). Motto's self-verify is `motto lint` only — deterministic, fast, no subagent fan-out required | LOW (already exists) | This is Motto's actual competitive edge: the "strict schema + linter" Core Value gives build-skill a self-verify step competitors have to build ad hoc |
 
 ### Anti-Features (Commonly Requested, Often Problematic)
 
-Features that seem good but create problems, given Motto's YAGNI/mechanism-over-features philosophy and single-maintainer/CLI-scriptable audience.
+Capabilities present in one or both surveyed tools that Motto should explicitly **not** build into build-skill v0.0.5, with the alternative each maps to.
 
-| Feature | Why Requested | Why Problematic | Alternative |
-|---------|---------------|------------------|-------------|
-| Interactive prompts (Inquirer-style wizard: "what's your skill name? what's your description?...") | `create-vite`, `npm init` (via `create-*` packages) do this; feels "friendly." | Adds a dependency (contradicts STACK.md's explicit `commander`/interactive-prompt avoidance and single-runtime-dep philosophy), breaks non-interactive/CI/agent use (an AI agent running `motto init` in a script cannot answer a TTY prompt), and duplicates validation logic that `motto lint` already owns. | Flags + positional arg + validated defaults, non-interactive always (matches `claude plugin init`'s flag-only design and Motto's existing `lint`/`build` UX). |
-| Overwrite/merge/ignore three-way prompt menu (`create-vite`'s full UX) | Feels thorough; handles every edge case of a messy target dir. | Massive complexity for a tool whose target user already knows what an empty repo looks like; YAGNI per project philosophy ("mechanism over features," "iterate slowly"). | Binary rule: non-empty dir + no `--force` → abort with error. `--force` → proceed (documented as "will overwrite/add files"). |
-| `motto init` auto-running `git init` / auto-committing | `cargo new` defaults to `git init` when not already in a VCS. | Motto's target user is *already* in a repo most of the time (adding skills to an existing project) per this milestone's framing ("adding to existing app"); auto-`git init` assumes a workflow that may not hold, and silently touching VCS state from a scaffold tool is a support-burden magnet. | Do nothing with git. If the dir isn't a repo, that's the user's call — document it in README, don't automate it. |
-| A `motto ship` command bundled into this milestone | Natural "why not automate the last mile too" urge once `init` exists. | Explicitly already rejected in PROJECT.md ("Explicitly not building... backlog until real friction shows"). Re-litigating this in `init`'s design would scope-creep past the locked decision. | Two documented git commands in the README's "ship your plugin" section (already the plan). |
-| Multiple starter skill "flavors" / templates at init time (`--template procedure`, `--template form`) | Feels like it rounds out the offering, mirrors `create-vite --template react-ts`. | Concrete templates are explicitly Out of Scope for v1 (PROJECT.md: "Concrete templates... mechanism only in v1; design against the first real skill that needs them"). One starter skill is sufficient to prove lint+build pass; multiple flavors is unvalidated speculative scope. | Ship exactly one starter skill. Template *mechanism* (schema add-ons) already exists separately and is untouched by `init`. |
+| Feature | Why Requested | Why Problematic (for Motto specifically) | Alternative |
+|---------|---------------|-------------------------------------------|-------------|
+| **Eval/benchmark harness** (evals.json, subagent A/B runs, `run_loop.py` description-optimizer, blind comparator, HTML viewer) | skill-creator's entire second half is this — pressure-testing skills quantitatively, comparing with/without-skill runs, optimizing triggering via iterative LLM calls | Violates "lightweight — don't overcode" and "mechanism over features"; requires subagent orchestration, Python scripts, HTML viewers — a whole second product surface Motto doesn't need. `motto lint` is deterministic and instant; an eval harness is stochastic and slow | Ship `motto lint` as the self-verify step (already exists); leave eval/benchmark tooling as an explicit non-goal, same posture as skipping a compiler |
+| **RED-GREEN-REFACTOR pressure-scenario testing with subagents** (writing-skills' whole methodology) | Genuinely valuable for *discipline-enforcing* skills (rules agents might rationalize around under pressure) | build-skill generates *structure*, not discipline-rule skills — this methodology answers "does the agent obey this skill under pressure," a different question than "is this skill schema-conformant." Importing it would conflate the two and bloat build-skill's scope | If a user's skill genuinely needs pressure-testing (e.g. an enforcement skill), that's an authoring choice for *them* to make with `writing-skills` itself, not something Motto's structurer re-implements |
+| **Interactive description-triggering optimizer loop** (20 eval queries, `claude -p` subprocess loop, held-out test/train split) | Real problem (skill under/over-triggering is common) — skill-creator built a whole optimizer for it | High complexity for a v0.0.5 feature; requires the `claude` CLI, background processes, HTML review UI — none of which fit Motto's "single runtime dep, no build step" constraint | build-skill's gap-fill interview should coach description quality at write-time (per skill-creator's own "pushy description" guidance) rather than optimize it after the fact via a separate loop |
+| **`tools:` array replacing/duplicating `allowed-tools`** | Some ecosystems (agent-file formats, `compatibility:` field misuse) blur "tools this skill needs" into a second field name | Confirmed by D-06 and by the real-world corpus: `allowed-tools` is the actual spec field name; a second field name fragments portability | Keep `allowed-tools`, format-check only (D-05/D-06); reserve `tools:` for a future `agent` template (evolution ledger) |
+| **`{var}` interpolation engine for `outputs:` placeholders** | Natural next step once you have a named-outputs map — "why not let the path be templated per invocation" | Explicitly out of scope per D-08 — YAGNI until a real skill needs runtime-resolved output paths; no surveyed tool does this either (skill-creator's `files_created` list is post-hoc, not templated) | Document `{var}` as convention-only in v0.0.5; build the interpolation engine only when a real skill demands it |
+| **Second metadata/config syntax alongside frontmatter** | gsd-core's own prior sprawl (flagged in the design doc's Context section) shows the temptation — e.g. a separate JSON manifest for outputs/deps instead of extending frontmatter | Already explicitly rejected in the design spec's Context ("Reject: ... second metadata syntax"); a second syntax doubles the surface `motto lint` must parse and doubles what authors must keep in sync | `outputs:`/`dependencies:`/`allowed-tools`/`template:` all live in the one YAML frontmatter block, validated by the one schema cascade |
 
 ## Feature Dependencies
 
 ```
-motto init [name]
-    ├──requires──> existing kebab-case name validation (already built, in motto lint)
-    ├──requires──> existing motto.yaml schema/shape (already built)
-    ├──requires──> existing skill schema (Title+Role spine, frontmatter rules) — to author a starter skill that passes lint
-    └──produces──> a tree that must immediately satisfy:
-                       ├──requires──> `motto lint` (existing, unmodified)
-                       └──requires──> `motto build` (existing, unmodified) ──produces──> dist/public/
-                                                                                   └── marketplace.json's relative-path source depends on this exact output shape
+motto lint (existing, v0.0.1)
+    └──required-by──> build-skill's self-verify step (D-03 loop: write → lint → fix → repeat)
 
-[path] arg for lint/build ──independent-of──> motto init (small, orthogonal; can ship separately)
+template: mechanism (schema add-on, this milestone)
+    └──required-by──> procedure template (this milestone)
+                           └──required-by──> build-skill's own frontmatter (build-skill is `template: procedure`)
 
---help ──independent-of──> motto init (small, orthogonal)
+<process> + <success_criteria> section-tag registry (this milestone)
+    └──required-by──> procedure template's required-sections check
 
-setup-project skill removal ──conflicts-with──> keeping motto init incomplete
-    (removing the instructional skill before init covers its content leaves a documentation gap)
+outputs: field validation (this milestone)
+    └──enhances──> build-skill's gap-fill interview (asks "what does this skill produce" once outputs: exists to answer into)
+
+dependencies: field validation (this milestone)
+    └──enhances──> build-skill's gap-fill interview (asks "does this skill call other skills" once dependencies: exists to answer into)
+
+shared/references/ (existing, v0.0.1)
+    └──enhances──> build-skill's bundled-resource decisions (knows to point at shared refs instead of duplicating content)
+
+author-skill (existing, retiring)
+    └──superseded-by──> build-skill + skill-schema.md as bundled shared ref (closes AUTH-SKILL, kills lint-string duplication)
 ```
 
 ### Dependency Notes
 
-- **`motto init` requires the existing lint/build pipeline to stay unmodified and correct:** the starter skill it generates is only proof of value if `motto lint && motto build` pass on it with zero edits. This makes `init`'s starter-skill content a *de facto* regression test for the schema — if a future schema change breaks the starter skill, that's a signal the schema changed in a way real users would hit too.
-- **`marketplace.json` scaffolding requires the exact `dist/public/` shape `motto build` produces** (skill folders directly at the plugin root, no nested `skills/` wrapper — confirmed by inspecting this repo's own `dist/public/`). The scaffolded `marketplace.json`'s `source`/`skills` fields must be written to match that shape by construction, not left for the user to debug against Claude Code's install-time errors.
-- **Removing `setup-project` conflicts with an incomplete `init`:** PROJECT.md pairs these as one requirement ("Delete `setup-project` instructional skill — folded into `motto init` + README"). Sequence matters: don't delete the old instructional path until `init` + README cover everything it used to explain.
-- **`--help` and `[path]` arg are independent** of `init` and of each other — no ordering constraint, can be parallelized or sequenced arbitrarily within the phase.
+- **`motto lint` required by build-skill's self-verify step:** this is the load-bearing reuse in the whole design — build-skill has *zero* new validation logic of its own; it only needs to call the existing linter and parse its (already machine-parseable, per PROJECT.md constraints) errors. If `motto lint`'s error format ever changes, build-skill's fix-loop breaks silently — worth a regression test tying them together.
+- **`template:` mechanism required before `procedure` template:** sequencing constraint already reflected in the milestone's feature list ordering (mechanism → concrete template → build-skill built as consumer of both).
+- **`outputs:`/`dependencies:` enhance the interview but don't block it:** build-skill can generate a valid skill with an empty `outputs:` map or no `dependencies:` at all (both fields are optional per D-05/D-04) — the interview should ask about them but never force a non-empty answer. This mirrors the official spec's own posture that most optional fields ("most skills do not need `compatibility`") are situational, not mandatory.
+- **author-skill retirement depends on skill-schema.md being bundled as a shared ref inside build-skill:** if that bundling slips, retiring author-skill would leave the schema's teaching content nowhere — sequencing risk flagged in the design spec's item 5 (Docs & dogfood).
 
 ## MVP Definition
 
-### Launch With (v1 — this milestone)
+### Launch With (v1 — this milestone, v0.0.5)
 
-Minimum viable product — matches PROJECT.md's Active requirements exactly.
-
-- [ ] `motto init [name]` — non-interactive, flag-driven, produces a complete tree (`motto.yaml`, `.claude-plugin/marketplace.json`, `skills/<starter>/`, `shared/references/`, `.gitignore`) that passes `motto lint` and `motto build` with zero edits — essential: this *is* the milestone's stated success bar ("no reverse-engineering")
-- [ ] Non-empty-target-directory guard + `--force` override — essential: every researched precedent treats silent overwrite as a bug-class, not a feature
-- [ ] Correct `marketplace.json` relative-path source (verified schema below) — essential: a malformed one fails late and confusingly at `/plugin marketplace add` time, defeating the "no reverse-engineering" goal
-- [ ] `--help` with real usage text, exit 0 — essential, explicit requirement
-- [ ] `[path]` optional arg for `lint`/`build`, default cwd — essential, explicit requirement
-- [ ] README "ship your plugin" section — essential, explicit requirement, closes the loop from `init` to a working install
-- [ ] `setup-project` skill removed — essential, explicit requirement, avoids two conflicting sources of truth
+- [ ] `template:` mechanism (data-driven, `src/templates.js`) — everything else in this milestone depends on it
+- [ ] `procedure` template (`<process>` + `<success_criteria>` required sections)
+- [ ] `outputs:` validated field (named map, path-safe, must exist)
+- [ ] `dependencies:` validated field (bare-kebab resolves in-tree, namespaced format-only)
+- [ ] `allowed-tools` format validation (non-empty, whitespace-free strings)
+- [ ] build-skill: ingest-any-input → gap-fill interview (name, trigger/description, steps, outputs+formats, deps/tools, audience) → generate `SKILL.md` → `motto lint` → fix-until-clean loop → report
+- [ ] build-skill ships as `template: procedure` (dogfood proof)
+- [ ] `author-skill` retired, its teaching content folded into `skill-schema.md` as a build-skill shared ref
 
 ### Add After Validation (v1.x)
 
-Features to add once core is working and real friction appears.
-
-- [ ] Pre-fill `motto.yaml` description from an existing `package.json` if present — trigger: someone runs `motto init` inside a repo that already has project metadata and finds re-typing it annoying
-- [ ] `motto ship` convenience command — trigger: real friction with the two-git-command flow, per PROJECT.md's own deferral note
+- [ ] `{var}` interpolation/validation engine for `outputs:` placeholders — once a real skill needs runtime-resolved paths (D-08 evolution item)
+- [ ] New action-tag registry entries (`<drill>`, `<run>`, `<mcp>`) — once a real skill needs them (evolution ledger)
+- [ ] `template:` as an array (multi-template composition) — once two templates need to compose
 
 ### Future Consideration (v2+)
 
-Features to defer until product-market fit / real multi-user demand is established.
-
-- [ ] Concrete starter templates (`--template procedure`/`form`/`reference`) — defer until a real skill author hits the wall the mechanism was designed for (TMPL-01, already deferred in PROJECT.md)
-- [ ] Interactive prompt mode as an opt-in (`motto init --interactive`) — defer until non-interactive-only proves insufficient for a real onboarding user; adds a dependency Motto has so far avoided
+- [ ] `agent` template generating `.md` agent/subagent files (where `tools:` would properly live, distinct from `allowed-tools`)
+- [ ] Skill-calls-skill parameter passing across the `dependencies:` graph
+- [ ] MCP dependency resolution (currently linted as present, not resolved — explicit v0.0.4 out-of-scope carried forward)
+- [ ] Any eval/benchmark harness — only if Motto's own dogfooding surfaces a real triggering-quality problem `motto lint` can't catch (structural correctness ≠ triggering quality, a gap both surveyed tools spend heavy effort on and Motto currently doesn't address at all)
 
 ## Feature Prioritization Matrix
 
 | Feature | User Value | Implementation Cost | Priority |
 |---------|------------|---------------------|----------|
-| `motto init` core scaffold (motto.yaml + tree + starter skill) | HIGH | MEDIUM | P1 |
-| Correct `marketplace.json` relative-path scaffold | HIGH | LOW–MEDIUM (once schema is known — see below) | P1 |
-| Non-empty-dir guard + `--force` | HIGH | LOW | P1 |
-| `.gitignore` with correct public/private dist split | MEDIUM | LOW | P1 |
-| `--help` | MEDIUM | LOW | P1 |
-| `[path]` arg for lint/build | MEDIUM | LOW | P1 |
-| README ship-your-plugin section | HIGH | LOW (docs only) | P1 |
-| `setup-project` removal | LOW (cleanup) | LOW | P1 |
-| `package.json`-derived defaults | LOW | LOW | P2 |
-| `motto ship` command | MEDIUM | UNKNOWN (design undecided) | P3 |
-| Concrete templates | MEDIUM | HIGH | P3 |
-| Interactive mode | LOW | MEDIUM (new dep) | P3 |
+| `template:` mechanism | HIGH (unblocks everything else) | MED | P1 |
+| `procedure` template | HIGH (first real template consumer) | LOW | P1 |
+| `outputs:` field | MED–HIGH (named-output pattern is genuinely novel/useful) | MED | P1 |
+| `dependencies:` field | MED (in-tree resolution catches typos/broken refs early) | MED | P1 |
+| `allowed-tools` format check | LOW–MED (mostly closes a known gap) | LOW | P1 |
+| build-skill ingest+interview+generate+lint loop | HIGH (the actual milestone goal) | MED–HIGH | P1 |
+| author-skill retirement | LOW (cleanup) | LOW | P1 |
+| `{var}` interpolation engine | LOW today, MED later | HIGH | P3 |
+| Eval/benchmark harness | LOW for this milestone's goal | HIGH | P3 (anti-feature for now) |
+| `agent` template | MED (real need, not yet arrived) | MED | P3 |
 
 **Priority key:**
-- P1: Must have for launch (this milestone)
+- P1: Must have for this milestone (v0.0.5)
 - P2: Should have, add when possible
-- P3: Nice to have, future consideration
+- P3: Nice to have / explicitly deferred per evolution ledger
 
-## Verified: marketplace.json Relative-Path Schema (git-repo-hosted, non-npm)
+## Competitor Feature Analysis
 
-Cross-checked against `code.claude.com/docs/en/plugin-marketplaces` (official docs, fetched 2026-07-01) and this repo's own working `.claude-plugin/marketplace.json` (npm-source variant, currently shipping).
+"Competitors" here means the surveyed prior-art skill-generators, since Motto's build-skill is not a market product but an internal meta-skill judged against the state of the art in skill-authoring tooling.
 
-**Required fields per plugin entry:** `name` (string, kebab-case, public-facing), `source` (string|object).
-
-**Relative-path source** (the correct variant for `motto init`'s scaffold — git-repo-hosted, not npm):
-- Type: plain **string**, must start with `"./"` — e.g. `"./dist/public"`.
-- Resolved **relative to the marketplace root** (the directory containing `.claude-plugin/`), *not* relative to the `.claude-plugin/` directory itself. Do not use `../` — paths outside the marketplace root are disallowed.
-- No sub-fields (unlike `github`/`url`/`git-subdir`/`npm`, which are objects with `repo`/`url`/`ref`/`sha`/etc).
-
-**`skills` field** (optional, string|array): custom skill-directory paths, added on top of the default `<source>/skills/` scan. Paths are relative to the resolved plugin directory (i.e., relative to wherever `source` points), not to the marketplace root. Since Motto's `motto build` output places skill folders **directly** at the plugin root (`dist/public/<skill-name>/`, confirmed by inspecting this repo's own `dist/public/`) rather than under a nested `dist/public/skills/`, a scaffold that sets `"source": "./dist/public"` needs an explicit `skills` override pointing at the plugin root itself (the same pattern this repo's own npm-source entry already uses: `"source": {"source":"npm","package":"@jeremiewerner/motto"}` + `"skills": "./dist/public/"` — i.e., "skills" points at wherever the actual skill folders live, since they're not under a `skills/` subfolder). **This exact mechanic (does `skills: "./"` vs. omitting `skills` correctly make Claude Code scan `dist/public`'s immediate children as skills when `source` already equals `./dist/public`?) is not 100% pinned down by the docs prose alone and should be smoke-tested against a real `/plugin marketplace add ./` + `/plugin install` during phase implementation** — flagged as a phase-specific research/verification item, not blocking this research pass.
-
-**`strict` field** (optional, boolean, default `true`): controls whether `plugin.json` is authoritative for component definitions. `true` (default) = `plugin.json` is authoritative, marketplace entry supplements it. `false` = marketplace entry is the *entire* definition; if `plugin.json` also declares components, that's a load-time conflict. Motto's own shipping example already uses `strict: false` with a hand-authored `plugin.json` that has no component fields (just `name`/`version`/`description`) — so `false` is safe there. **For `motto init`'s scaffold, default to `strict: false` to match the established working pattern**, since the generated `plugin.json` (from `motto build`) similarly carries only identity metadata, not component declarations.
-
-**Minimal correct scaffold shape:**
-
-```json
-{
-  "name": "<project-name>",
-  "owner": { "name": "<from git config user.name>", "email": "<from git config user.email>" },
-  "plugins": [
-    {
-      "name": "<project-name>",
-      "source": "./dist/public",
-      "description": "<from motto.yaml description>",
-      "skills": "./",
-      "strict": false
-    }
-  ]
-}
-```
-
-This differs from motto's own current marketplace.json (which uses the `npm`-source object variant, appropriate only *after* the project is npm-published) — new projects scaffolded by `motto init` should default to the git-hosted relative-path variant, since a brand-new project has no npm package yet. This matches PROJECT.md's explicit framing: "`.claude-plugin/marketplace.json` (relative source → `dist/public/`)".
-
-## Collision / Edge-Case Behaviors (cross-ecosystem survey)
-
-| Scenario | npm init/create | cargo init/new | poetry new/init | create-vite | claude plugin init (same ecosystem) | Recommendation for `motto init` |
-|----------|------------------|-----------------|------------------|-------------|--------------------------------------|-----------------------------------|
-| Target dir doesn't exist | `create-*` package creates it | `cargo new` creates it | creates it | creates it | creates `~/.claude/skills/<name>/` | Create it (`fs.mkdir(recursive:true)`) |
-| Target dir exists, empty | Proceeds | Proceeds (`cargo init` requires this to be the "current dir" case) | Proceeds | Proceeds | Proceeds | Proceeds |
-| Target dir exists, non-empty, no manifest conflict | Left to `create-*` package (varies) | `cargo new` errors if dir already exists at all | Historically buggy; PEP-508-name errors surface early | Interactive prompt: overwrite/cancel/ignore | Errors, requires `-f/--force` | Abort with a clear listing of what already exists; require `--force` |
-| Target dir has a **conflicting** manifest (`Cargo.toml`, `pyproject.toml`, `.claude-plugin/`) already | N/A (no single manifest file) | Hard error, no overwrite path shown | Hard error (can even break unrelated commands in that dir) | N/A (files, not a single manifest) | Hard error unless `-f/--force` | Hard error unless `--force`; name the exact conflicting file (`motto.yaml` and/or `.claude-plugin/marketplace.json`) in the message |
-| Non-interactive / scripted use | `-y`/`--yes` | N/A (already non-interactive) | N/A (`init` is more interactive by default) | `--no-interactive` flag | Always non-interactive (flags only) | **Always non-interactive** — no prompt library, matches Motto's existing `lint`/`build` UX and this project's stdlib-only constraint |
-| Name validation | npm package-name rules (via `create-*`) | crate-name rules; `--name` overrides dir-derived default | PEP 508 rules | package-name rules | "cannot contain spaces or path separators" | Reuse Motto's existing kebab-case skill-name validator (`[a-z][a-z0-9-]*`) for the project name too — one validation rule across the whole tool, not two |
-| Author/owner identity defaults | N/A | N/A | interactive prompt | N/A | `git config user.name` / `user.email` | Derive `marketplace.json`'s `owner.name`/`owner.email` from `git config user.name`/`user.email` when available, matching the same-ecosystem precedent; leave blank (not a fake placeholder) if git config is unset |
-| Idempotency (re-running the same command) | `-y` reruns produce same result if nothing changed | Errors on second run (manifest exists) | Errors on second run | Prompts again (or `--overwrite` reruns) | Errors on second run unless `-f` | Errors on second run unless `--force` — matches the majority/safe pattern; re-running `motto init` on an already-scaffolded project should never be a silent no-op *or* a silent overwrite |
+| Feature | `anthropics/skills` skill-creator | `obra/superpowers` writing-skills | Motto build-skill (this milestone) |
+|---------|-----------------------------------|-------------------------------------|--------------------------------------|
+| Interview style | Structured 4-question capture + open interview, "extract from context first" | Assumes user already knows content; focuses on rigor testing, not intent capture | Gap-fill only, per D-03 — narrower scope than either |
+| Structural validation | `quick_validate.py`, hard-coded key allowlist, run manually/on-demand | None built-in; relies on manual checklist review | `motto lint` — deterministic, reused, already exists, called automatically in the loop |
+| Quality/triggering validation | Full eval harness: subagent runs, grading, benchmarking, description-optimizer loop | Pressure-scenario RED-GREEN-REFACTOR with subagents, rationalization tables | Explicitly none in v0.0.5 (anti-feature) — deferred until dogfooding proves the gap matters |
+| Output declaration | None (evals.json declares *test* outputs, not skill outputs) | None | `outputs:` named map — novel |
+| Inter-skill dependency declaration | None (`compatibility:` is free-text env description) | Cross-referencing convention only ("REQUIRED SUB-SKILL: use X"), not machine-checked | `dependencies:` resolved in-tree — novel |
+| Template/type system for skill shape | None | None (skill "types" — Technique/Pattern/Reference — are a naming taxonomy, not an enforced schema) | `template:` mechanism with data-driven section registry — novel among surveyed tools |
+| Portability of generated output | High (plain SKILL.md), but authoring workflow needs skill-creator's own scripts present | High (plain SKILL.md), authoring workflow is pure prompting, no scripts required | High — matches both, and matches Motto's existing Core Value |
+| Description-quality guidance | Extensive ("pushy" descriptions, before/after) | Extensive (tested "Use when..." pattern, workflow-summary trap documented) | Should absorb this guidance into the interview prompt (LOW cost, HIGH value — not yet an explicit design item, worth folding in) |
 
 ## Sources
 
-- `docs.npmjs.com/cli/v11/commands/npm-init/` — npm init/create semantics, `-y` flag. Confidence: MEDIUM (official npm docs, cross-checked via web search).
-- `doc.rust-lang.org/cargo/commands/cargo-init.html`, `doc.rust-lang.org/cargo/commands/cargo-new.html` — collision errors, `--name`, `--vcs` defaults. Confidence: MEDIUM (official Rust docs).
-- `python-poetry.org/docs/basic-usage/`, related GitHub issues (python-poetry/poetry #3073, #8412) — PEP 508 name validation, existing-manifest error behavior. Confidence: MEDIUM.
-- `github.com/vitejs/vite` discussions/issues + `vite.dev/guide/` — `create-vite` overwrite prompt, `--overwrite`, `--no-interactive` flags. Confidence: MEDIUM.
-- `code.claude.com/docs/en/plugins-reference` — `claude plugin init` CLI spec (`-f/--force`, `--with`, git-config-derived author defaults), same-ecosystem precedent for scaffold UX. Fetched 2026-07-01. Confidence: MEDIUM (official Claude Code docs).
-- `code.claude.com/docs/en/plugin-marketplaces` — complete `marketplace.json` schema: required/optional plugin-entry fields, all four `source` variants (relative-path/github/url/git-subdir/npm), `skills` override semantics, `strict` mode semantics and default. Fetched 2026-07-01, exact JSON examples grepped directly from raw fetched markdown (not model-paraphrased). Confidence: MEDIUM (official Claude Code docs).
-- `/Users/jeremie/Projects/motto/.claude-plugin/marketplace.json` and `/Users/jeremie/Projects/motto/dist/public/` (this repo, inspected directly) — ground-truth working example of the npm-source variant + confirmation that `motto build` places skill folders directly at the plugin root (no nested `skills/` wrapper). Confidence: HIGH (first-party, directly inspected).
-- `/Users/jeremie/Projects/motto/.planning/PROJECT.md` — milestone scope, explicit Active requirements, locked decisions from v0.0.3. Confidence: HIGH (first-party project source of truth).
+- Anthropic `skill-creator` — [github.com/anthropics/skills/blob/main/skills/skill-creator/SKILL.md](https://github.com/anthropics/skills/blob/main/skills/skill-creator/SKILL.md) (full text + `references/schemas.md` + `scripts/quick_validate.py` read in full from local checkout). Confidence: HIGH — primary source, official Anthropic repo.
+- `obra/superpowers` `writing-skills` — [github.com/obra/superpowers](https://github.com/obra/superpowers) (full `SKILL.md` v6.1.0 read from local plugin cache). Confidence: HIGH — primary source, widely-adopted community skill.
+- Agent Skills open specification — [agentskills.io/specification](https://agentskills.io/specification) (fetched directly, full frontmatter field table). Confidence: HIGH — the canonical format spec both surveyed tools and Motto target.
+- Claude Platform Docs, Agent Skills overview — [platform.claude.com/docs/en/agents-and-tools/agent-skills/overview](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview) and Claude Code Docs `skills` page — confirms `allowed-tools` is still "experimental" and format varies by implementation (array vs. space-separated string observed across sources). Confidence: MEDIUM — official docs but field noted as experimental/evolving.
+- gsd-core live skill corpus (55 installed `SKILL.md` files under `/Users/jeremie/.claude/skills/`) — used to confirm real-world `allowed-tools` usage (both YAML-list and space-separated-string forms observed in the same corpus) and `<output>`-block conventions (this researcher's own prompt is an instance). Confidence: HIGH — direct inspection of live, in-use files.
+- Motto design spec — `.planning/superpowers/specs/2026-07-02-skill-builder-design.md`. Confidence: HIGH — authoritative for this project, locked decisions D-01..D-08.
 
 ---
-*Feature research for: motto init scaffold command (v0.0.4 Project Bootstrap)*
-*Researched: 2026-07-01*
+*Feature research for: skill-generator meta-skill + template/outputs/dependencies schema fields*
+*Researched: 2026-07-02*
