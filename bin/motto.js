@@ -100,8 +100,14 @@ async function checkTargetDir(targetPath) {
   let stats;
   try {
     stats = await stat(targetPath);
-  } catch {
-    process.stderr.write(`✗ directory not found: ${targetPath}\n`);
+  } catch (err) {
+    // Only ENOENT/ENOTDIR mean "not found" — EACCES/ELOOP/ENAMETOOLONG etc.
+    // may hit a directory that exists, so report the real failure instead.
+    const msg =
+      err?.code === 'ENOENT' || err?.code === 'ENOTDIR'
+        ? `✗ directory not found: ${targetPath}\n`
+        : `✗ cannot access ${targetPath}: ${err.message}\n`;
+    process.stderr.write(msg);
     process.exitCode = 1;
     return false;
   }
