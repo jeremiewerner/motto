@@ -214,3 +214,13 @@ None — no external service configuration required.
 ---
 *Phase: 11-cli-ergonomics-help-path*
 *Completed: 2026-07-02*
+
+## Self-Check: PASSED
+
+- FOUND: bin/motto.js
+- FOUND: test/cli.test.js
+- FOUND: .planning/phases/11-cli-ergonomics-help-path/11-01-SUMMARY.md
+- FOUND: ee78a37 (Task 1 commit)
+- FOUND: 3a8264d (Task 2 commit)
+- FOUND: c57abf7 (Task 3 commit)
+- FOUND: 9516931 (SUMMARY commit)
