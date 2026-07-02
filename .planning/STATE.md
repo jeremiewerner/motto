@@ -3,17 +3,17 @@ gsd_state_version: 1.0
 milestone: v0.0.4
 milestone_name: Project Bootstrap
 current_phase: 12
-current_phase_name: Docs & Cleanup
+current_phase_name: docs-cleanup
 status: executing
 stopped_at: Phase 12 context gathered
-last_updated: "2026-07-02T09:59:33.999Z"
+last_updated: "2026-07-02T10:15:00.059Z"
 last_activity: 2026-07-02
-last_activity_desc: Phase 11 complete, transitioned to Phase 12
+last_activity_desc: Phase 12 execution started
 progress:
   total_phases: 3
   completed_phases: 2
-  total_plans: 4
-  completed_plans: 4
+  total_plans: 6
+  completed_plans: 5
   percent: 67
 ---
 
@@ -24,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-01)
 
 **Core value:** A strict schema + linter that guarantees authored skills conform before they ship, then packages them into self-contained standard Agent Skill plugins.
-**Current focus:** Phase 11 — cli-ergonomics-help-path
+**Current focus:** Phase 12 — docs-cleanup
 
 ## Current Position
 
-Phase: 12 — Docs & Cleanup
-Plan: Not started
+Phase: 12 (docs-cleanup) — EXECUTING
+Plan: 2 of 2
 Status: Ready to execute
-Last activity: 2026-07-02 — Phase 11 complete, transitioned to Phase 12
+Last activity: 2026-07-02 — Phase 12 execution started
 
 ## Performance Metrics
 
@@ -67,6 +67,7 @@ Last activity: 2026-07-02 — Phase 11 complete, transitioned to Phase 12
 | Phase 10 P02 | 6min | 2 tasks | 2 files |
 | Phase 10 P03 | 1min 20s | 2 tasks | 2 files |
 | Phase 11 P01 | 6min | 3 tasks tasks | 2 files files |
+| Phase 12 P01 | 12min | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -96,6 +97,7 @@ Recent decisions affecting current work:
 - [Phase 11]: Help routing folded into the existing dispatch if/else chain (no early process.exit()) so no new no-arg process.exit() calls were introduced beyond the pre-existing parseArgs catch block — Plan explicitly forbade new no-arg process.exit() calls
 - [Phase 11]: sub === undefined single branch covers both D-01 (bare --help/-h) and D-03 (bare motto, no flags) since both render identical global help to stdout exit 0 — Simplifies dispatch chain, avoids duplicated help-printing branches
 - [Phase 11]: Task 2 plan verify script assumed motto init <path> scaffolds AT that path; current init CLI wiring only scaffolds into cwd (positional is the name field, out of CLIX-04 scope). Verified equivalent behavior via mkdir+cd and scaffoldProject(targetDir, name) API directly instead — init target-dir semantics unchanged this phase; CLIX-04 covers lint/build [path] only
+- [Phase ?]: E2E ship-flow ending uses generic <owner>/<repo>/<plugin> placeholders rather than jeremiewerner/motto (D-02 confines the real repo name to the pre-existing Add-the-marketplace/Install-Mottos-skills sections)
 
 ### Pending Todos
 
@@ -131,7 +133,7 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-02T09:43:40.580Z
+Last session: 2026-07-02T10:14:19.204Z
 Stopped at: Phase 12 context gathered
 Resume file: 
-.planning/phases/12-docs-cleanup/12-CONTEXT.md
+None

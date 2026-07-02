@@ -24,7 +24,7 @@ Each maps to roadmap phases. REQ-IDs continue from v0.0.3 (NPM/REL/MKT/DOC used;
 
 ### Docs & Cleanup (DOC)
 
-- [ ] **DOC-04**: README documents the full ship-your-plugin flow — commit `dist/public/`, push repo public, consumer `/plugin marketplace add` one-liner
+- [x] **DOC-04**: README documents the full ship-your-plugin flow — commit `dist/public/`, push repo public, consumer `/plugin marketplace add` one-liner
 - [ ] **DOC-05**: README scaffold section rewritten around `motto init`; `skills/setup-project/` deleted in the same commit as the dogfood-test count update (main never red)
 
 ## Future Requirements
@@ -73,7 +73,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | INIT-06 | Phase 10 | Complete |
 | CLIX-03 | Phase 11 | Complete |
 | CLIX-04 | Phase 11 | Complete |
-| DOC-04 | Phase 12 | Pending |
+| DOC-04 | Phase 12 | Complete |
 | DOC-05 | Phase 12 | Pending |
 
 **Coverage:**
