@@ -1,121 +1,117 @@
 ---
 phase: 10-project-scaffold-motto-init
-verified: 2026-07-02T06:41:19Z
-status: gaps_found
-score: 8/9 must-haves verified
+verified: 2026-07-02T07:15:00Z
+status: passed
+score: 9/9 must-haves verified
 behavior_unverified: 0
 overrides_applied: 0
-gaps:
-  - truth: "scaffoldProject never throws — the module's own documented contract ('Never-throw orchestrator', src/init.js header + JSDoc) holds for ALL failure modes, and bin/motto.js never crashes with a raw stack trace on an init failure"
-    status: failed
-    reason: "Reproduced two throw paths in scaffoldProject that violate its documented never-throw contract, and confirmed bin/motto.js has no try/catch around `await scaffoldProject(...)` so both surface to the end user as an unhandled-rejection stack trace instead of the documented '✗' message. This is REVIEW.md WR-01, confirmed still present (no fix commit after ce02257)."
-    artifacts:
-      - path: "src/init.js"
-        issue: "listNonIgnorableEntries (line 71-83) rethrows any readdir error that isn't ENOENT (e.g. ENOTDIR when targetDir is a file); writeScaffold (line 127-180) has no try/catch around mkdir/writeFile, so a permission-denied or disk-full target throws mid-write, potentially leaving a partially-written scaffold with no error report of which files landed"
-      - path: "bin/motto.js"
-        issue: "line 55-59: `await scaffoldProject(...)` has no try/catch, so any throw from src/init.js propagates as an unhandled promise rejection and crashes the process with a raw Node stack trace instead of `process.exitCode = 1` + a '✗' message"
-    missing:
-      - "Wrap STEP 2 (listNonIgnorableEntries call) and STEP 4 (writeScaffold call) in scaffoldProject in try/catch, mapping fs errors to { ok: false, errors: [...] } per REVIEW.md WR-01's suggested fix"
-      - "A regression test asserting scaffoldProject(targetDir-that-is-a-file, {...}) returns { ok: false } without throwing"
+re_verification:
+  previous_status: gaps_found
+  previous_score: 8/9
+  gaps_closed:
+    - "scaffoldProject never throws — the module's own documented contract ('Never-throw orchestrator', src/init.js header + JSDoc) holds for ALL failure modes, and bin/motto.js never crashes with a raw stack trace on an init failure"
+  gaps_remaining: []
+  regressions: []
 deferred: []
 ---
 
 # Phase 10: Project Scaffold (`motto init`) Verification Report
 
 **Phase Goal:** A stranger with only `npm i -g @jeremiewerner/motto` can run one command and get a complete skills project that lints and builds with zero edits.
-**Verified:** 2026-07-02T06:41:19Z
-**Status:** gaps_found
-**Re-verification:** No — initial verification
+**Verified:** 2026-07-02T07:15:00Z
+**Status:** passed
+**Re-verification:** Yes — after gap closure (plan 10-03, commits 28383d2 / 5eddd10)
 
 ## Goal Achievement
 
 ### Observable Truths
 
-Sourced from ROADMAP.md Success Criteria (5) merged with PLAN frontmatter must_haves (8, deduplicated against roadmap wording) — 9 total distinct truths.
+Same 9 distinct truths as the prior verification (ROADMAP.md Success Criteria (5) merged with PLAN frontmatter must_haves (8), deduplicated). Truth #7, the single gap from the prior pass, is re-verified below with the gap-closure evidence; truths #1-6, #8-9 are regression-checked against the current codebase.
 
 | # | Truth | Status | Evidence |
 |---|-------|--------|----------|
-| 1 | `motto init [name]` in an empty dir produces `skills/hello-world/`, `shared/references/`, `motto.yaml`, `.gitignore`, `.claude-plugin/marketplace.json`, `[name]` filling motto.yaml fields, defaulting to cwd basename (SC1/INIT-01) | ✓ VERIFIED | Ran `motto init hello-proj` in a fresh mkdtemp dir: all 5 paths written, exit 0, checkmark tree + `motto lint`/`motto build` next-steps printed verbatim. `motto.yaml` content: `name: hello-proj`, `plugins.public: hello-proj`. |
-| 2 | Scaffolded starter skill passes `motto lint` and `motto build` with zero edits, guarded by a permanent init→lint→build dogfood test on every commit (SC2/INIT-02) | ✓ VERIFIED | Ran `motto init hello-proj && motto lint && motto build` in a fresh temp dir — all exit 0, `✓ 1 skills OK`, `✓ built ... — 1 skills, 1 plugin(s)`, `dist/public/hello-world/SKILL.md` produced. `test/init-dogfood.test.js` exists, chains `scaffoldProject`→`lintProject`→`buildProject` fail-fast in `before()`, asserts return shapes + all 5 source artifacts (including explicit `.gitkeep` stat) + built output + `.gitignore` ship-flow contract. `node --test` run: 116/116 pass. |
-| 3 | `motto init` in a non-empty dir refuses and reports why; `--force` overrides (SC3/INIT-04) | ✓ VERIFIED | Ran with 7 unrelated files present: `✗ directory is not empty (a.txt, b.txt, c.txt, d.txt, e.txt, and 2 more)` / `use --force to scaffold anyway`, exit 1 (cap-at-5 confirmed). With `--force` and a pre-existing `keep.txt`: exit 0, scaffold written, `keep.txt` survives unmodified. Additionally verified `--force` genuinely overwrites (not skip-if-exists): pre-seeded stale `motto.yaml` content was replaced by the template after `--force` (this exact case is IN-04 in REVIEW.md — untested by the suite, but I confirmed the runtime behavior directly). |
-| 4 | Invalid project name rejected using the exact rule `motto lint` enforces (single source: schema.js) — no name init accepts is later rejected by lint (SC4/INIT-05) | ✓ VERIFIED | `src/init.js` imports `NAME_KEBAB` from `./schema.js` only (`grep` confirms 1 import, no redefinition). Ran `motto init 'Bad Name'`: `✗ name must be letter-start kebab-case (...): "Bad Name"` / `try: motto init bad-name`, exit 1, nothing written. `test/init.test.js` covers 4 adversarial names (colon, quote, `../`, leading-digit) all rejected pre-write. |
-| 5 | Scaffolded `.gitignore` ignores `dist/private/` but keeps `dist/public/` tracked; `marketplace.json` plugin name matches `motto.yaml` by construction, relative source at `dist/public/`, owner from git config with placeholder fallback (SC5/INIT-03/INIT-06) | ✓ VERIFIED | `.gitignore` body: `node_modules/\ndist/private/\n` — no standalone `dist/` line. `marketplace.json`: `name`/`plugins[0].name` both equal `motto.yaml`'s `name`/`plugins.public` (same `effectiveName` variable, single interpolation site) — `plugins[0].source === './dist/public/'`, no `owner.email` key, `owner.name` populated from `git config user.name` in this environment. `resolveGitOwnerName` wrapped in try/catch with `'Your Name'` fallback confirmed by code read. |
-| 6 | `motto init --force` overwrites only the fixed scaffold paths and never deletes unrelated files (10-01 must_have) | ✓ VERIFIED | Same as #3 evidence — `keep.txt` and pre-existing dirs survive; `grep -c "rm(\|rmdir("  src/init.js` returns 0 (zero delete operations in the module). |
-| 7 | `scaffoldProject` is a never-throw orchestrator — all failure modes return `{ ok: false, errors }`, never throw (src/init.js's own documented contract, referenced by bin/motto.js's lack of a try/catch around the call) | ✗ FAILED | Reproduced directly: `scaffoldProject(fileAsTarget, {name:'hello-proj'})` throws `ENOTDIR` (readdir rethrow in `listNonIgnorableEntries`); `scaffoldProject(unwritableDir, {name:'hello-proj', force:true})` throws `EACCES` (unguarded `mkdir`/`writeFile` in `writeScaffold`). Ran the actual CLI (`motto init hello-proj` in a chmod 500 dir) — process crashes with a raw Node stack trace (`Error: EACCES ... at writeScaffold ... at scaffoldProject ... at bin/motto.js:56`) instead of the documented `✗` line + `process.exitCode = 1`. This is REVIEW.md WR-01, confirmed unresolved (no commit after the review's `ce02257`). |
-| 8 | The unit suite proves the empty-dir guard (allowlist + cap), invalid-name rejection + suggestion, `--force` overwrite-only-scaffold-paths, and adversarial-name rejection (10-02 must_have) | ✓ VERIFIED | `test/init.test.js` (31 assertions, 8 describe blocks) covers all listed cases; `node --test test/init.test.js` passes as part of the full 116/116 suite run. |
-| 9 | The dogfood test asserts every scaffold artifact exists (including `shared/references/.gitkeep`) and the scaffolded `.gitignore` keeps `dist/public/` trackable while ignoring `dist/private/` (10-02 must_have) | ✓ VERIFIED | `test/init-dogfood.test.js` explicit `stat` on `shared/references/.gitkeep` (with an inline comment explaining lint/build alone wouldn't catch its absence) plus explicit `.gitignore` content assertion. Confirmed by direct file read. |
+| 1 | `motto init [name]` in an empty dir produces `skills/hello-world/`, `shared/references/`, `motto.yaml`, `.gitignore`, `.claude-plugin/marketplace.json`, `[name]` filling motto.yaml fields, defaulting to cwd basename (SC1/INIT-01) | ✓ VERIFIED | Re-ran `motto init hello-proj` in a fresh mkdtemp dir: all 5 paths written, exit 0, checkmark tree + next-steps printed. `motto.yaml`: `name: hello-proj`, `plugins.public: hello-proj`. No regression. |
+| 2 | Scaffolded starter skill passes `motto lint` and `motto build` with zero edits, guarded by a permanent init→lint→build dogfood test on every commit (SC2/INIT-02) | ✓ VERIFIED | Re-ran `motto init hello-proj && motto lint && motto build` end-to-end: `✓ 1 skills OK`, `✓ built ... — 1 skills, 1 plugin(s)`. `test/init-dogfood.test.js` unchanged and still part of the passing suite. `node --test`: 118/118 pass. |
+| 3 | `motto init` in a non-empty dir refuses and reports why; `--force` overrides (SC3/INIT-04) | ✓ VERIFIED | Regression: 2 unrelated files present → `✗ directory is not empty (a.txt, b.txt)` / `use --force to scaffold anyway`, exit 1. Code path (STEP 2 non-force branch) unmodified except for the new try/catch around the same call — behavior for the non-throwing case is unchanged. |
+| 4 | Invalid project name rejected using the exact rule `motto lint` enforces (single source: schema.js) — no name init accepts is later rejected by lint (SC4/INIT-05) | ✓ VERIFIED | Regression: `motto init 'Bad Name'` → `✗ name must be letter-start kebab-case (...): "Bad Name"` / `try: motto init bad-name`, exit 1. STEP 1 (name validation) untouched by the gap-closure plan. |
+| 5 | Scaffolded `.gitignore` ignores `dist/private/` but keeps `dist/public/` tracked; `marketplace.json` plugin name matches `motto.yaml` by construction, relative source at `dist/public/`, owner from git config with placeholder fallback (SC5/INIT-03/INIT-06) | ✓ VERIFIED | Regression: fresh scaffold's `.gitignore` = `node_modules/\ndist/private/\n`; `marketplace.json` `name`/`plugins[0].name` both `hello-proj`, `source: './dist/public/'`, `owner.name` populated from git config. writeScaffold's content-writing logic is byte-identical to before (only the *call site* around `writeScaffold` gained a try/catch, not its body). |
+| 6 | `motto init --force` overwrites only the fixed scaffold paths and never deletes unrelated files (10-01 must_have) | ✓ VERIFIED | `grep -c "rm(\|rmdir("  src/init.js` returns 0. No delete operations added by the gap-closure diff (confirmed via `git show 5eddd10` — pure try/catch wrapping, no new fs calls). |
+| 7 | `scaffoldProject` is a never-throw orchestrator — all failure modes return `{ ok: false, errors }`, never throw (src/init.js's own documented contract, referenced by bin/motto.js's lack of a try/catch around the call) | ✓ VERIFIED (gap closed) | Reproduced both previously-failing scenarios directly against the fixed code: (a) `scaffoldProject(fileAsTarget, {name:'hello-proj'})` now resolves `{"ok":false,"errors":[{"skill":"(init)","message":"cannot read target directory: ENOTDIR: ..."}]}` — no throw. (b) End-to-end CLI run (`motto init hello-proj --force` in a dir where `skills` is pre-occupied by a file) prints `✗ (init): scaffold write failed: ENOTDIR: ... mkdir '.../skills/hello-world'` to stdout and exits 1 — no raw Node stack trace, no unhandled-rejection. Confirmed via direct code read (src/init.js lines 221-237, 242-254): STEP 2 and STEP 4 both wrapped in try/catch, mapping to `{ ok:false, errors:[{skill:'(init)', message}] }`. Two new adversarial regression tests (`test/init.test.js` lines 223-268) lock this: both pass in the full suite run. |
+| 8 | The unit suite proves the empty-dir guard (allowlist + cap), invalid-name rejection + suggestion, `--force` overwrite-only-scaffold-paths, and adversarial-name rejection (10-02 must_have) | ✓ VERIFIED | `test/init.test.js` (now 33 assertions across 10 describe blocks, +2 from gap closure) covers all listed cases plus the two new never-throw regressions; part of the passing 118/118 suite. |
+| 9 | The dogfood test asserts every scaffold artifact exists (including `shared/references/.gitkeep`) and the scaffolded `.gitignore` keeps `dist/public/` trackable while ignoring `dist/private/` (10-02 must_have) | ✓ VERIFIED | `test/init-dogfood.test.js` unmodified by the gap-closure plan; explicit `stat` on `shared/references/.gitkeep` and `.gitignore` content assertion confirmed present; still passing. |
 
-**Score:** 8/9 truths verified
+**Score:** 9/9 truths verified
 
 ### Required Artifacts
 
 | Artifact | Expected | Status | Details |
 |----------|----------|--------|---------|
-| `src/init.js` | `scaffoldProject(targetDir, {name, force})` never-throw orchestrator + 4 internal helpers | ⚠️ PARTIAL | Exists, substantive, wired (imported by `bin/motto.js` and both test files). Never-throw contract itself is violated for 2 of its own failure modes (see Truth #7). |
-| `bin/motto.js` | `init` dispatch branch, `--force` flag, updated usage strings | ✓ VERIFIED | Branch present, dispatches correctly on `ok`/`invalid-name`/`not-empty`/generic failure; both usage-string literals read `<init|lint|build>` (`grep -c` = 2 for updated form, 0 for stale form). Does not guard against the throw path noted in Truth #7. |
-| `test/init.test.js` | Unit/integration coverage of guards, validation, `--force`, content shape | ✓ VERIFIED | 31 assertions across 8 describe blocks; imports `scaffoldProject` from `../src/init.js`; part of the passing 116-test suite. |
-| `test/init-dogfood.test.js` | Permanent init→lint→build guard | ✓ VERIFIED | `before()` chains `scaffoldProject`→`lintProject`→`buildProject` fail-fast; 10 `it()` blocks; part of the passing 116-test suite. |
+| `src/init.js` | `scaffoldProject(targetDir, {name, force})` never-throw orchestrator + 4 internal helpers | ✓ VERIFIED | Exists, substantive, wired (imported by `bin/motto.js` and both test files). Never-throw contract now empirically holds for all 5 return paths (invalid-name, not-empty, STEP2 fs-error, STEP4 fs-error, happy path) — confirmed by direct read and reproduction. |
+| `bin/motto.js` | `init` dispatch branch, `--force` flag, updated usage strings | ✓ VERIFIED | Unchanged by gap-closure plan (confirmed via `git show --stat` on commits 28383d2/5eddd10 — only `src/init.js` and `test/init.test.js` touched). Generic `else` branch (lines 78-83) correctly renders the new `{skill:'(init)', message}` shape as `✗ (init): <message>` + `process.exitCode = 1`, confirmed by live CLI run. |
+| `test/init.test.js` | Unit/integration coverage of guards, validation, `--force`, content shape, never-throw contract | ✓ VERIFIED | 33 assertions across 10 describe blocks (2 new: "scaffoldProject never-throws when target is a file (WR-01, ENOTDIR)" and "scaffoldProject never-throws when a scaffold write fails (WR-01, STEP 4)"); both new tests convert any throw into an explicit `assert.fail` message rather than a silent bubble. Part of the passing 118-test suite. |
+| `test/init-dogfood.test.js` | Permanent init→lint→build guard | ✓ VERIFIED | Unmodified, still passing. |
 
 ### Key Link Verification
 
 | From | To | Via | Status | Details |
 |------|-----|-----|--------|---------|
-| `src/init.js` | `src/schema.js` | `import { NAME_KEBAB } from './schema.js'` | ✓ WIRED | Confirmed by direct read (line 30) and `grep -c "from './schema.js'"` = 1. No redefinition of the regex elsewhere in the file. |
-| `bin/motto.js` | `src/init.js` | `await import('../src/init.js')` in the `init` branch, mirroring the `build` branch's lazy-import style | ✓ WIRED | Confirmed by direct read (line 55) — behaves identically to the sibling `build` branch's lazy import. |
-| `test/init-dogfood.test.js` | `src/init.js`, `src/lint.js`, `src/build.js` | direct imports, chained in a single `before()` | ✓ WIRED | Confirmed by direct read of the full test file; fail-fast cascade present as specified. |
+| `src/init.js` STEP 2 | try/catch → `{ ok:false, errors }` | `listNonIgnorableEntries(targetDir)` call wrapped, catches non-ENOENT errors (e.g. ENOTDIR) | ✓ WIRED | Confirmed by direct read (lines 223-233): catch block returns `{ ok:false, errors:[{skill:'(init)', message:'cannot read target directory: ...'}] }`. |
+| `src/init.js` STEP 4 | try/catch → `{ ok:false, errors }` | `writeScaffold(...)` call wrapped | ✓ WIRED | Confirmed by direct read (lines 242-254): catch block returns `{ ok:false, errors:[{skill:'(init)', message:'scaffold write failed: ...'}] }`; success path unchanged (`{ ok:true, created, errors:[] }`). |
+| `bin/motto.js` generic else branch | renders `{skill, message}` errors | lines 78-83, no CLI change required | ✓ WIRED | Confirmed via live CLI run: `✗ (init): scaffold write failed: ...` printed to stdout, `process.exitCode = 1` (not `process.exit()`), no stack trace. |
+| `src/init.js` | `src/schema.js` | `import { NAME_KEBAB } from './schema.js'` | ✓ WIRED | Unchanged, regression-confirmed. |
+| `test/init.test.js` new describe blocks | `src/init.js scaffoldProject` | direct import, both never-throw tests | ✓ WIRED | Confirmed by direct read; both tests pass in the suite. |
 
 ### Behavioral Spot-Checks
 
 | Behavior | Command | Result | Status |
 |----------|---------|--------|--------|
-| Happy path scaffold | `motto init hello-proj` in empty temp dir | 5 files written, checkmark tree + next-steps printed, exit 0 | ✓ PASS |
-| Scaffold lints & builds with zero edits | `motto init hello-proj && motto lint && motto build` | `✓ 1 skills OK`, `✓ built ... — 1 skills, 1 plugin(s)`, `dist/public/hello-world/SKILL.md` produced | ✓ PASS |
-| Non-empty guard + cap | `motto init hello-proj` with 7 unrelated files present | Capped list of 5 + "and 2 more", `use --force` hint, exit 1 | ✓ PASS |
-| Invalid name rejection | `motto init 'Bad Name'` | Rule message + `try: motto init bad-name`, exit 1, nothing written | ✓ PASS |
-| `--force` overwrite-only | `--force` with pre-existing `keep.txt` and stale `motto.yaml` | Scaffold written, `keep.txt` survives, stale `motto.yaml` content replaced | ✓ PASS |
-| Never-throw contract (target is a file) | `scaffoldProject(fileAsTarget, {name:'hello-proj'})` | Threw `ENOTDIR`, did not return `{ok:false}` | ✗ FAIL |
-| Never-throw contract (unwritable dir, force) | `scaffoldProject(unwritableDir, {name, force:true})` | Threw `EACCES`, did not return `{ok:false}` | ✗ FAIL |
-| CLI crash surface for the above | `motto init hello-proj` in a chmod 500 dir | Raw Node stack trace to stderr, no `✗` message (exit code happens to be 1 via Node's own unhandled-rejection default, but not via `process.exitCode`) | ✗ FAIL |
-| Full test suite | `node --test` | `tests 116, pass 116, fail 0` | ✓ PASS |
+| Never-throw contract (target is a file) — programmatic | `scaffoldProject(fileAsTarget, {name:'hello-proj'})` | Resolved `{"ok":false,"errors":[{"skill":"(init)","message":"cannot read target directory: ENOTDIR..."}]}` | ✓ PASS (was ✗ FAIL) |
+| Never-throw contract surfaced through CLI (write-blocked scaffold path) | `motto init hello-proj --force` in a dir with a pre-existing file named `skills` | `✗ (init): scaffold write failed: ENOTDIR: ... mkdir '.../skills/hello-world'`, exit 1, no stack trace | ✓ PASS (was ✗ FAIL) |
+| Golden path regression | `motto init hello-proj && motto lint && motto build` | `✓ 1 skills OK`, `✓ built ... — 1 skills, 1 plugin(s)` | ✓ PASS |
+| Non-empty guard regression | `motto init hello-proj` with 2 unrelated files present | `✗ directory is not empty (a.txt, b.txt)` / `use --force to scaffold anyway`, exit 1 | ✓ PASS |
+| Invalid name regression | `motto init 'Bad Name'` | Rule message + `try: motto init bad-name`, exit 1 | ✓ PASS |
+| Scaffolded `.gitignore`/`marketplace.json` content regression | Fresh `motto init hello-proj` | `.gitignore` = `node_modules/\ndist/private/\n`; `marketplace.json` name/plugins[0].name/source/owner all correct | ✓ PASS |
+| Full test suite | `node --test` | `tests 118, pass 118, fail 0` | ✓ PASS |
+| `git diff --name-only` scope for gap-closure commits | `git show --stat 28383d2 5eddd10` | Only `test/init.test.js` and `src/init.js` changed; `bin/motto.js` untouched | ✓ PASS |
 
 ### Requirements Coverage
 
 | Requirement | Source Plan | Description | Status | Evidence |
-|-------------|-------------|-------------|--------|----------|
-| INIT-01 | 10-01 | `motto init [name]` scaffolds into cwd, `[name]` fills fields / defaults to cwd basename | ✓ SATISFIED | Truth #1 |
+|-------------|-------------|--------------|--------|----------|
+| INIT-01 | 10-01, 10-03 | `motto init [name]` scaffolds into cwd, `[name]` fills fields / defaults to cwd basename; never-throw contract | ✓ SATISFIED | Truth #1, #7 |
 | INIT-02 | 10-02 | Scaffolded starter skill passes lint/build with zero edits, permanent dogfood test | ✓ SATISFIED | Truth #2, #9 |
 | INIT-03 | 10-01 | marketplace.json relative source at `dist/public/`, owner from git config w/ placeholder fallback, name consistent with motto.yaml | ✓ SATISFIED | Truth #5 |
-| INIT-04 | 10-01, 10-02 | Non-empty guard refuses; `--force` overrides | ✓ SATISFIED | Truth #3, #6, #8 |
+| INIT-04 | 10-01, 10-02, 10-03 | Non-empty guard refuses; `--force` overrides; never-throw contract for the STEP 4 write-failure path | ✓ SATISFIED | Truth #3, #6, #7, #8 |
 | INIT-05 | 10-01, 10-02 | Name validated with the same rule lint enforces (schema.js single source) | ✓ SATISFIED | Truth #4, #8 |
 | INIT-06 | 10-01 | `.gitignore` ignores `dist/private/`, keeps `dist/public/` tracked | ✓ SATISFIED | Truth #5 |
 
-All 6 phase requirement IDs (INIT-01 through INIT-06) declared in PLAN frontmatter are accounted for and cross-referenced against REQUIREMENTS.md — no orphaned requirements found for Phase 10.
+All 6 phase requirement IDs (INIT-01 through INIT-06) declared across PLAN frontmatter (10-01, 10-02, 10-03) are accounted for and cross-referenced against REQUIREMENTS.md, which lists all six as `[x]` complete with Phase 10 traceability. No orphaned requirements found. 10-03's frontmatter declares `requirements: [INIT-01, INIT-04]`, both already covered by 10-01/10-02 and now additionally strengthened by the never-throw fix — no new requirement IDs introduced, no scope reduction.
 
 ### Anti-Patterns Found
 
 | File | Line | Pattern | Severity | Impact |
 |------|------|---------|----------|--------|
-| `src/init.js` | 71-83 | `listNonIgnorableEntries` rethrows non-ENOENT readdir errors, escaping the documented never-throw contract | 🛑 Blocker (for Truth #7) | Causes an unhandled-rejection crash instead of a graceful CLI error when the target path is not a directory |
-| `src/init.js` | 127-180 (`writeScaffold`) | No try/catch around `mkdir`/`writeFile` calls | 🛑 Blocker (for Truth #7) | Unwritable/full-disk target crashes mid-write with no report of which files were already created (partial-scaffold-with-no-error risk) |
-| `bin/motto.js` | 55-59 | `await scaffoldProject(...)` has no try/catch | 🛑 Blocker (for Truth #7) | The two throw paths above propagate straight to an unhandled-rejection stack trace shown to the end user |
-| `src/init.js` | 92-99 (`resolveGitOwnerName`) | `execFileSync` called without `stdio` option — child stderr passes through to parent stderr | ⚠️ Warning | A corrupt `~/.gitconfig` leaks git's raw `fatal: ...` line into `motto init` output before the silent placeholder fallback applies (REVIEW.md WR-03, unresolved, not blocking the phase goal) |
-| `test/init.test.js` | 107-140 | The `'../evil'` adversarial-name case only inspects `readdir(tempDir)`, not the parent directory — cannot detect a regression that reintroduces the name as a path segment outside the target dir | ℹ️ Info | Test-coverage gap only; the production code was independently confirmed NOT to use `name` as a path segment anywhere (all `join()` calls use fixed literals) — REVIEW.md WR-04, unresolved, low materiality |
-| `test/init.test.js` | 193-221 | `--force` suite never pre-seeds a stale scaffold file to prove overwrite (vs. skip-if-exists) | ℹ️ Info | Test-coverage gap only; runtime behavior independently verified correct in this session (stale `motto.yaml` content was replaced) — REVIEW.md IN-04 |
-| `bin/motto.js` | 45 | `process.exit()` in the parseArgs catch block, with a comment claiming this is always safe | ℹ️ Info | Pre-existing pattern from before Phase 10 (confirmed via `git log -p`), not introduced by this phase — REVIEW.md WR-02, out of scope for this verification but noted for awareness |
+| `src/init.js` | 92-99 (`resolveGitOwnerName`) | `execFileSync` called without `stdio` option — child stderr passes through to parent stderr | ⚠️ Warning | Pre-existing (REVIEW.md WR-03), unresolved, not blocking the phase goal, out of scope for the gap-closure plan (which was WR-01 only) |
+| `test/init.test.js` | pre-existing | The `'../evil'` adversarial-name case only inspects `readdir(tempDir)`, not the parent directory | ℹ️ Info | Pre-existing (REVIEW.md WR-04), unresolved, low materiality, out of scope for this gap-closure plan |
+| `bin/motto.js` | 45 | `process.exit()` in the parseArgs catch block | ℹ️ Info | Pre-existing pattern from before Phase 10 (REVIEW.md WR-02), out of scope |
 
-No `TBD`/`FIXME`/`XXX` debt markers found in any Phase 10 file (`grep -inE "TBD|FIXME|XXX"` on `src/init.js`, `bin/motto.js`, `test/init.test.js`, `test/init-dogfood.test.js` returns no matches other than legitimate uses of the word "placeholder" in comments describing the owner-name fallback design).
+No `TBD`/`FIXME`/`XXX` debt markers found in `src/init.js`, `test/init.test.js`, or `bin/motto.js` (`grep -inE "TBD|FIXME|XXX"` returns no matches). The two new try/catch blocks in `src/init.js` are fully implemented (no stub/placeholder patterns) — each maps directly to a returned `{ ok:false, errors }` value consumed by both the test suite and the live CLI.
 
 ### Human Verification Required
 
-None. The one substantive gap (Truth #7 / WR-01) is a reproduced, deterministic code defect — not a judgment call requiring human observation.
+None. All truths verified programmatically via direct code read, live CLI reproduction, and the passing test suite.
 
 ### Gaps Summary
 
-Phase 10 achieves its primary, stated goal for the golden path: a stranger running `motto init [name]` in a normal (writable, valid-path) environment gets a complete, buildable, lintable skills project with zero edits — verified directly by running the actual CLI end-to-end, not just by trusting SUMMARY.md. All 5 ROADMAP.md success criteria and all 8 PLAN-frontmatter must_haves for the golden/guard paths (empty-dir scaffold, non-empty refusal, invalid-name rejection, `--force` overwrite-only, name-consistency across motto.yaml/marketplace.json, and the permanent lint/build dogfood guard) are independently verified against the running code, not merely the test suite's self-report.
+The single Phase 10 gap identified in the prior verification (Truth #7: `scaffoldProject`'s documented never-throw contract was violated for two fs-error paths — a file-as-target ENOTDIR and an unguarded write in `writeScaffold`) has been closed by gap-closure plan 10-03 (commits `28383d2` test, `5eddd10` fix).
 
-The one gap is `src/init.js`'s own documented "never-throw orchestrator" contract, which is violated in two concrete, reproduced scenarios: a target path that is a file (ENOTDIR) and an unwritable target directory (EACCES) — the latter a realistic scenario (permission-denied directories exist in the wild) that the phase's own code review (`10-REVIEW.md`, WR-01) already found and proposed a fix for, but which was never committed (no commit after the review landed at `ce02257`). Because `bin/motto.js` awaits `scaffoldProject` with no try/catch, this is not merely an internal contract violation — it surfaces to a real end user as a raw Node stack trace instead of the CLI's documented `✗ <message>` + `process.exitCode = 1` failure mode. This directly contradicts both the module's own design intent and the project's broader never-throw invariant for validators/orchestrators (previously flagged as a recurring failure class in this project). A minimal fix (wrapping the two identified call sites in try/catch, per the review's own suggested patch) plus one regression test (`scaffoldProject` against a file-as-target dir) would close this gap.
+Verification was not limited to trusting 10-03-SUMMARY.md's claims: both previously-throwing scenarios were re-reproduced directly against the current codebase in this session — (a) calling `scaffoldProject` programmatically against a file-as-target resolved a clean `{ ok:false, errors }` object instead of throwing `ENOTDIR`, and (b) running the actual `bin/motto.js` CLI end-to-end against a write-blocked target (`--force` with a pre-existing file occupying the `skills` path) printed the documented `✗ (init): scaffold write failed: ...` message and set `process.exitCode = 1`, with no raw Node stack trace. `bin/motto.js` was confirmed unmodified by the gap-closure diff, consistent with the plan's design (the fix lives entirely in `src/init.js`'s error-shape mapping, reusing the existing generic-error rendering path).
+
+All 8 previously-passing truths were regression-checked (not merely assumed passing) against the current codebase: golden-path init→lint→build, non-empty guard, invalid-name rejection, `--force` overwrite-only behavior, and `.gitignore`/`marketplace.json` content correctness all reproduce identically to the prior verification run. The full test suite is green at 118/118 (116 prior + 2 new adversarial never-throw regression tests). No regressions introduced by the gap-closure plan.
+
+Phase 10 goal — "A stranger with only `npm i -g @jeremiewerner/motto` can run one command and get a complete skills project that lints and builds with zero edits" — is fully achieved, including graceful (non-crashing) handling of the two edge-case failure modes discovered during code review. All 6 requirement IDs (INIT-01 through INIT-06) are satisfied.
 
 ---
 
-_Verified: 2026-07-02T06:41:19Z_
+_Verified: 2026-07-02T07:15:00Z_
 _Verifier: Claude (gsd-verifier)_

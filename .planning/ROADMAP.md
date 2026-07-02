@@ -85,7 +85,7 @@
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 10. Project Scaffold (`motto init`) | 3/3 | Complete   | 2026-07-02 |
+| 10. Project Scaffold (`motto init`) | 3/3 | Complete    | 2026-07-02 |
 | 11. CLI Ergonomics (--help, [path]) | 0/? | Not started | - |
 | 12. Docs & Cleanup | 0/? | Not started | - |
 
