@@ -23,10 +23,11 @@
  *   Unknown flag (D-05): mirrors D-04 — names the offending flag, same
  *     usage line + hint, stderr, exit 1.
  *
- * Exit codes: always set via process.exitCode (never process.exit(1)) to
- * avoid truncating buffered stdout (Pitfall 7). The only exception is
- * process.exit() (no arg) in the parseArgs catch block, which is safe because
- * we have already written all output to stderr before calling it.
+ * Exit codes: always set via process.exitCode — never process.exit(), which
+ * can truncate buffered output on platforms where pipe writes are async
+ * (e.g. Windows) — Pitfall 7. The parseArgs catch reports the error and
+ * returns null; dispatch is skipped entirely when parsing failed, so the
+ * process drains its streams and exits naturally with exitCode 1.
  */
 
 import { parseArgs } from 'node:util';
@@ -123,39 +124,49 @@ async function checkTargetDir(targetPath) {
 // Parse argv — strict:true throws on any unknown flag (e.g. --bogus)
 // ---------------------------------------------------------------------------
 
-let parsed;
-try {
-  parsed = parseArgs({
-    args: process.argv.slice(2),
-    options: {
-      force: { type: 'boolean' },
-      help: { type: 'boolean', short: 'h' },
-    },
-    allowPositionals: true,
-    strict: true,
-  });
-} catch (err) {
-  // Unknown flag (strict:true) — name the offending flag, mirror D-04's
-  // shape (usage line + hint), stderr, exit (Pitfall 4, D2-16, D-05).
-  // parseArgs also throws non-"Unknown option" errors (e.g. a boolean flag
-  // given a value: `--force=true` → "Option '--force' does not take an
-  // argument") — surface parseArgs' own message for those instead of a
-  // misleading literal.
-  const match = /(?:Unknown option |unrecognized option )['"]?(-{1,2}[^'"\s]+)/.exec(
-    err && err.message,
-  );
-  if (match) {
-    process.stderr.write(`✗ unknown option '${match[1]}'\n`);
-  } else {
-    process.stderr.write(`✗ ${err && err.message ? err.message : 'invalid arguments'}\n`);
+/**
+ * Parse argv, reporting any parseArgs error in D-04's shape (offending flag
+ * or parseArgs' own message + usage line + hint) to stderr. Returns null on
+ * failure — the caller skips dispatch, so no process.exit() is ever needed
+ * and stderr flushes naturally on every platform (Pitfall 7).
+ *
+ * @returns {ReturnType<typeof parseArgs>|null}
+ */
+function parseCliArgs() {
+  try {
+    return parseArgs({
+      args: process.argv.slice(2),
+      options: {
+        force: { type: 'boolean' },
+        help: { type: 'boolean', short: 'h' },
+      },
+      allowPositionals: true,
+      strict: true,
+    });
+  } catch (err) {
+    // Unknown flag (strict:true) — name the offending flag, mirror D-04's
+    // shape (usage line + hint), stderr, exit code 1 (Pitfall 4, D2-16, D-05).
+    // parseArgs also throws non-"Unknown option" errors (e.g. a boolean flag
+    // given a value: `--force=true` → "Option '--force' does not take an
+    // argument") — surface parseArgs' own message for those instead of a
+    // misleading literal.
+    const match = /(?:Unknown option |unrecognized option )['"]?(-{1,2}[^'"\s]+)/.exec(
+      err && err.message,
+    );
+    if (match) {
+      process.stderr.write(`✗ unknown option '${match[1]}'\n`);
+    } else {
+      process.stderr.write(`✗ ${err && err.message ? err.message : 'invalid arguments'}\n`);
+    }
+    process.stderr.write(`${USAGE_LINE}\n`);
+    process.stderr.write(`${UNKNOWN_HINT}\n`);
+    process.exitCode = 1;
+    return null;
   }
-  process.stderr.write(`${USAGE_LINE}\n`);
-  process.stderr.write(`${UNKNOWN_HINT}\n`);
-  process.exitCode = 1;
-  process.exit(); // exits with exitCode 1; safe: all output written before this call
 }
 
-const sub = parsed.positionals[0];
+const parsed = parseCliArgs();
+const sub = parsed === null ? null : parsed.positionals[0];
 
 // ---------------------------------------------------------------------------
 // Help routing (D-09) — raw argv order decides global vs per-subcommand help
@@ -171,7 +182,10 @@ const helpBeforeSubcommand =
 // Subcommand dispatch
 // ---------------------------------------------------------------------------
 
-if (sub === undefined) {
+if (parsed === null) {
+  // Parse failed — error already written to stderr and exitCode already 1
+  // inside parseCliArgs(); skip dispatch and let the process exit naturally.
+} else if (sub === undefined) {
   // Bare `motto` (D-03) or `motto --help`/`-h` with no subcommand (D-01) —
   // both print the same global compact help to stdout, exit 0.
   process.stdout.write(GLOBAL_HELP);
