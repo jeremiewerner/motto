@@ -11,7 +11,7 @@ Each maps to roadmap phases. REQ-IDs continue from v0.0.3 (NPM/REL/MKT/DOC used;
 ### Scaffold (INIT)
 
 - [x] **INIT-01**: User can run `motto init [name]` to scaffold a complete project into the current directory — `skills/`, `shared/references/`, `motto.yaml`, `.gitignore` (`[name]` fills `motto.yaml` fields; defaults to cwd basename)
-- [ ] **INIT-02**: Scaffolded starter skill passes `motto lint` and `motto build` with zero edits, guarded by a permanent scaffold-dogfood test (init → lint → build)
+- [x] **INIT-02**: Scaffolded starter skill passes `motto lint` and `motto build` with zero edits, guarded by a permanent scaffold-dogfood test (init → lint → build)
 - [x] **INIT-03**: init writes `.claude-plugin/marketplace.json` — relative source pointing at `dist/public/`, owner from git config (placeholder fallback when unset), plugin name consistent with `motto.yaml` by construction
 - [x] **INIT-04**: init refuses to scaffold over an existing project (non-empty target guard); `--force` overrides
 - [x] **INIT-05**: init validates the project name with the same rules lint enforces (single source: `schema.js` — no "init accepts, lint rejects")
@@ -66,7 +66,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | INIT-01 | Phase 10 | Complete |
-| INIT-02 | Phase 10 | Pending |
+| INIT-02 | Phase 10 | Complete |
 | INIT-03 | Phase 10 | Complete |
 | INIT-04 | Phase 10 | Complete |
 | INIT-05 | Phase 10 | Complete |
