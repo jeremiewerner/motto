@@ -137,11 +137,18 @@ try {
 } catch (err) {
   // Unknown flag (strict:true) — name the offending flag, mirror D-04's
   // shape (usage line + hint), stderr, exit (Pitfall 4, D2-16, D-05).
+  // parseArgs also throws non-"Unknown option" errors (e.g. a boolean flag
+  // given a value: `--force=true` → "Option '--force' does not take an
+  // argument") — surface parseArgs' own message for those instead of a
+  // misleading literal.
   const match = /(?:Unknown option |unrecognized option )['"]?(-{1,2}[^'"\s]+)/.exec(
     err && err.message,
   );
-  const flag = match ? match[1] : 'unknown';
-  process.stderr.write(`✗ unknown option '${flag}'\n`);
+  if (match) {
+    process.stderr.write(`✗ unknown option '${match[1]}'\n`);
+  } else {
+    process.stderr.write(`✗ ${err && err.message ? err.message : 'invalid arguments'}\n`);
+  }
   process.stderr.write(`${USAGE_LINE}\n`);
   process.stderr.write(`${UNKNOWN_HINT}\n`);
   process.exitCode = 1;
