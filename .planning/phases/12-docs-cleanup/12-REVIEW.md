@@ -1,6 +1,6 @@
 ---
 phase: 12-docs-cleanup
-reviewed: 2026-07-02T10:24:06Z
+reviewed: 2026-07-02T10:52:35Z
 depth: standard
 files_reviewed: 2
 files_reviewed_list:
@@ -8,69 +8,75 @@ files_reviewed_list:
   - test/dogfood.test.js
 findings:
   critical: 0
-  warning: 4
-  info: 2
-  total: 6
+  warning: 2
+  info: 3
+  total: 5
 status: issues_found
 ---
 
-# Phase 12: Code Review Report
+# Phase 12: Code Review Report (re-review after gap closure 12-03)
 
-**Reviewed:** 2026-07-02T10:24:06Z
+**Reviewed:** 2026-07-02T10:52:35Z
 **Depth:** standard
 **Files Reviewed:** 2
-**Status:** issues_found
+**Status:** issues_found (all remaining findings are carried-forward pre-existing defects or Info items; no new Warning/Critical issues introduced by the 12-03 fixes)
+
+## Narrative Findings (AI reviewer)
 
 ## Summary
 
-Reviewed the Phase 12 README rewrite and the synced dogfood test against the actual implementation (`src/init.js`, `src/config.js`, `src/schema.js`, `src/build.js`, `bin/motto.js`, `package.json`, `motto.yaml`, `.claude-plugin/marketplace.json`, and the live `skills/` tree).
+Re-review of Phase 12 output after gap-closure plan 12-03 (commits `b078c8f`, `b437c84`, `c7b0b76`, `cf1aebe`). Cross-checked every README claim touched by the fixes against `src/init.js`, `src/config.js`, `src/schema.js`, `src/build.js`, `bin/motto.js`, `package.json`, `.claude-plugin/marketplace.json`, and live CLI/test runs.
 
-**test/dogfood.test.js is clean.** The synced expectations match reality: `skills/` contains exactly 2 skills (`author-skill` public, `release` private), so `count=2`, `skillCount=2`, `bucketCount=2` are correct; `author-skill` declares `shared_references: [skill-schema]` and `shared/references/skill-schema.md` exists; the private plugin name `motto-private` matches `motto.yaml`; `NAME_KEBAB` is genuinely re-exported from `config.js` (line 19), so the identity assertion is valid; the `before`/`after` hooks are correctly guarded against partial setup.
+**All three applied fixes are verified correct:**
 
-**README.md contains four accuracy defects** where documented behavior diverges from what the CLI actually does or what will actually work for a reader following the instructions. Most of the scaffold documentation is accurate — the scaffolded `motto.yaml` snippet, the file tree, the `.gitignore` behavior enabling "commit dist/public/", the `npm version` script claim (verified against `package.json` `scripts.version`), and the `prepublishOnly` claim all check out.
+1. **WR-02 fix (install one-liner) — CORRECT.** Both occurrences (README:164, README:226) now read `/plugin install <plugin>@<marketplace>`, and the prerequisite note (README:167) correctly defines `<marketplace>` as the `name` field of the scaffolded `.claude-plugin/marketplace.json`. Verified against `src/init.js:163` (`writeScaffold` sets `marketplace.json` top-level `name` to the validated project name) — the documented example `/plugin install my-project@my-project` is exactly what the scaffold produces.
+2. **WR-04 fix (--force disclosure) — CORRECT.** README:89 now discloses that the five scaffold paths are overwritten. The listed paths (`motto.yaml`, `.gitignore`, `skills/hello-world/SKILL.md`, `shared/references/.gitkeep`, `.claude-plugin/marketplace.json`) match `writeScaffold` (src/init.js:127-180) exactly — five `writeFile` targets, no more, no fewer. "It never deletes files" remains accurate (plain `writeFile`, zero delete operations). The framing "under --force" is sound: without `--force` the empty-dir guard (src/init.js:223-237) rejects any directory where a scaffold path could pre-exist (the `.git`/`.DS_Store` allowlist never collides with scaffold paths).
+3. **Stale skill-count fix — CORRECT.** README:129 example `✓ 2 skills OK` matches live output: ran `node bin/motto.js lint` at repo root → `✓ 2 skills OK`. `skills/` contains exactly `author-skill` (public) and `release` (private).
+
+**test/dogfood.test.js is clean.** The diff in this range is exactly the count sync (3→2 at lines 35-42 and 80-88) plus removal of the two `setup-project` artifact assertions — consistent with the phase-12 deletion of `skills/setup-project`. All 9 tests pass live (`node --test test/dogfood.test.js` → pass 9, fail 0). Re-verified the adversarial angles: the `before` fail-fast throw still leaves `tempDir` assigned so the guarded `after` cleanup runs; `buildProject` is only ever pointed at the mkdtemp copy (never `REPO_ROOT`, whose `dist/` it would wipe); the NAME_KEBAB reference-identity assertion remains valid (`src/config.js:19` re-exports from `src/schema.js`).
+
+**Other README claims spot-checked and confirmed accurate:** scaffolded `motto.yaml` snippet matches `src/init.js:144` byte-for-byte; scaffolded `.gitignore` ignores only `dist/private/` (src/init.js:152), so "commit `dist/public/`" (README:158) works; `plugins.private` "required when private skills exist" (README:84) is enforced at build time (src/build.js:135-138); the `npm version` claim (README:176) matches `package.json` `scripts.version` (bumps `motto.yaml` + git-adds it; npm handles `package.json` and the tag); `prepublishOnly` rebuilds via `node bin/motto.js build`; the marketplace section (README:240) matches `.claude-plugin/marketplace.json` (npm source, `skills: "./dist/public/"`); `/plugin install motto@motto` (README:247) matches marketplace name `motto` / plugin name `motto`.
+
+Remaining findings below are carried forward from the prior review (77d5a10) or new Info-level observations.
 
 ## Warnings
 
-### WR-01: README documents a reserved-word rule for `plugins.public` that the linter does not enforce
+### WR-01 (carried forward, pre-existing): README documents a reserved-word rule for `plugins.public` that the linter does not enforce
 
 **File:** `README.md:83`
-**Issue:** The field table states `plugins.public` "must not contain `anthropic` or `claude`". This is not true of the implementation: `src/config.js` validates plugin names against `NAME_KEBAB` only (lines 87-102) — the `RESERVED = ["anthropic", "claude"]` check in `src/schema.js:39` is applied exclusively to *skill* names inside `validateName`, never to `plugins.public`/`plugins.private`. Likewise `motto init` (src/init.js:206) validates the project name against `NAME_KEBAB` only, so `motto init claude-tools` succeeds and scaffolds `plugins.public: claude-tools`, which `motto lint` and `motto build` then accept — producing a plugin that Claude Code's own naming rules reject. A user reading this table believes the linter protects them; it does not.
-**Fix:** Either (a) correct the README row to say the reserved-word rule applies to skill `name` fields only and is *recommended* for plugin names, or (b) file the real fix: apply the `RESERVED` substring check to `plugins.public`/`plugins.private` in `src/config.js` and to the effective name in `src/init.js` (the schema.js comment at line 36 — "must not appear in skill or plugin names" — suggests this was the original intent). If (b) is chosen, the README is correct as written but the code change belongs in a follow-up plan.
+**Status:** NOT FIXED — ruled out-of-scope by the phase verifier as a pre-existing defect (the claim predates phase 12; the underlying gap is in `src/config.js`, not the docs edit). Carried forward so it is not lost.
+**Issue:** The field table states `plugins.public` "must not contain `anthropic` or `claude`". Re-verified against current code: `src/config.js:87-102` validates plugin names against `NAME_KEBAB` only; the `RESERVED = ["anthropic", "claude"]` check (`src/schema.js:39,92`) applies exclusively to skill names inside `validateSkill`. Likewise `motto init` (src/init.js:206) validates the project name against `NAME_KEBAB` only, so `motto init claude-tools` succeeds and lint/build accept the resulting `plugins.public: claude-tools` — producing a plugin Claude Code's own naming rules reject.
+**Fix:** Either correct the README row (reserved rule applies to skill `name` only) or apply the `RESERVED` substring check to `plugins.public`/`plugins.private` in `src/config.js` and to the effective name in `src/init.js` in a follow-up plan. The `src/schema.js:36` comment ("must not appear in skill or plugin names") suggests the code change was the original intent.
 
-### WR-02: `/plugin install <plugin>@<repo>` — the suffix is the marketplace name, not the GitHub repo
+### WR-03 (carried forward, pre-existing): `/motto:release` slash command does not exist — `release` is a private skill in the `motto-private` plugin
 
-**File:** `README.md:164` (also `README.md:226`)
-**Issue:** The "Ship your plugin" section (and end-to-end step 8) instructs consumers to run `/plugin install <plugin>@<repo>`, with the prerequisite note defining `<repo>` as the GitHub repository. In Claude Code, the token after `@` is the **marketplace name** — the `name` field of `.claude-plugin/marketplace.json` — which `motto init` sets to the *project name* (src/init.js:163, `name` key), not the repo name. For a project named `my-project` hosted in repo `owner/skills-repo`, the documented command `/plugin install my-project@skills-repo` fails; the working command is `/plugin install my-project@my-project`. The instruction only works by coincidence when the repo happens to share the project's name (as with `motto@motto`).
-**Fix:** Change both occurrences to `/plugin install <plugin>@<marketplace>` and update the prerequisite note: "`<marketplace>` is the `name` field from your scaffolded `.claude-plugin/marketplace.json` — `motto init` sets it to your project name, so for a project named `my-project` the command is `/plugin install my-project@my-project`."
-
-### WR-03: `/motto:release` slash command does not exist — `release` is a private skill in the `motto-private` plugin
-
-**File:** `README.md:173`
-**Issue:** The "Publish to npm" section says "The `release` skill (`/motto:release`) carries the full maintainer checklist." `skills/release/SKILL.md` declares `audience: private`, so the build routes it to `dist/private/` under plugin name `motto-private` (verified in `motto.yaml` `plugins.private` and asserted by the dogfood test itself at test/dogfood.test.js:135). The marketplace only distributes `dist/public/` (marketplace.json `skills: "./dist/public/"`), so no installation path produces a `/motto:release` command: if the private plugin were loaded at all, the command would be `/motto-private:release`. A maintainer following this doc runs a command that doesn't resolve.
-**Fix:** Reference the skill by its real access path, e.g.: "The `release` skill (`skills/release/SKILL.md`, private — available as `/motto-private:release` when the private plugin is loaded locally) carries the full maintainer checklist."
-
-### WR-04: `--force` description conceals that scaffold writes overwrite existing files
-
-**File:** `README.md:89`
-**Issue:** The README states: "`--force`: lets `motto init` write into a non-empty directory. It never deletes existing files; it only skips the empty-directory check." The second sentence is misleading about data loss: `writeScaffold` (src/init.js:127-180) uses plain `writeFile`, which **overwrites** any existing `motto.yaml`, `.gitignore`, `skills/hello-world/SKILL.md`, `shared/references/.gitkeep`, and `.claude-plugin/marketplace.json`. A user with an existing `motto.yaml` who runs `motto init --force` loses its content. The CLI's own help text is honest about this ("overwrite scaffold files in a non-empty directory", bin/motto.js:63); the README's "only skips the check" framing is not.
-**Fix:** Reword: "`--force` lets `motto init` write into a non-empty directory. It never deletes files, but the five scaffold paths (`motto.yaml`, `.gitignore`, `skills/hello-world/SKILL.md`, `shared/references/.gitkeep`, `.claude-plugin/marketplace.json`) are **overwritten** if they already exist."
+**File:** `README.md:173` (also referenced at `README.md:182`)
+**Status:** NOT FIXED — ruled out-of-scope by the phase verifier as a pre-existing defect. Carried forward.
+**Issue:** "The `release` skill (`/motto:release`) carries the full maintainer checklist." Re-verified: `skills/release/SKILL.md` declares `audience: private`, routing it to `dist/private/` under plugin `motto-private` (motto.yaml `plugins.private`; asserted by test/dogfood.test.js:135). The marketplace distributes only `dist/public/`, so no install path yields `/motto:release`; if the private plugin were loaded locally the command would be `/motto-private:release`.
+**Fix:** Reference the skill by its real access path, e.g. "The `release` skill (`skills/release/SKILL.md`, private — `/motto-private:release` when the private plugin is loaded locally) carries the full maintainer checklist."
 
 ## Info
 
-### IN-01: Build-output example silently switches from the `my-project` tutorial to Motto's own tree plus a fictional skill
+### IN-01 (carried forward): Build-output example blends the `my-project` tutorial with Motto's own tree plus a fictional skill
 
 **File:** `README.md:139-152`
-**Issue:** The reader has been building `my-project` (scaffolded with `hello-world`) since the "Scaffold a project" section, but the `motto build` output example shows `author-skill` with `references/skill-schema.md` (Motto's real public skill), `plugin.json` with `"name": "motto"`, and a private skill `secret-skill` that exists nowhere. Three different projects are blended in one tree; a tutorial-follower's actual output (`hello-world`, `"name": "my-project"`, no `private/` bucket) matches none of it.
-**Fix:** Show the output the tutorial actually produces (`dist/public/hello-world/SKILL.md`, `"name": "my-project"`, no `dist/private/` since the scaffold declares no private skills), or explicitly label the tree as "Motto's own build output, for illustration."
+**Issue:** Unchanged from the prior review: the reader scaffolds `my-project` with `hello-world`, but the `motto build` output example shows `author-skill` + `references/skill-schema.md` (Motto's real skill), `plugin.json` `"name": "motto"`, and a nonexistent `secret-skill`. Note the 12-03 skill-count fix made the section internally consistent (the `✓ 2 skills OK` example at line 129 matches the two skills shown in this tree), but the tree still matches neither the tutorial project nor Motto's actual repo.
+**Fix:** Show the tutorial's actual output (`dist/public/hello-world/SKILL.md`, `"name": "my-project"`, no `dist/private/`), or label the tree "Motto's own build output, for illustration."
 
-### IN-02: End-to-end step 3 wraps a Claude Code slash command in a `sh` code fence and assumes an uninstalled plugin
+### IN-02 (carried forward): End-to-end step 3 wraps a Claude Code slash command in a `sh` code fence and assumes an uninstalled plugin
 
 **File:** `README.md:201-204`
-**Issue:** Step 3 (` ```sh ` fence) contains `/motto:author-skill`, which is not a shell command — pasting it into a terminal fails. Steps 7-8 correctly use plain fences for slash commands. Additionally, at step 3 the reader has only installed the npm CLI (step 1); `/motto:author-skill` requires `/plugin marketplace add jeremiewerner/motto` + `/plugin install motto@motto`, which the README only introduces in later sections — the example's own steps 7-8 add the reader's *own* marketplace, not Motto's.
-**Fix:** Change the fence from `sh` to plain (matching steps 7-8) and add a pointer: "requires Motto's skills installed — see [Install Motto's skills](#install-mottos-skills)."
+**Issue:** Unchanged from the prior review: step 3 uses a ```sh fence for `/motto:author-skill` (not a shell command — pasting it into a terminal fails), while steps 7-8 correctly use plain fences. At step 3 the reader has only installed the npm CLI; `/motto:author-skill` requires Motto's marketplace + plugin install, introduced only in later sections.
+**Fix:** Change the fence to plain (matching steps 7-8) and add "requires Motto's skills installed — see [Install Motto's skills](#install-mottos-skills)."
+
+### IN-03 (new): `<plugin>` is defined via `motto.yaml` `plugins.public`, but install resolution actually keys on the marketplace.json plugin entry name
+
+**File:** `README.md:167`
+**Issue:** The (otherwise correct) new prerequisite note says to substitute `<plugin>` with "the `plugins.public` name from your `motto.yaml`". What `/plugin install` actually resolves is the plugin entry `name` inside `.claude-plugin/marketplace.json`, which `motto init` sets equal to the project name (src/init.js:167) — identical to `plugins.public` in the scaffold default, so the instruction works as written. But `motto build` never regenerates `marketplace.json`: a user who later edits `plugins.public` in `motto.yaml` (renaming their plugin) gets a `plugin.json` in `dist/public/` whose name no longer matches the marketplace entry, and the documented substitution silently points at the wrong token. Low impact (scaffold defaults are in sync; the drift scenario requires a manual rename), which is why this is Info rather than Warning.
+**Fix:** Tighten the note: "`<plugin>` is the plugin `name` in your `.claude-plugin/marketplace.json` — `motto init` sets it equal to `plugins.public`, so keep the two in sync if you rename your plugin."
 
 ---
 
-_Reviewed: 2026-07-02T10:24:06Z_
+_Reviewed: 2026-07-02T10:52:35Z_
 _Reviewer: Claude (gsd-code-reviewer)_
 _Depth: standard_
