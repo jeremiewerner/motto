@@ -59,7 +59,7 @@ Full phase details: [milestones/v0.0.4-ROADMAP.md](milestones/v0.0.4-ROADMAP.md)
   4. A skill with no `template:` field lints byte-for-byte identically to v0.0.4 (regression-guarded).
   5. Adding a new template requires only editing the `src/templates.js` data map — no linter/mechanism code change.
 
-**Plans**: 2/2 plans complete
+**Plans**: 2/3 plans complete (14-03 gap closure pending)
 **Wave 1**
 
 - [x] 14-01-PLAN.md — Data-driven template mechanism: `src/templates.js` registry + `validateSkill` cascade + fence-aware `hasClosedSection` scanner + full test guard (TMPL-01..05)
@@ -67,6 +67,10 @@ Full phase details: [milestones/v0.0.4-ROADMAP.md](milestones/v0.0.4-ROADMAP.md)
 **Wave 2** *(blocked on Wave 1 completion)*
 
 - [x] 14-02-PLAN.md — Live dogfood: `release` skill adopts `template: procedure`; dogfood test proves enforcement + verbatim tag survival (TMPL-01, TMPL-03)
+
+**Gap Closure** *(SC3 false positives found in verification)*
+
+- [ ] 14-03-PLAN.md — Fix `hasClosedSection` fence character/length tracking (mixed `~~~`/``` false positive) + open-before-close ordering; add 2 regression tests (TMPL-03)
 
 ### Phase 15: Field Validation & Integrity Guards
 
