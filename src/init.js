@@ -221,7 +221,16 @@ export async function scaffoldProject(targetDir, { name, force = false } = {}) {
   // ── STEP 2: Non-empty-dir guard (D-05) — skipped entirely when force:true.
   // --force NEVER deletes; it only bypasses this check (D-06, Pitfall 3).
   if (!force) {
-    const offending = await listNonIgnorableEntries(targetDir);
+    let offending;
+    try {
+      offending = await listNonIgnorableEntries(targetDir);
+    } catch (e) {
+      // e.g. ENOTDIR when targetDir is actually a file (WR-01) — never throw.
+      return {
+        ok: false,
+        errors: [{ skill: '(init)', message: `cannot read target directory: ${e.message}` }],
+      };
+    }
     if (offending.length > 0) {
       return { ok: false, reason: 'not-empty', offending, errors: [] };
     }
@@ -231,6 +240,16 @@ export async function scaffoldProject(targetDir, { name, force = false } = {}) {
   const owner = resolveGitOwnerName();
 
   // ── STEP 4: Write the scaffold and return.
-  const created = await writeScaffold(targetDir, { name: effectiveName, owner });
-  return { ok: true, created, errors: [] };
+  try {
+    const created = await writeScaffold(targetDir, { name: effectiveName, owner });
+    return { ok: true, created, errors: [] };
+  } catch (e) {
+    // e.g. ENOTDIR when a scaffold path segment is blocked by a file (WR-01)
+    // — never throw. writeScaffold may have partially written before this
+    // point; no rollback is performed (T-10-03, YAGNI, zero delete ops).
+    return {
+      ok: false,
+      errors: [{ skill: '(init)', message: `scaffold write failed: ${e.message}` }],
+    };
+  }
 }
