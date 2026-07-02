@@ -43,7 +43,7 @@ const UNKNOWN_HINT = "(run 'motto --help' for details)";
 const GLOBAL_HELP = `${USAGE_LINE} [options]
 
 commands:
-  init [name]    scaffold a new skills project
+  init [name]    scaffold a skills project in the current directory
   lint [path]    validate skills against the schema
   build [path]   package skills into dist/ plugins
 
@@ -54,8 +54,8 @@ options:
 
 const INIT_HELP = `usage: motto init [name] [options]
 
-scaffold a new skills project
-(defaults to the current directory when [name] is omitted)
+scaffold a new skills project in the current directory
+([name] sets the project name; defaults to the directory's name)
 
 options:
   -h, --help    show help
