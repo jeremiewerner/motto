@@ -14,12 +14,13 @@ The core value is the **strict schema + linter**: skills either conform or they 
 2. [Scaffold a project](#scaffold-a-project)
 3. [Author a skill](#author-a-skill)
 4. [Validate and build](#validate-and-build)
-5. [Publish to npm](#publish-to-npm)
-6. [End-to-end example](#end-to-end-example)
-7. [Add the marketplace to Claude Code](#add-the-marketplace-to-claude-code)
-8. [Install Motto's skills](#install-mottos-skills)
-9. [Claude Desktop usage](#claude-desktop-usage)
-10. [Development and contributing](#development-and-contributing)
+5. [Ship your plugin](#ship-your-plugin)
+6. [Publish to npm](#publish-to-npm)
+7. [End-to-end example](#end-to-end-example)
+8. [Add the marketplace to Claude Code](#add-the-marketplace-to-claude-code)
+9. [Install Motto's skills](#install-mottos-skills)
+10. [Claude Desktop usage](#claude-desktop-usage)
+11. [Development and contributing](#development-and-contributing)
 
 ---
 
@@ -152,6 +153,21 @@ dist/
 
 ---
 
+## Ship your plugin
+
+Once `motto build` succeeds, commit `dist/public/` and push your repository to a public host — `motto init` already created `.claude-plugin/marketplace.json` pointing at `./dist/public/`, so there's nothing left to configure.
+
+Consumers then add your marketplace and install your plugin:
+
+```
+/plugin marketplace add <owner>/<repo>
+/plugin install <plugin>@<repo>
+```
+
+> **Prerequisite:** substitute `<owner>/<repo>` with your own public GitHub repository, and `<plugin>` with the `plugins.public` name from your `motto.yaml`.
+
+---
+
 ## Publish to npm
 
 The `release` skill (`/motto:release`) carries the full maintainer checklist. The short version:
@@ -176,9 +192,10 @@ A complete flow from scaffold to install, showing shell commands and Claude Code
 npm i -g @jeremiewerner/motto
 ```
 
-```
-# 2 — Scaffold a new project (Claude Code slash command)
-/motto:setup-project
+```sh
+# 2 — Scaffold a new project (CLI)
+mkdir my-project && cd my-project
+motto init my-project
 ```
 
 ```sh
@@ -197,15 +214,17 @@ motto build
 # → dist/public/ and dist/private/ are populated
 ```
 
+**6 — Ship it:** commit `dist/public/` and push your repository to a public host — see [Ship your plugin](#ship-your-plugin).
+
 ```
-# 6 — Add Motto's marketplace to Claude Code (Claude Code slash command)
-/plugin marketplace add jeremiewerner/motto
+# 7 — Add your marketplace to Claude Code (Claude Code slash command)
+/plugin marketplace add <owner>/<repo>
 ```
 
 ```
-# 7 — Install Motto's public skills into Claude Code (Claude Code slash command)
-/plugin install motto@motto
-# → /motto:author-skill and /motto:setup-project are now available
+# 8 — Install your public skills into Claude Code (Claude Code slash command)
+/plugin install <plugin>@<repo>
+# → your project's skills (e.g. /my-project:hello-world) are now available
 ```
 
 ---
@@ -233,7 +252,6 @@ This installs Motto's public skills into Claude Code, making the following slash
 | Skill | Slash command | What it does |
 |-------|--------------|-------------|
 | `author-skill` | `/motto:author-skill` | Step-by-step guide for writing a conforming `SKILL.md` |
-| `setup-project` | `/motto:setup-project` | Guided directory layout, `motto.yaml` walkthrough, and first build |
 
 ---
 
