@@ -4,9 +4,9 @@ milestone: v0.0.5
 milestone_name: Skill Builder
 current_phase: 14
 current_phase_name: Template Mechanism
-status: planning
+status: executing
 stopped_at: Phase 14 context gathered
-last_updated: "2026-07-02T22:27:16.467Z"
+last_updated: "2026-07-02T22:54:07.942Z"
 last_activity: 2026-07-03
 last_activity_desc: v0.0.5 roadmap created (Phases 14-17), 19/19 requirements mapped
 progress:
@@ -29,9 +29,10 @@ See: .planning/PROJECT.md (updated 2026-07-02 after v0.0.4)
 ## Current Position
 
 Phase: 14 of 17 (Template Mechanism) — first phase of v0.0.5
-Plan: — (not yet planned)
-Status: Ready to plan
-Last activity: 2026-07-03 — v0.0.5 roadmap created (Phases 14-17), 19/19 requirements mapped
+Plan: 2 plans, 2 waves (14-01 mechanism, 14-02 dogfood)
+Status: Ready to execute
+Last activity: 2026-07-03 — Phase 14 planned (research + patterns + 2 plans, checker passed iteration 2)
+Note: decision-coverage-plan gate overridden (could-not-parse: CONTEXT.md decisions are category bullets without D-NN IDs; checker Dimension 7 manually verified all locked decisions covered) — verify-phase may re-surface
 
 Progress: [░░░░░░░░░░] 0%
 

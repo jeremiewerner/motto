@@ -47,53 +47,70 @@ Full phase details: [milestones/v0.0.4-ROADMAP.md](milestones/v0.0.4-ROADMAP.md)
 ## Phase Details
 
 ### Phase 14: Template Mechanism
+
 **Goal**: Authors can declare `template: <name>` on a skill and `motto lint` enforces that template's extra rules, driven entirely by pure data.
 **Depends on**: Nothing (first phase of milestone; builds on shipped v0.0.4 core)
 **Requirements**: TMPL-01, TMPL-02, TMPL-03, TMPL-04, TMPL-05
 **Success Criteria** (what must be TRUE):
+
   1. An author adds `template: procedure` to a skill and `motto lint` fails unless the body contains both `<process>` and `<success_criteria>` sections.
   2. A skill declaring an unknown template name fails lint with an error that lists the available templates.
   3. Section-tag matching ignores tags that appear inside fenced code blocks (no false positives).
   4. A skill with no `template:` field lints byte-for-byte identically to v0.0.4 (regression-guarded).
   5. Adding a new template requires only editing the `src/templates.js` data map — no linter/mechanism code change.
+
 **Plans**: 2 plans
+**Wave 1**
+
 - [ ] 14-01-PLAN.md — Data-driven template mechanism: `src/templates.js` registry + `validateSkill` cascade + fence-aware `hasClosedSection` scanner + full test guard (TMPL-01..05)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 14-02-PLAN.md — Live dogfood: `release` skill adopts `template: procedure`; dogfood test proves enforcement + verbatim tag survival (TMPL-01, TMPL-03)
 
 ### Phase 15: Field Validation & Integrity Guards
+
 **Goal**: The three new optional frontmatter fields (`outputs:`, `dependencies:`, `allowed-tools`) are validated with integrity guards, and every new validator is never-throw.
 **Depends on**: Phase 14
 **Requirements**: VAL-01, VAL-02, VAL-03, VAL-04, VAL-05, VAL-06
 **Success Criteria** (what must be TRUE):
+
   1. `motto lint` rejects an `outputs:` entry whose file is missing, uses path traversal, is absolute, or escapes the skill dir via symlink.
   2. A bare-kebab `dependencies:` entry that names no existing skill fails lint; a namespaced `plugin:skill` entry is format-checked only.
   3. A public skill that depends on a private skill fails lint (audience-direction guard), and a skill that lists itself as a dependency fails (self-dependency guard).
   4. `allowed-tools` entries in real spec forms — including parenthesized patterns like `Bash(git add *)` — pass, while malformed forms fail.
   5. Every new validator returns accumulated errors without throwing, proven by adversarial malformed-input tests.
+
 **Plans**: TBD
 **Research flag**: `allowed-tools` format decision (STACK.md Q2 — Option A drop-whitespace-constraint vs Option B accept-parenthesized-pattern) must be resolved at phase discuss/plan.
 
 ### Phase 16: build-skill & author-skill Retirement
+
 **Goal**: A user hands `build-skill` any input and receives a complete, lint-clean, conforming skill; `author-skill` is retired in the same atomic move.
 **Depends on**: Phase 14, Phase 15
 **Requirements**: BSKL-01, BSKL-02, BSKL-03, BSKL-04, BSKL-05, BSKL-06
 **Success Criteria** (what must be TRUE):
+
   1. A user gives `build-skill` freeform input (text, doc, or conversation) and it asks only gap-filling questions before generating anything.
   2. `build-skill` produces a complete conforming `skills/<name>/` (SKILL.md + any output-template files) and self-verifies with `motto lint`, iterating until clean.
   3. `build-skill` itself declares `template: procedure` and passes the dogfood test (live E2E proof of the milestone).
   4. `build-skill`'s instructions enforce a content-quality self-review gate — no empty Role, no vacuous criteria, and the description states WHEN to trigger, not what the skill does.
   5. `author-skill` is removed atomically with `build-skill`'s arrival — dogfood skill count synced, main never red.
+
 **Plans**: TBD
 **Research flag**: build-skill prompt-engineering specifics (inherit from skill-creator / writing-skills — token-budget <500 words, flowcharts only for non-obvious decisions, no narrative one-off stories) to be gathered during phase planning.
 
 ### Phase 17: Docs Audit
+
 **Goal**: `skill-schema.md` is rewritten to the current schema and the README reflects `build-skill` with no lingering `author-skill` references.
 **Depends on**: Phase 14, Phase 15, Phase 16 (scheduled last so it documents the settled schema)
 **Requirements**: DOC-06, DOC-07
 **Success Criteria** (what must be TRUE):
+
   1. `skill-schema.md` carries a current version header and documents the `template`, `outputs`, `dependencies`, and `allowed-tools` fields.
   2. `build-skill`'s prose contains no duplicated lint strings or regexes — the schema is referenced (bundled shared ref), not inlined.
   3. The README removes all `author-skill` references and documents the `build-skill` flow.
+
 **Plans**: TBD
 
 ## Progress
