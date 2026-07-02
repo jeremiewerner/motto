@@ -39,7 +39,7 @@ Full phase details: [milestones/v0.0.4-ROADMAP.md](milestones/v0.0.4-ROADMAP.md)
 
 **Execution order** (research-locked — see `research/SUMMARY.md` "Implications for Roadmap"): template mechanism → field validators + integrity guards → build-skill + author-skill retirement → docs audit. `skill-schema.md` rewrite is scheduled LAST, after all schema-touching phases land.
 
-- [ ] **Phase 14: Template Mechanism** - Data-driven `template:` field that lint enforces (`procedure` ships)
+- [x] **Phase 14: Template Mechanism** - Data-driven `template:` field that lint enforces (`procedure` ships) (completed 2026-07-02)
 - [ ] **Phase 15: Field Validation & Integrity Guards** - Validate `outputs:`/`dependencies:`/`allowed-tools` with audience-direction, self-reference, and path-safety guards
 - [ ] **Phase 16: build-skill & author-skill Retirement** - `build-skill` Agent Skill structures any input into a conforming skill; `author-skill` retired atomically
 - [ ] **Phase 17: Docs Audit** - Rewrite `skill-schema.md` current and update README for build-skill
@@ -59,14 +59,14 @@ Full phase details: [milestones/v0.0.4-ROADMAP.md](milestones/v0.0.4-ROADMAP.md)
   4. A skill with no `template:` field lints byte-for-byte identically to v0.0.4 (regression-guarded).
   5. Adding a new template requires only editing the `src/templates.js` data map — no linter/mechanism code change.
 
-**Plans**: 1/2 plans executed
+**Plans**: 2/2 plans complete
 **Wave 1**
 
 - [x] 14-01-PLAN.md — Data-driven template mechanism: `src/templates.js` registry + `validateSkill` cascade + fence-aware `hasClosedSection` scanner + full test guard (TMPL-01..05)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 14-02-PLAN.md — Live dogfood: `release` skill adopts `template: procedure`; dogfood test proves enforcement + verbatim tag survival (TMPL-01, TMPL-03)
+- [x] 14-02-PLAN.md — Live dogfood: `release` skill adopts `template: procedure`; dogfood test proves enforcement + verbatim tag survival (TMPL-01, TMPL-03)
 
 ### Phase 15: Field Validation & Integrity Guards
 
@@ -124,7 +124,7 @@ Phases execute in numeric order: 14 → 15 → 16 → 17
 | 11. CLI Ergonomics (--help, [path]) | v0.0.4 | 1/1 | Complete | 2026-07-02 |
 | 12. Docs & Cleanup | v0.0.4 | 3/3 | Complete | 2026-07-02 |
 | 13. Tech-Debt Closure | v0.0.4 | 2/2 | Complete | 2026-07-02 |
-| 14. Template Mechanism | v0.0.5 | 1/2 | In Progress|  |
+| 14. Template Mechanism | v0.0.5 | 2/2 | Complete   | 2026-07-02 |
 | 15. Field Validation & Integrity Guards | v0.0.5 | 0/TBD | Not started | - |
 | 16. build-skill & author-skill Retirement | v0.0.5 | 0/TBD | Not started | - |
 | 17. Docs Audit | v0.0.5 | 0/TBD | Not started | - |
