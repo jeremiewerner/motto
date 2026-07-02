@@ -114,16 +114,23 @@ describe('scaffoldProject adversarial names (Pitfall 1 / T-10-01)', () => {
 
   for (const name of adversarialNames) {
     describe(`name "${name}"`, () => {
+      let scratchDir;
       let tempDir;
       let result;
 
       before(async () => {
-        tempDir = await mkdtemp(join(tmpdir(), 'motto-init-test-'));
+        // Nest tempDir under a scratchDir (mirrors the default-name suite)
+        // so the "writes nothing" assertion can inspect the PARENT too —
+        // a path-escape regression (e.g. "../evil" landing at
+        // scratchDir/evil) would still pass a target-only assertion.
+        scratchDir = await mkdtemp(join(tmpdir(), 'motto-init-test-'));
+        tempDir = join(scratchDir, 'target');
+        await mkdir(tempDir);
         result = await scaffoldProject(tempDir, { name });
       });
 
       after(async () => {
-        if (tempDir) await rm(tempDir, { recursive: true, force: true });
+        if (scratchDir) await rm(scratchDir, { recursive: true, force: true });
       });
 
       it('returns ok:false, reason:invalid-name', () => {
@@ -131,9 +138,19 @@ describe('scaffoldProject adversarial names (Pitfall 1 / T-10-01)', () => {
         assert.strictEqual(result.reason, 'invalid-name');
       });
 
-      it('writes nothing — target dir remains empty', async () => {
-        const entries = await readdir(tempDir);
-        assert.deepStrictEqual(entries, [], `expected no writes for adversarial name "${name}"`);
+      it('writes nothing — no scaffold write escaped the target directory', async () => {
+        const scratchEntries = await readdir(scratchDir);
+        assert.deepStrictEqual(
+          scratchEntries,
+          ['target'],
+          `expected no writes outside the target dir for adversarial name "${name}"`,
+        );
+        const targetEntries = await readdir(tempDir);
+        assert.deepStrictEqual(
+          targetEntries,
+          [],
+          `expected no writes inside the target dir for adversarial name "${name}"`,
+        );
       });
     });
   }
