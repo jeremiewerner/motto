@@ -38,7 +38,7 @@
   4. An invalid project name is rejected by `motto init` using the exact rule `motto lint` enforces (single source: `schema.js`) — no name that init accepts is later rejected by lint
   5. The scaffolded `.gitignore` ignores `dist/private/` while keeping `dist/public/` tracked, and the `marketplace.json` plugin name matches `motto.yaml` by construction (relative source pointing at `dist/public/`, owner from git config with a placeholder fallback)
 
-**Plans**: 2/3 plans complete (gap-closure 10-03 pending)
+**Plans**: 3/3 plans complete
 **Wave 1**
 
 - [x] 10-01-PLAN.md — src/init.js scaffoldProject (guards, name validation, inline templates) + bin/motto.js init subcommand
@@ -49,7 +49,7 @@
 
 **Gap closure** *(from 10-VERIFICATION.md — Truth #7 / REVIEW.md WR-01)*
 
-- [ ] 10-03-PLAN.md — restore scaffoldProject never-throw contract (try/catch STEP 2 + STEP 4) + adversarial regression tests
+- [x] 10-03-PLAN.md — restore scaffoldProject never-throw contract (try/catch STEP 2 + STEP 4) + adversarial regression tests
 
 **UI hint**: no
 
@@ -85,7 +85,7 @@
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 10. Project Scaffold (`motto init`) | 2/3 | Gap closure | - |
+| 10. Project Scaffold (`motto init`) | 3/3 | Complete   | 2026-07-02 |
 | 11. CLI Ergonomics (--help, [path]) | 0/? | Not started | - |
 | 12. Docs & Cleanup | 0/? | Not started | - |
 
