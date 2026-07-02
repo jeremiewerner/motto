@@ -30,6 +30,7 @@
  */
 
 import { parseArgs } from 'node:util';
+import { stat } from 'node:fs/promises';
 import { lintProject } from '../src/lint.js';
 
 // ---------------------------------------------------------------------------
@@ -78,6 +79,39 @@ package skills into dist/ plugins
 options:
   -h, --help    show help
 `;
+
+// ---------------------------------------------------------------------------
+// Pre-dispatch [path] directory guard (D-06) — CLIX-04
+// ---------------------------------------------------------------------------
+
+/**
+ * Validate an explicit [path] argument before dispatching to lintProject /
+ * buildProject. Only called when the user typed a path (positionals[1] is
+ * defined) — omitted [path] skips this guard entirely and defaults to cwd.
+ *
+ * Never throws (uses a non-throwing stat); writes a single "✗ …" line to
+ * stderr and returns false on any rejection (D-06, D-07 — path stays
+ * as-typed, no absolute resolution).
+ *
+ * @param {string} targetPath - the as-typed path argument
+ * @returns {Promise<boolean>} true when targetPath is a usable directory
+ */
+async function checkTargetDir(targetPath) {
+  let stats;
+  try {
+    stats = await stat(targetPath);
+  } catch {
+    process.stderr.write(`✗ directory not found: ${targetPath}\n`);
+    process.exitCode = 1;
+    return false;
+  }
+  if (!stats.isDirectory()) {
+    process.stderr.write(`✗ not a directory: ${targetPath}\n`);
+    process.exitCode = 1;
+    return false;
+  }
+  return true;
+}
 
 // ---------------------------------------------------------------------------
 // Parse argv — strict:true throws on any unknown flag (e.g. --bogus)
@@ -172,15 +206,20 @@ if (sub === undefined) {
     // `motto lint --help` (D-02, D-09) — focused help, lint not invoked.
     process.stdout.write(LINT_HELP);
   } else {
-    // cwd-only, v1 (D2-15)
-    const result = await lintProject(process.cwd());
-    if (result.ok) {
-      process.stdout.write(`✓ ${result.count} skills OK\n`);
-    } else {
-      for (const e of result.errors) {
-        process.stdout.write(`✗ ${e.skill}: ${e.message}\n`);
+    // [path] wiring (CLIX-04): explicit path given → guard it first (D-06);
+    // omitted → default to cwd, no guard.
+    const targetPath = parsed.positionals[1];
+    const root = targetPath ?? process.cwd();
+    if (targetPath === undefined || (await checkTargetDir(targetPath))) {
+      const result = await lintProject(root);
+      if (result.ok) {
+        process.stdout.write(`✓ ${result.count} skills OK\n`);
+      } else {
+        for (const e of result.errors) {
+          process.stdout.write(`✗ ${e.skill}: ${e.message}\n`);
+        }
+        process.exitCode = 1; // D2-11; process.exit(1) NOT used (Pitfall 7)
       }
-      process.exitCode = 1; // D2-11; process.exit(1) NOT used (Pitfall 7)
     }
   }
 } else if (sub === 'build') {
@@ -188,19 +227,25 @@ if (sub === undefined) {
     // `motto build --help` (D-02, D-09) — focused help, build not invoked.
     process.stdout.write(BUILD_HELP);
   } else {
-    // cwd-only, mirrors lint branch (D3-15)
-    const { buildProject } = await import('../src/build.js');
-    const result = await buildProject(process.cwd());
-    if (result.ok) {
-      // D3-16: output dir + one-line summary
-      process.stdout.write(
-        `✓ built ${result.outDir} — ${result.skillCount} skills, ${result.bucketCount} plugin(s)\n`,
-      );
-    } else {
-      for (const e of result.errors) {
-        process.stdout.write(`✗ ${e.skill}: ${e.message}\n`);
+    // [path] wiring (CLIX-04): explicit path given → guard it first (D-06);
+    // omitted → default to cwd, no guard.
+    const targetPath = parsed.positionals[1];
+    const root = targetPath ?? process.cwd();
+    if (targetPath === undefined || (await checkTargetDir(targetPath))) {
+      const { buildProject } = await import('../src/build.js');
+      const result = await buildProject(root);
+      if (result.ok) {
+        // D3-16: output dir + one-line summary (D-07: outDir derived from
+        // the as-typed root, never absolutized here)
+        process.stdout.write(
+          `✓ built ${result.outDir} — ${result.skillCount} skills, ${result.bucketCount} plugin(s)\n`,
+        );
+      } else {
+        for (const e of result.errors) {
+          process.stdout.write(`✗ ${e.skill}: ${e.message}\n`);
+        }
+        process.exitCode = 1; // never process.exit(1) — preserves stdout flush (Pitfall 7)
       }
-      process.exitCode = 1; // never process.exit(1) — preserves stdout flush (Pitfall 7)
     }
   }
 } else {
