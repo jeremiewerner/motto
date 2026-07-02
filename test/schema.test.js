@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 
-import { validateSkill, NAME_KEBAB } from "../src/schema.js";
+import { validateSkill, NAME_KEBAB, hasClosedSection } from "../src/schema.js";
 
 // validateSkill(skill, sharedRefs?) -> Array<{ skill: string, message: string }>
 // - Never throws (D-01).
@@ -445,5 +445,59 @@ describe("validateSkill", () => {
     assert.ok(!NAME_KEBAB.test("-bad"), "'-bad' is invalid (leading dash)");
     assert.ok(!NAME_KEBAB.test("bad-"), "'bad-' is invalid (trailing dash)");
     assert.ok(!NAME_KEBAB.test(""), "empty string is invalid");
+  });
+});
+
+describe("hasClosedSection", () => {
+  // Line-anchored open + close tags, each on their own line -> true
+  it("returns true for a matched, line-anchored <process>...</process> pair", () => {
+    assert.equal(hasClosedSection("# t\n<process>\nx\n</process>\n", "process"), true);
+  });
+
+  // Unclosed tag -> false (matched pair required, D-07)
+  it("returns false when the open tag has no matching close tag", () => {
+    assert.equal(hasClosedSection("# t\n<process>\nx\n", "process"), false);
+  });
+
+  // Both tags fenced -> excluded (TMPL-03 / roadmap SC3)
+  it("returns false when both tags appear only inside a fenced code block", () => {
+    const body = "# t\n```\n<process>\nx\n</process>\n```\n";
+    assert.equal(hasClosedSection(body, "process"), false);
+  });
+
+  // One tag fenced, the other real and unfenced -> both must be present outside fences
+  it("returns false when the open tag is fenced but the close tag is unfenced", () => {
+    const body = "# t\n```\n<process>\n```\nx\n</process>\n";
+    assert.equal(hasClosedSection(body, "process"), false);
+  });
+
+  it("returns false when the close tag is fenced but the open tag is unfenced", () => {
+    const body = "# t\n<process>\nx\n```\n</process>\n```\n";
+    assert.equal(hasClosedSection(body, "process"), false);
+  });
+
+  // Mid-sentence mention is not a line-start open tag
+  it("does not treat a mid-sentence tag mention as an open tag", () => {
+    const body = "# t\nthe <process> tag is described here\n</process>\n";
+    assert.equal(hasClosedSection(body, "process"), false);
+  });
+
+  // Tilde fences toggle fence state identically to backtick fences
+  it("treats ~~~ tilde fences the same as backtick fences", () => {
+    const body = "# t\n~~~\n<process>\nx\n</process>\n~~~\n";
+    assert.equal(hasClosedSection(body, "process"), false);
+  });
+
+  // Trailing same-line content after the open tag still counts (Assumption A2)
+  it("still counts an open tag with trailing same-line content", () => {
+    const body = "# t\n<process> notes\nx\n</process>\n";
+    assert.equal(hasClosedSection(body, "process"), true);
+  });
+
+  // Empty/undefined body -> false, never throws (D-01)
+  it("returns false without throwing for an undefined or empty body", () => {
+    assert.doesNotThrow(() => hasClosedSection(undefined, "process"));
+    assert.equal(hasClosedSection(undefined, "process"), false);
+    assert.equal(hasClosedSection("", "process"), false);
   });
 });

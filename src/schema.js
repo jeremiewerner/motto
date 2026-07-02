@@ -33,6 +33,49 @@
 export const NAME_KEBAB = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/;
 
 /**
+ * Determine whether `body` contains a matched, line-anchored pair of
+ * `<tagName>` / `</tagName>` markers OUTSIDE any fenced code block (TMPL-03).
+ *
+ * Two-phase implementation (PATTERNS.md Pattern 2) to avoid a hot-loop regex
+ * pitfall: (1) a single pass over the lines toggles an `inFence` flag on any
+ * fence-marker line (3+ backticks or 3+ tildes, up to 3 leading spaces,
+ * matching CommonMark fence semantics) and collects only unfenced,
+ * non-marker lines; (2) the collected text is tested once with two anchored
+ * multiline regexes.
+ *
+ * `tagName` is always sourced from the trusted internal registry
+ * (`TEMPLATES[...].requiredSections`), never from raw `data.template` — safe
+ * to interpolate into `new RegExp(...)` with no injection risk (T-Q-01
+ * precedent).
+ *
+ * No end-of-line anchor on the open matcher: per Assumption A2, a tag that
+ * "starts the line" still counts even with trailing same-line content
+ * (e.g. `<process> notes`).
+ *
+ * @param {string} body
+ * @param {string} tagName
+ * @returns {boolean}
+ */
+export function hasClosedSection(body, tagName) {
+  const bodyStr = body || "";
+  const lines = bodyStr.split("\n");
+  const fenceRe = /^ {0,3}(`{3,}|~{3,})/;
+  const unfencedLines = [];
+  let inFence = false;
+  for (const line of lines) {
+    if (fenceRe.test(line)) {
+      inFence = !inFence;
+      continue;
+    }
+    if (!inFence) unfencedLines.push(line);
+  }
+  const text = unfencedLines.join("\n");
+  const openRe = new RegExp(`^<${tagName}>`, "m");
+  const closeRe = new RegExp(`^</${tagName}>`, "m");
+  return openRe.test(text) && closeRe.test(text);
+}
+
+/**
  * Reserved substrings that must not appear in a skill's SKILL.md `name`
  * frontmatter field (LINT-02, D-09).
  *
