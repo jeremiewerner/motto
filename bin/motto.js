@@ -13,7 +13,15 @@
  *     next steps, exit 0.
  *   Init failure: capped offending-list / invalid-name+suggestion message in
  *     the same "✗" style, exit 1.
- *   Usage:  "usage: motto <init|lint|build>" to stderr, exit 1.
+ *   Help (D-01/D-02/D-03/D-08/D-09): `-h`/`--help` (or bare `motto` — D-03)
+ *     prints usage text to STDOUT, exit 0. Global help lists all commands;
+ *     `motto <cmd> --help` prints that command's focused help and does NOT
+ *     run the command. Flag position matters (D-09): `--help` BEFORE the
+ *     subcommand always yields global help, even as `motto --help lint`.
+ *   Unknown command (D-04): "✗ unknown command '<name>'" + usage line +
+ *     "(run 'motto --help' for details)" to stderr, exit 1.
+ *   Unknown flag (D-05): mirrors D-04 — names the offending flag, same
+ *     usage line + hint, stderr, exit 1.
  *
  * Exit codes: always set via process.exitCode (never process.exit(1)) to
  * avoid truncating buffered stdout (Pitfall 7). The only exception is
@@ -25,7 +33,54 @@ import { parseArgs } from 'node:util';
 import { lintProject } from '../src/lint.js';
 
 // ---------------------------------------------------------------------------
-// Parse argv — strict:true throws on any unknown flag (e.g. --help)
+// Help text constants (D-01, D-02) — single-sourced usage-line (D-05 note)
+// ---------------------------------------------------------------------------
+
+const USAGE_LINE = 'usage: motto <init|lint|build>';
+const UNKNOWN_HINT = "(run 'motto --help' for details)";
+
+const GLOBAL_HELP = `${USAGE_LINE} [options]
+
+commands:
+  init [name]    scaffold a new skills project
+  lint [path]    validate skills against the schema
+  build [path]   package skills into dist/ plugins
+
+options:
+  -h, --help     show help
+  --force        (init) overwrite scaffold files
+`;
+
+const INIT_HELP = `usage: motto init [name] [options]
+
+scaffold a new skills project
+(defaults to the current directory when [name] is omitted)
+
+options:
+  -h, --help    show help
+  --force       overwrite scaffold files in a non-empty directory
+`;
+
+const LINT_HELP = `usage: motto lint [path] [options]
+
+validate skills against the schema
+(defaults to current directory)
+
+options:
+  -h, --help    show help
+`;
+
+const BUILD_HELP = `usage: motto build [path] [options]
+
+package skills into dist/ plugins
+(defaults to current directory)
+
+options:
+  -h, --help    show help
+`;
+
+// ---------------------------------------------------------------------------
+// Parse argv — strict:true throws on any unknown flag (e.g. --bogus)
 // ---------------------------------------------------------------------------
 
 let parsed;
@@ -34,13 +89,21 @@ try {
     args: process.argv.slice(2),
     options: {
       force: { type: 'boolean' },
+      help: { type: 'boolean', short: 'h' },
     },
     allowPositionals: true,
     strict: true,
   });
-} catch {
-  // Unknown flag (strict:true) — print usage and exit (Pitfall 4, D2-16)
-  process.stderr.write('usage: motto <init|lint|build>\n');
+} catch (err) {
+  // Unknown flag (strict:true) — name the offending flag, mirror D-04's
+  // shape (usage line + hint), stderr, exit (Pitfall 4, D2-16, D-05).
+  const match = /(?:Unknown option |unrecognized option )['"]?(-{1,2}[^'"\s]+)/.exec(
+    err && err.message,
+  );
+  const flag = match ? match[1] : 'unknown';
+  process.stderr.write(`✗ unknown option '${flag}'\n`);
+  process.stderr.write(`${USAGE_LINE}\n`);
+  process.stderr.write(`${UNKNOWN_HINT}\n`);
   process.exitCode = 1;
   process.exit(); // exits with exitCode 1; safe: all output written before this call
 }
@@ -48,67 +111,102 @@ try {
 const sub = parsed.positionals[0];
 
 // ---------------------------------------------------------------------------
+// Help routing (D-09) — raw argv order decides global vs per-subcommand help
+// ---------------------------------------------------------------------------
+
+const rawArgs = process.argv.slice(2);
+const firstPositionalIndex = rawArgs.findIndex((a) => !a.startsWith('-'));
+const firstHelpIndex = rawArgs.findIndex((a) => a === '-h' || a === '--help');
+const helpBeforeSubcommand =
+  firstHelpIndex !== -1 && (firstPositionalIndex === -1 || firstHelpIndex < firstPositionalIndex);
+
+// ---------------------------------------------------------------------------
 // Subcommand dispatch
 // ---------------------------------------------------------------------------
 
-if (sub === 'init') {
-  const { scaffoldProject } = await import('../src/init.js');
-  const result = await scaffoldProject(process.cwd(), {
-    name: parsed.positionals[1],
-    force: parsed.values.force,
-  });
-  if (result.ok) {
-    process.stdout.write('✓ scaffolded project:\n');
-    for (const file of result.created) {
-      process.stdout.write(`  ${file}\n`);
-    }
-    process.stdout.write('\nnext steps:\n  motto lint\n  motto build\n');
-  } else if (result.reason === 'invalid-name') {
-    process.stdout.write(`✗ ${result.errors[0].message}\n`);
-    process.stdout.write(`  try: motto init ${result.suggestion}\n`);
-    process.exitCode = 1;
-  } else if (result.reason === 'not-empty') {
-    const CAP = 5;
-    const shown = result.offending.slice(0, CAP);
-    const rest = result.offending.length - shown.length;
-    const list = shown.join(', ') + (rest > 0 ? `, and ${rest} more` : '');
-    process.stdout.write(`✗ directory is not empty (${list})\n`);
-    process.stdout.write('  use --force to scaffold anyway\n');
-    process.exitCode = 1;
+if (sub === undefined) {
+  // Bare `motto` (D-03) or `motto --help`/`-h` with no subcommand (D-01) —
+  // both print the same global compact help to stdout, exit 0.
+  process.stdout.write(GLOBAL_HELP);
+} else if (parsed.values.help && helpBeforeSubcommand) {
+  // `motto --help lint` (D-09) — help flag BEFORE the subcommand token still
+  // yields GLOBAL help, not lint's focused help.
+  process.stdout.write(GLOBAL_HELP);
+} else if (sub === 'init') {
+  if (parsed.values.help) {
+    // `motto init --help` (D-02, D-09) — focused help, init not invoked.
+    process.stdout.write(INIT_HELP);
   } else {
-    for (const e of result.errors) {
-      process.stdout.write(`✗ ${e.skill}: ${e.message}\n`);
+    const { scaffoldProject } = await import('../src/init.js');
+    const result = await scaffoldProject(process.cwd(), {
+      name: parsed.positionals[1],
+      force: parsed.values.force,
+    });
+    if (result.ok) {
+      process.stdout.write('✓ scaffolded project:\n');
+      for (const file of result.created) {
+        process.stdout.write(`  ${file}\n`);
+      }
+      process.stdout.write('\nnext steps:\n  motto lint\n  motto build\n');
+    } else if (result.reason === 'invalid-name') {
+      process.stdout.write(`✗ ${result.errors[0].message}\n`);
+      process.stdout.write(`  try: motto init ${result.suggestion}\n`);
+      process.exitCode = 1;
+    } else if (result.reason === 'not-empty') {
+      const CAP = 5;
+      const shown = result.offending.slice(0, CAP);
+      const rest = result.offending.length - shown.length;
+      const list = shown.join(', ') + (rest > 0 ? `, and ${rest} more` : '');
+      process.stdout.write(`✗ directory is not empty (${list})\n`);
+      process.stdout.write('  use --force to scaffold anyway\n');
+      process.exitCode = 1;
+    } else {
+      for (const e of result.errors) {
+        process.stdout.write(`✗ ${e.skill}: ${e.message}\n`);
+      }
+      process.exitCode = 1;
     }
-    process.exitCode = 1;
   }
 } else if (sub === 'lint') {
-  // cwd-only, v1 (D2-15)
-  const result = await lintProject(process.cwd());
-  if (result.ok) {
-    process.stdout.write(`✓ ${result.count} skills OK\n`);
+  if (parsed.values.help) {
+    // `motto lint --help` (D-02, D-09) — focused help, lint not invoked.
+    process.stdout.write(LINT_HELP);
   } else {
-    for (const e of result.errors) {
-      process.stdout.write(`✗ ${e.skill}: ${e.message}\n`);
+    // cwd-only, v1 (D2-15)
+    const result = await lintProject(process.cwd());
+    if (result.ok) {
+      process.stdout.write(`✓ ${result.count} skills OK\n`);
+    } else {
+      for (const e of result.errors) {
+        process.stdout.write(`✗ ${e.skill}: ${e.message}\n`);
+      }
+      process.exitCode = 1; // D2-11; process.exit(1) NOT used (Pitfall 7)
     }
-    process.exitCode = 1; // D2-11; process.exit(1) NOT used (Pitfall 7)
   }
 } else if (sub === 'build') {
-  // cwd-only, mirrors lint branch (D3-15)
-  const { buildProject } = await import('../src/build.js');
-  const result = await buildProject(process.cwd());
-  if (result.ok) {
-    // D3-16: output dir + one-line summary
-    process.stdout.write(
-      `✓ built ${result.outDir} — ${result.skillCount} skills, ${result.bucketCount} plugin(s)\n`,
-    );
+  if (parsed.values.help) {
+    // `motto build --help` (D-02, D-09) — focused help, build not invoked.
+    process.stdout.write(BUILD_HELP);
   } else {
-    for (const e of result.errors) {
-      process.stdout.write(`✗ ${e.skill}: ${e.message}\n`);
+    // cwd-only, mirrors lint branch (D3-15)
+    const { buildProject } = await import('../src/build.js');
+    const result = await buildProject(process.cwd());
+    if (result.ok) {
+      // D3-16: output dir + one-line summary
+      process.stdout.write(
+        `✓ built ${result.outDir} — ${result.skillCount} skills, ${result.bucketCount} plugin(s)\n`,
+      );
+    } else {
+      for (const e of result.errors) {
+        process.stdout.write(`✗ ${e.skill}: ${e.message}\n`);
+      }
+      process.exitCode = 1; // never process.exit(1) — preserves stdout flush (Pitfall 7)
     }
-    process.exitCode = 1; // never process.exit(1) — preserves stdout flush (Pitfall 7)
   }
 } else {
-  // Unknown subcommand or no subcommand at all (D2-16)
-  process.stderr.write('usage: motto <init|lint|build>\n');
+  // Unknown subcommand (D-04)
+  process.stderr.write(`✗ unknown command '${sub}'\n`);
+  process.stderr.write(`${USAGE_LINE}\n`);
+  process.stderr.write(`${UNKNOWN_HINT}\n`);
   process.exitCode = 1;
 }
