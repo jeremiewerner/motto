@@ -83,7 +83,16 @@
   2. The README scaffold section is rewritten around `motto init` (no manual tree instructions)
   3. `skills/setup-project/` is deleted in the same commit that updates the dogfood-test count, so `main` never goes red
 
-**Plans**: TBD
+**Plans**: 2 plans
+
+**Wave 1**
+
+- [ ] 12-01-PLAN.md — README rewrite: scaffold section around `motto init`, new "Ship your plugin" section, CLI [path]/--help touch-ups, setup-project removed from README (DOC-04, DOC-05)
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [ ] 12-02-PLAN.md — salvage-check setup-project SKILL.md, then delete `skills/setup-project/` + sync `test/dogfood.test.js` count 3→2 in one atomic commit (DOC-05)
+
 **UI hint**: no
 
 ## Progress
@@ -92,7 +101,7 @@
 |-------|----------------|--------|-----------|
 | 10. Project Scaffold (`motto init`) | 3/3 | Complete    | 2026-07-02 |
 | 11. CLI Ergonomics (--help, [path]) | 1/1 | Complete    | 2026-07-02 |
-| 12. Docs & Cleanup | 0/? | Not started | - |
+| 12. Docs & Cleanup | 0/2 | Planned | - |
 
 ## Backlog
 
