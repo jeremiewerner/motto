@@ -6,14 +6,14 @@ current_phase: 12
 current_phase_name: docs-cleanup
 status: executing
 stopped_at: Phase 12 context gathered
-last_updated: "2026-07-02T10:43:17.735Z"
+last_updated: "2026-07-02T10:46:55.511Z"
 last_activity: 2026-07-02
 last_activity_desc: Phase 12 execution started
 progress:
   total_phases: 3
   completed_phases: 3
-  total_plans: 6
-  completed_plans: 6
+  total_plans: 7
+  completed_plans: 7
   percent: 100
 ---
 
@@ -28,10 +28,10 @@ See: .planning/PROJECT.md (updated 2026-07-01)
 
 ## Current Position
 
-Phase: 12 (docs-cleanup) — EXECUTING
-Plan: 2 of 2
-Status: Ready to execute
-Last activity: 2026-07-02 — Phase 12 execution started
+Phase: 12 (docs-cleanup) — COMPLETE
+Plan: 3 of 3
+Status: Phase 12 complete — all plans executed
+Last activity: 2026-07-02 — Phase 12 Plan 03 (README accuracy gap closure) executed
 
 ## Performance Metrics
 
@@ -69,6 +69,7 @@ Last activity: 2026-07-02 — Phase 12 execution started
 | Phase 11 P01 | 6min | 3 tasks tasks | 2 files files |
 | Phase 12 P01 | 12min | 2 tasks | 1 files |
 | Phase 12 P02 | 5min | 2 tasks | 1 files |
+| Phase 12 P03 | 5min | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -101,6 +102,7 @@ Recent decisions affecting current work:
 - [Phase ?]: E2E ship-flow ending uses generic <owner>/<repo>/<plugin> placeholders rather than jeremiewerner/motto (D-02 confines the real repo name to the pre-existing Add-the-marketplace/Install-Mottos-skills sections)
 - [Phase ?]: Task 1 salvage-check found README.md (Plan 01) already covers all 6 setup-project SKILL.md sections — no README edit needed in Plan 02
 - [Phase ?]: skills/setup-project/ deleted and test/dogfood.test.js count sync landed in single atomic commit b437c84 (SC3/D-09) after amending an initial split-staging mistake
+- [Phase ?]: Used code review WR-02/WR-04 exact replacement text verbatim for README install-placeholder and --force overwrite disclosure; left WR-01/WR-03 untouched (deferred, out of Phase 12 scope)
 
 ### Pending Todos
 
@@ -136,7 +138,7 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-02T10:19:05.651Z
+Last session: 2026-07-02T10:46:38.080Z
 Stopped at: Phase 12 context gathered
 Resume file: 
 None

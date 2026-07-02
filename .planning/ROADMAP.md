@@ -21,7 +21,7 @@
 
 - [x] **Phase 10: Project Scaffold (`motto init`)** - Scaffold a complete, immediately-buildable skills project in one command (completed 2026-07-02)
 - [x] **Phase 11: CLI Ergonomics (--help, [path])** - Usage text on demand and lint/build against any directory (completed 2026-07-02)
-- [ ] **Phase 12: Docs & Cleanup** - Document the ship-your-plugin path and retire the superseded `setup-project` skill (plans 2/2 executed; verification found gaps — see 12-VERIFICATION.md)
+- [x] **Phase 12: Docs & Cleanup** - Document the ship-your-plugin path and retire the superseded `setup-project` skill (plans 3/3 executed; verification gaps from 12-VERIFICATION.md closed by Plan 03) (completed 2026-07-02)
 
 ## Phase Details
 
@@ -83,7 +83,7 @@
   2. The README scaffold section is rewritten around `motto init` (no manual tree instructions)
   3. `skills/setup-project/` is deleted in the same commit that updates the dogfood-test count, so `main` never goes red
 
-**Plans**: 2/2 complete + 1 gap-closure plan pending (12-03)
+**Plans**: 3/3 plans complete
 
 **Wave 1**
 
@@ -95,7 +95,7 @@
 
 **Gap closure** *(from 12-VERIFICATION.md)*
 
-- [ ] 12-03-PLAN.md — fix 3 README accuracy gaps: stale `✓ 3 skills OK` → `✓ 2 skills OK` (129); install one-liner `@<repo>` → `@<marketplace>` + prerequisite note (164/167/226, WR-02); `--force` overwrite disclosure (89, WR-04) (DOC-04, DOC-05)
+- [x] 12-03-PLAN.md — fix 3 README accuracy gaps: stale `✓ 3 skills OK` → `✓ 2 skills OK` (129); install one-liner `@<repo>` → `@<marketplace>` + prerequisite note (164/167/226, WR-02); `--force` overwrite disclosure (89, WR-04) (DOC-04, DOC-05)
 
 **UI hint**: no
 
@@ -105,7 +105,7 @@
 |-------|----------------|--------|-----------|
 | 10. Project Scaffold (`motto init`) | 3/3 | Complete    | 2026-07-02 |
 | 11. CLI Ergonomics (--help, [path]) | 1/1 | Complete    | 2026-07-02 |
-| 12. Docs & Cleanup | 2/2 | Gaps found | — |
+| 12. Docs & Cleanup | 3/3 | Complete   | 2026-07-02 |
 
 ## Backlog
 
