@@ -2,12 +2,12 @@
 gsd_state_version: 1.0
 milestone: v0.0.4
 milestone_name: Project Bootstrap
-current_phase: 13
-status: verifying
+current_phase: 0.4
+status: Awaiting next milestone
 stopped_at: Completed 13-01-PLAN.md
-last_updated: "2026-07-02T13:51:51.367Z"
+last_updated: "2026-07-02T16:48:08.083Z"
 last_activity: 2026-07-02
-last_activity_desc: Phase 13 complete
+last_activity_desc: Milestone v0.0.4 completed and archived
 progress:
   total_phases: 4
   completed_phases: 4
@@ -21,17 +21,17 @@ current_phase_name: "Address tech debt: plugins.public reserved-word enforcement
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-07-01)
+See: .planning/PROJECT.md (updated 2026-07-02 after v0.0.4)
 
 **Core value:** A strict schema + linter that guarantees authored skills conform before they ship, then packages them into self-contained standard Agent Skill plugins.
-**Current focus:** Phase 13 — Address tech debt: plugins.public reserved-word enforcement + init/CLI review items
+**Current focus:** Planning next milestone (`/gsd-new-milestone`)
 
 ## Current Position
 
-Phase: 13
-Plan: Not started
-Status: Phase complete — ready for verification
-Last activity: 2026-07-02 — Phase 13 complete
+Phase: Milestone v0.0.4 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-07-02 — Milestone v0.0.4 completed and archived
 
 ## Performance Metrics
 
@@ -132,6 +132,7 @@ None yet.
 
 | Category | Item | Status | Deferred At |
 |----------|------|--------|-------------|
+| quick_task | 260630-vzh-review-fixes | missing SUMMARY.md (work verified complete: commits 7e740c8, 3fa2c6f, 1b3f4a2, ddcc45d; acknowledged at v0.0.4 close 2026-07-02) | v0.0.4 |
 | Build feature | `--zip` output | Dropped (documented one-liner instead) | v0.0.3 |
 | CLI | `--quiet`, `--format json`, `[path]` arg | Deferred | v0.0.3 |
 | CI | GitHub Actions workflow | Deferred | v0.0.3 |
@@ -150,3 +151,7 @@ Last session: 2026-07-02T13:42:53.279Z
 Stopped at: Completed 13-01-PLAN.md
 Resume file: 
 None
+
+## Operator Next Steps
+
+- Start the next milestone with /gsd-new-milestone
