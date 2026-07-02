@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v0.0.4
 milestone_name: Project Bootstrap
-current_phase: 12
+current_phase: 13
+current_phase_name: "Address tech debt: plugins.public reserved-word enforcement + init/CLI review items"
 status: executing
-stopped_at: Phase 12 context gathered
-last_updated: "2026-07-02T13:11:46.259Z"
+stopped_at: Completed 13-01-PLAN.md
+last_updated: "2026-07-02T13:17:58.739Z"
 last_activity: 2026-07-02
-last_activity_desc: Phase 12 complete
+last_activity_desc: Phase 13 execution started
 progress:
   total_phases: 4
   completed_phases: 3
-  total_plans: 7
-  completed_plans: 7
+  total_plans: 9
+  completed_plans: 8
   percent: 75
-current_phase_name: address-tech-debt
 ---
 
 # Project State
@@ -24,14 +24,14 @@ current_phase_name: address-tech-debt
 See: .planning/PROJECT.md (updated 2026-07-01)
 
 **Core value:** A strict schema + linter that guarantees authored skills conform before they ship, then packages them into self-contained standard Agent Skill plugins.
-**Current focus:** Phase 12 — docs-cleanup
+**Current focus:** Phase 13 — Address tech debt: plugins.public reserved-word enforcement + init/CLI review items
 
 ## Current Position
 
-Phase: 12
-Plan: Not started
+Phase: 13 (Address tech debt: plugins.public reserved-word enforcement + init/CLI review items) — EXECUTING
+Plan: 2 of 2
 Status: Ready to execute
-Last activity: 2026-07-02 — Phase 12 complete
+Last activity: 2026-07-02 — Phase 13 execution started
 
 ## Performance Metrics
 
@@ -71,6 +71,7 @@ Last activity: 2026-07-02 — Phase 12 complete
 | Phase 12 P01 | 12min | 2 tasks | 1 files |
 | Phase 12 P02 | 5min | 2 tasks | 1 files |
 | Phase 12 P03 | 5min | 1 tasks | 1 files |
+| Phase 13 P01 | 2min | 4 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -104,6 +105,8 @@ Recent decisions affecting current work:
 - [Phase ?]: Task 1 salvage-check found README.md (Plan 01) already covers all 6 setup-project SKILL.md sections — no README edit needed in Plan 02
 - [Phase ?]: skills/setup-project/ deleted and test/dogfood.test.js count sync landed in single atomic commit b437c84 (SC3/D-09) after amending an initial split-staging mistake
 - [Phase ?]: Used code review WR-02/WR-04 exact replacement text verbatim for README install-placeholder and --force overwrite disclosure; left WR-01/WR-03 untouched (deferred, out of Phase 12 scope)
+- [Phase 13-01]: DEBT-01 fix stayed doc/comment-only — no RESERVED check added to src/config.js or src/init.js for plugins.public/plugins.private — 13-RESEARCH.md Pitfall 1: over-strictness would reject spec-conformant plugin names like claude-notes-sync
+- [Phase 13-01]: DEBT-05 verified already-resolved (Phase 11 commit d35aba7) with no code change — plan's literal grep count of 4 is a false positive from comment-text matches, confirmed via line-by-line inspection — bin/motto.js has zero process.exit() call sites in executable code; all 4 grep matches are inside comments documenting the never-process.exit() convention
 
 ### Pending Todos
 
@@ -140,7 +143,7 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-02T10:46:38.080Z
-Stopped at: Phase 12 context gathered
+Last session: 2026-07-02T13:17:58.736Z
+Stopped at: Completed 13-01-PLAN.md
 Resume file: 
 None

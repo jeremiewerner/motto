@@ -124,11 +124,11 @@ Candidates for a future milestone (detail in `milestones/v0.0.3-REQUIREMENTS.md`
 **Goal:** Close the five v0.0.4-audit tech-debt items — correct the false plugins.public/private reserved-word documentation (a DOC bug, not a validation gap; no RESERVED check added), suppress git stderr leakage in `motto init`, harden the path-escape regression test, correct the `/motto:release` namespace reference, and verify-close the already-fixed `process.exit()` item — without adding any unwarranted validation strictness.
 **Requirements**: DEBT-01, DEBT-02, DEBT-03, DEBT-04, DEBT-05 (assigned during planning; no REQUIREMENTS.md entries pre-existed)
 **Depends on:** Phase 12
-**Plans:** 2 plans
+**Plans:** 1/2 plans executed
 
 **Wave 1**
 
-- [ ] 13-01-PLAN.md — README + schema.js reserved-word doc fix (DEBT-01), execFileSync stdio leak fix (DEBT-02), adversarial-name path-escape test hardening (DEBT-03), verify-close process.exit item (DEBT-05)
+- [x] 13-01-PLAN.md — README + schema.js reserved-word doc fix (DEBT-01), execFileSync stdio leak fix (DEBT-02), adversarial-name path-escape test hardening (DEBT-03), verify-close process.exit item (DEBT-05)
 
 **Wave 2** *(blocked on Wave 1 — shared file README.md)*
 
