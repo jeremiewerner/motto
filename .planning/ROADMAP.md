@@ -56,7 +56,9 @@ Full phase details: [milestones/v0.0.4-ROADMAP.md](milestones/v0.0.4-ROADMAP.md)
   3. Section-tag matching ignores tags that appear inside fenced code blocks (no false positives).
   4. A skill with no `template:` field lints byte-for-byte identically to v0.0.4 (regression-guarded).
   5. Adding a new template requires only editing the `src/templates.js` data map — no linter/mechanism code change.
-**Plans**: TBD
+**Plans**: 2 plans
+- [ ] 14-01-PLAN.md — Data-driven template mechanism: `src/templates.js` registry + `validateSkill` cascade + fence-aware `hasClosedSection` scanner + full test guard (TMPL-01..05)
+- [ ] 14-02-PLAN.md — Live dogfood: `release` skill adopts `template: procedure`; dogfood test proves enforcement + verbatim tag survival (TMPL-01, TMPL-03)
 
 ### Phase 15: Field Validation & Integrity Guards
 **Goal**: The three new optional frontmatter fields (`outputs:`, `dependencies:`, `allowed-tools`) are validated with integrity guards, and every new validator is never-throw.
@@ -105,7 +107,7 @@ Phases execute in numeric order: 14 → 15 → 16 → 17
 | 11. CLI Ergonomics (--help, [path]) | v0.0.4 | 1/1 | Complete | 2026-07-02 |
 | 12. Docs & Cleanup | v0.0.4 | 3/3 | Complete | 2026-07-02 |
 | 13. Tech-Debt Closure | v0.0.4 | 2/2 | Complete | 2026-07-02 |
-| 14. Template Mechanism | v0.0.5 | 0/TBD | Not started | - |
+| 14. Template Mechanism | v0.0.5 | 0/2 | Not started | - |
 | 15. Field Validation & Integrity Guards | v0.0.5 | 0/TBD | Not started | - |
 | 16. build-skill & author-skill Retirement | v0.0.5 | 0/TBD | Not started | - |
 | 17. Docs Audit | v0.0.5 | 0/TBD | Not started | - |
