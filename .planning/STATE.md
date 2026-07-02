@@ -4,17 +4,17 @@ milestone: v0.0.4
 milestone_name: Project Bootstrap
 current_phase: 12
 current_phase_name: docs-cleanup
-status: executing
+status: verifying
 stopped_at: Phase 12 context gathered
-last_updated: "2026-07-02T10:15:00.059Z"
+last_updated: "2026-07-02T10:19:30.368Z"
 last_activity: 2026-07-02
 last_activity_desc: Phase 12 execution started
 progress:
   total_phases: 3
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 6
-  completed_plans: 5
-  percent: 67
+  completed_plans: 6
+  percent: 100
 ---
 
 # Project State
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-07-01)
 
 Phase: 12 (docs-cleanup) — EXECUTING
 Plan: 2 of 2
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-07-02 — Phase 12 execution started
 
 ## Performance Metrics
@@ -68,6 +68,7 @@ Last activity: 2026-07-02 — Phase 12 execution started
 | Phase 10 P03 | 1min 20s | 2 tasks | 2 files |
 | Phase 11 P01 | 6min | 3 tasks tasks | 2 files files |
 | Phase 12 P01 | 12min | 2 tasks | 1 files |
+| Phase 12 P02 | 5min | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -98,6 +99,8 @@ Recent decisions affecting current work:
 - [Phase 11]: sub === undefined single branch covers both D-01 (bare --help/-h) and D-03 (bare motto, no flags) since both render identical global help to stdout exit 0 — Simplifies dispatch chain, avoids duplicated help-printing branches
 - [Phase 11]: Task 2 plan verify script assumed motto init <path> scaffolds AT that path; current init CLI wiring only scaffolds into cwd (positional is the name field, out of CLIX-04 scope). Verified equivalent behavior via mkdir+cd and scaffoldProject(targetDir, name) API directly instead — init target-dir semantics unchanged this phase; CLIX-04 covers lint/build [path] only
 - [Phase ?]: E2E ship-flow ending uses generic <owner>/<repo>/<plugin> placeholders rather than jeremiewerner/motto (D-02 confines the real repo name to the pre-existing Add-the-marketplace/Install-Mottos-skills sections)
+- [Phase ?]: Task 1 salvage-check found README.md (Plan 01) already covers all 6 setup-project SKILL.md sections — no README edit needed in Plan 02
+- [Phase ?]: skills/setup-project/ deleted and test/dogfood.test.js count sync landed in single atomic commit b437c84 (SC3/D-09) after amending an initial split-staging mistake
 
 ### Pending Todos
 
@@ -133,7 +136,7 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-02T10:14:19.204Z
+Last session: 2026-07-02T10:19:05.651Z
 Stopped at: Phase 12 context gathered
 Resume file: 
 None

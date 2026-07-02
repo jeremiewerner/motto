@@ -21,7 +21,7 @@
 
 - [x] **Phase 10: Project Scaffold (`motto init`)** - Scaffold a complete, immediately-buildable skills project in one command (completed 2026-07-02)
 - [x] **Phase 11: CLI Ergonomics (--help, [path])** - Usage text on demand and lint/build against any directory (completed 2026-07-02)
-- [ ] **Phase 12: Docs & Cleanup** - Document the ship-your-plugin path and retire the superseded `setup-project` skill
+- [x] **Phase 12: Docs & Cleanup** - Document the ship-your-plugin path and retire the superseded `setup-project` skill (completed 2026-07-02)
 
 ## Phase Details
 
@@ -83,7 +83,7 @@
   2. The README scaffold section is rewritten around `motto init` (no manual tree instructions)
   3. `skills/setup-project/` is deleted in the same commit that updates the dogfood-test count, so `main` never goes red
 
-**Plans**: 1/2 plans executed
+**Plans**: 2/2 plans complete
 
 **Wave 1**
 
@@ -91,7 +91,7 @@
 
 **Wave 2** *(blocked on Wave 1)*
 
-- [ ] 12-02-PLAN.md — salvage-check setup-project SKILL.md, then delete `skills/setup-project/` + sync `test/dogfood.test.js` count 3→2 in one atomic commit (DOC-05)
+- [x] 12-02-PLAN.md — salvage-check setup-project SKILL.md, then delete `skills/setup-project/` + sync `test/dogfood.test.js` count 3→2 in one atomic commit (DOC-05)
 
 **UI hint**: no
 
@@ -101,7 +101,7 @@
 |-------|----------------|--------|-----------|
 | 10. Project Scaffold (`motto init`) | 3/3 | Complete    | 2026-07-02 |
 | 11. CLI Ergonomics (--help, [path]) | 1/1 | Complete    | 2026-07-02 |
-| 12. Docs & Cleanup | 1/2 | In Progress|  |
+| 12. Docs & Cleanup | 2/2 | Complete   | 2026-07-02 |
 
 ## Backlog
 
