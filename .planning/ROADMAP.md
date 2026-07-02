@@ -101,7 +101,7 @@
 |-------|----------------|--------|-----------|
 | 10. Project Scaffold (`motto init`) | 3/3 | Complete    | 2026-07-02 |
 | 11. CLI Ergonomics (--help, [path]) | 1/1 | Complete    | 2026-07-02 |
-| 12. Docs & Cleanup | 2/2 | Complete   | 2026-07-02 |
+| 12. Docs & Cleanup | 2/2 | Gaps found | — |
 
 ## Backlog
 
