@@ -83,7 +83,7 @@
   2. The README scaffold section is rewritten around `motto init` (no manual tree instructions)
   3. `skills/setup-project/` is deleted in the same commit that updates the dogfood-test count, so `main` never goes red
 
-**Plans**: 2/2 plans complete
+**Plans**: 2/2 complete + 1 gap-closure plan pending (12-03)
 
 **Wave 1**
 
@@ -92,6 +92,10 @@
 **Wave 2** *(blocked on Wave 1)*
 
 - [x] 12-02-PLAN.md — salvage-check setup-project SKILL.md, then delete `skills/setup-project/` + sync `test/dogfood.test.js` count 3→2 in one atomic commit (DOC-05)
+
+**Gap closure** *(from 12-VERIFICATION.md)*
+
+- [ ] 12-03-PLAN.md — fix 3 README accuracy gaps: stale `✓ 3 skills OK` → `✓ 2 skills OK` (129); install one-liner `@<repo>` → `@<marketplace>` + prerequisite note (164/167/226, WR-02); `--force` overwrite disclosure (89, WR-04) (DOC-04, DOC-05)
 
 **UI hint**: no
 
