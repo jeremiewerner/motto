@@ -16,9 +16,20 @@ The **strict schema + linter**. Skills that always conform to one rigid-yet-crea
 
 **Hardening note:** post-v0.0.2 `/code-review high` caught 3 D-01 never-throw violations the milestone tests missed; fixed + guarded. v0.0.4 continued the pattern: never-throw contract now enforced with adversarial malformed-input regression tests across scaffold paths (WR-01 closure, Phase 10-03).
 
-## Next Milestone Goals
+## Current Milestone: v0.0.5 Skill Builder
 
-Not yet defined — run `/gsd-new-milestone`. Backlog candidates (see ROADMAP.md Backlog): CLIX-01/02 (`--quiet`, `--format json`), SHIP-01 (`motto ship`, needs clarification), TMPL-01 (concrete-template validation), AUTH-SKILL (interactive `author-skill` rework — flagged for challenge: auto-trigger? lint-string sync?), CI-01 (GitHub Actions). Also open: making repo public (revisit when a second user exists).
+**Goal:** A user describes a procedure in any form and Motto structures it into a validated, conforming, distributable skill.
+
+**Target features:**
+- Template mechanism live: `template:` field validated, data-driven template + section-tag registry, `procedure` template ships (closes TMPL-01)
+- `procedure` template requires `<process>` + `<success_criteria>` body sections; unknown tags stay legal
+- New validated optional fields (global, when present): `outputs:` named map → path-safe existing files, `dependencies:` resolve in project tree, `allowed-tools` format check
+- `build-skill` Agent Skill — structurer, not ideator: ingest any input → gap-fill questions → generate skill → self-verify with `motto lint`; itself `template: procedure` (dogfood)
+- `author-skill` retired (closes AUTH-SKILL, removes lint-string duplication)
+
+**Design spec:** `.planning/superpowers/specs/2026-07-02-skill-builder-design.md` (decisions D-01..D-08, evolution ledger, standing principles).
+
+**Standing principles (every step):** heavy research; design for unknown purpose; lightweight (readable code/md, no doc sprawl); agentic best practice (skills + agents + subagents + API/MCP are first-class); simple to adapt, creativity free; rigor in a small easy spine.
 
 <details>
 <summary>Shipped: v0.0.4 — Project Bootstrap (2026-07-02)</summary>
@@ -127,4 +138,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-02 after v0.0.4 milestone*
+*Last updated: 2026-07-02 — v0.0.5 Skill Builder milestone started*
