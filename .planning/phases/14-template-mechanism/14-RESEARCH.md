@@ -413,17 +413,19 @@ Not applicable — this phase has no external ecosystem to track (no framework v
 | A2 | Whether a bare tag with trailing same-line content (e.g. `<process> extra text`) should count as a valid tag-open, versus requiring the tag to be alone on its line | Architecture Patterns — Pattern 2 (regex `^<${tagName}>` matches with or without trailing content since it's not end-anchored) | Medium — CONTEXT.md says "Bare tags only — exact `<process>`, no attributes" but doesn't explicitly address trailing prose on the same line. The recommended regex (`^<${tagName}>` without a `$` or `\s*$` anchor) permissively matches both `<process>` alone and `<process> notes` on the same line. If the planner/discuss-phase intends stricter whole-line-only matching, add `(?:\s*)$` to the regex. **Recommend confirming this at plan time** since it changes one line of regex and has a directly testable behavior difference. |
 | A3 | Order of `errors[]` within a single skill's returned array is not contractually significant elsewhere in the codebase (only the grouping/labelling by `dirName` and the config-before-skills ordering are enforced) | Common Pitfalls — Pitfall 2 | Low — verified by reading `test/lint.test.js` and `test/schema.test.js` test structure (assertions check `errors.length`, message content via regex, and `skill` field — never array position within a single skill's error set). If wrong, reordering the template cascade before body-spine checks could theoretically break a brittle order-dependent assertion; grep for `errors[0]` vs `errors[1]` index-based assertions before finalizing the reorder. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Should `hasClosedSection` require the tag to be the *entire* line, or merely to *start* the line?**
    - What we know: CONTEXT.md specifies "line-start anchored" (`^<process>`) and "bare tags only... no attributes."
    - What's unclear: Whether `<process>` followed by trailing same-line text should count as a valid open tag, or whether the tag must occupy the whole line.
    - Recommendation: Default to "starts the line" (permissive, matches the literal `^<process>` anchor given in decisions) unless the plan-review or discuss step surfaces a stricter interpretation. This is Assumption A2 above — cheap to flip either way at plan time, costly to discover as a test failure post-implementation.
+   - **RESOLVED:** Tag is anchored at line start and permissive about trailing same-line content (`^<tag>`, no end anchor) per Assumption A2 — implemented by Plan 01 Task 2 (`hasClosedSection` scanner) with an explicit "trailing same-line content still counts" behavior test.
 
 2. **Does the `waives` value list use section-registry-style names ("title", "role") that are NOT the same namespace as `SECTIONS` keys (which are body-tag names like "process")?**
    - What we know: The design spec comment says `waives ("title" | "role")` — these are the two base-spine checks, not `SECTIONS` entries.
    - What's unclear: Whether `waives` should be validated against a fixed enum (`["title", "role"]`) or accepted as free-form strings (unknown values silently no-op, since no check currently keys off them).
    - Recommendation: Since `procedure` waives nothing and the only consumer this phase is a test fixture, treat `waives` values as an unchecked internal implementation detail for now (no validation of the `waives` array's contents) — over-engineering a waives-value validator for a mechanism with zero real consumers would violate YAGNI. Revisit if/when a real template needs to waive something.
+   - **RESOLVED:** `waives` values are left unchecked (no enum validation) per YAGNI — Plan 01 Task 3 wires `waivedSections = new Set(template.waives ?? [])` and gates the Title/Role checks on set membership, proven only via the injected `FIXTURE_TEMPLATES` (`waives: ["role"]`) test. Revisit when a real template waives a section.
 
 ## Environment Availability
 
