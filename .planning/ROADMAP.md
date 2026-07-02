@@ -59,7 +59,7 @@ Full phase details: [milestones/v0.0.4-ROADMAP.md](milestones/v0.0.4-ROADMAP.md)
   4. A skill with no `template:` field lints byte-for-byte identically to v0.0.4 (regression-guarded).
   5. Adding a new template requires only editing the `src/templates.js` data map — no linter/mechanism code change.
 
-**Plans**: 2/3 plans complete (14-03 gap closure pending)
+**Plans**: 3/3 plans complete
 **Wave 1**
 
 - [x] 14-01-PLAN.md — Data-driven template mechanism: `src/templates.js` registry + `validateSkill` cascade + fence-aware `hasClosedSection` scanner + full test guard (TMPL-01..05)
@@ -70,7 +70,7 @@ Full phase details: [milestones/v0.0.4-ROADMAP.md](milestones/v0.0.4-ROADMAP.md)
 
 **Gap Closure** *(SC3 false positives found in verification)*
 
-- [ ] 14-03-PLAN.md — Fix `hasClosedSection` fence character/length tracking (mixed `~~~`/``` false positive) + open-before-close ordering; add 2 regression tests (TMPL-03)
+- [x] 14-03-PLAN.md — Fix `hasClosedSection` fence character/length tracking (mixed `~~~`/``` false positive) + open-before-close ordering; add 2 regression tests (TMPL-03)
 
 ### Phase 15: Field Validation & Integrity Guards
 
@@ -128,7 +128,7 @@ Phases execute in numeric order: 14 → 15 → 16 → 17
 | 11. CLI Ergonomics (--help, [path]) | v0.0.4 | 1/1 | Complete | 2026-07-02 |
 | 12. Docs & Cleanup | v0.0.4 | 3/3 | Complete | 2026-07-02 |
 | 13. Tech-Debt Closure | v0.0.4 | 2/2 | Complete | 2026-07-02 |
-| 14. Template Mechanism | v0.0.5 | 2/2 | Complete   | 2026-07-02 |
+| 14. Template Mechanism | v0.0.5 | 3/3 | Complete   | 2026-07-02 |
 | 15. Field Validation & Integrity Guards | v0.0.5 | 0/TBD | Not started | - |
 | 16. build-skill & author-skill Retirement | v0.0.5 | 0/TBD | Not started | - |
 | 17. Docs Audit | v0.0.5 | 0/TBD | Not started | - |
