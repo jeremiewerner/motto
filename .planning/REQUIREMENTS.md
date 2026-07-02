@@ -38,7 +38,7 @@
 ## Phase-Research Notes
 
 - **Init scaffold impact:** each phase's research must check whether `motto init`'s generated project structure needs updating (starter skill with `template:`? example outputs file? marketplace/docs strings). No speculative requirement — decide per phase against real need.
-- `allowed-tools` format decision (STACK.md Q2 Option A vs B) — resolve at Phase-2 discuss/plan.
+- `allowed-tools` format decision (STACK.md Q2 Option A vs B) — resolve at Phase 15 discuss/plan.
 
 ## Future Requirements (deferred — evolution ledger in design spec)
 
@@ -60,4 +60,26 @@
 
 ## Traceability
 
-(filled by roadmap)
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| TMPL-01 | Phase 14 | Pending |
+| TMPL-02 | Phase 14 | Pending |
+| TMPL-03 | Phase 14 | Pending |
+| TMPL-04 | Phase 14 | Pending |
+| TMPL-05 | Phase 14 | Pending |
+| VAL-01 | Phase 15 | Pending |
+| VAL-02 | Phase 15 | Pending |
+| VAL-03 | Phase 15 | Pending |
+| VAL-04 | Phase 15 | Pending |
+| VAL-05 | Phase 15 | Pending |
+| VAL-06 | Phase 15 | Pending |
+| BSKL-01 | Phase 16 | Pending |
+| BSKL-02 | Phase 16 | Pending |
+| BSKL-03 | Phase 16 | Pending |
+| BSKL-04 | Phase 16 | Pending |
+| BSKL-05 | Phase 16 | Pending |
+| BSKL-06 | Phase 16 | Pending |
+| DOC-06 | Phase 17 | Pending |
+| DOC-07 | Phase 17 | Pending |
+
+**Coverage:** 19/19 v1 requirements mapped · no orphans · no duplicates
