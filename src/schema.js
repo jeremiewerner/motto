@@ -41,11 +41,16 @@ export const NAME_KEBAB = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/;
  * `<tagName>` / `</tagName>` markers OUTSIDE any fenced code block (TMPL-03).
  *
  * Two-phase implementation (PATTERNS.md Pattern 2) to avoid a hot-loop regex
- * pitfall: (1) a single pass over the lines toggles an `inFence` flag on any
- * fence-marker line (3+ backticks or 3+ tildes, up to 3 leading spaces,
- * matching CommonMark fence semantics) and collects only unfenced,
- * non-marker lines; (2) the collected text is tested once with two anchored
- * multiline regexes.
+ * pitfall: (1) a single pass over the lines tracks the currently-open fence's
+ * character and length (3+ backticks or 3+ tildes, up to 3 leading spaces,
+ * matching CommonMark fence semantics) — a fence opens on any marker line
+ * when none is open, and closes only on a later marker line with the SAME
+ * character and length >= the opener's; any other marker line encountered
+ * while a fence is open (e.g. a mismatched-character line) is literal fenced
+ * content, not a boundary — and collects only unfenced, non-marker lines;
+ * (2) the collected text is matched once with two anchored multiline
+ * regexes, requiring the open-tag match to precede the close-tag match
+ * (a genuinely ordered, matched pair — WR-01).
  *
  * `tagName` is always sourced from the trusted internal registry
  * (`TEMPLATES[...].requiredSections`), never from raw `data.template` — safe
@@ -65,18 +70,30 @@ export function hasClosedSection(body, tagName) {
   const lines = bodyStr.split("\n");
   const fenceRe = /^ {0,3}(`{3,}|~{3,})/;
   const unfencedLines = [];
-  let inFence = false;
+  let fence = null; // { ch, len } | null — the currently-open fence, if any
   for (const line of lines) {
-    if (fenceRe.test(line)) {
-      inFence = !inFence;
+    const m = fenceRe.exec(line);
+    if (m) {
+      const ch = m[1][0];
+      const len = m[1].length;
+      if (!fence) {
+        fence = { ch, len };
+      } else if (ch === fence.ch && len >= fence.len) {
+        fence = null;
+      }
+      // Any other marker line (no fence open -> just opened; mismatched
+      // char/length while a fence IS open -> literal fenced content) is a
+      // boundary or content, never collected.
       continue;
     }
-    if (!inFence) unfencedLines.push(line);
+    if (!fence) unfencedLines.push(line);
   }
   const text = unfencedLines.join("\n");
   const openRe = new RegExp(`^<${tagName}>`, "m");
   const closeRe = new RegExp(`^</${tagName}>`, "m");
-  return openRe.test(text) && closeRe.test(text);
+  const openMatch = openRe.exec(text);
+  const closeMatch = closeRe.exec(text);
+  return !!openMatch && !!closeMatch && openMatch.index < closeMatch.index;
 }
 
 /**
