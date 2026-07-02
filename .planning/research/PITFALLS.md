@@ -1,398 +1,230 @@
 # Pitfalls Research
 
-**Domain:** Dogfooding a lint/build CLI on its own repo (Motto v0.0.2 Self-Hosting)
-**Researched:** 2026-06-30
-**Confidence:** HIGH — all pitfalls are grounded in the actual v0.0.1 source code and the specific mechanics of the milestone goal
-
----
+**Domain:** Retrofitting a scaffold/`init` command, `--help`, and `[path]` args onto an existing lint/build CLI (Motto v0.0.4 Project Bootstrap)
+**Researched:** 2026-07-01
+**Confidence:** HIGH (grounded in direct read of `bin/motto.js`, `src/config.js`, `src/schema.js`, `src/lint.js`, `src/build.js`, `test/dogfood.test.js`, `package.json`, `motto.yaml`, `.claude-plugin/marketplace.json`, `.gitignore`); MEDIUM on the external Claude Code marketplace-schema claims (community sources, cross-checked against official docs page).
 
 ## Critical Pitfalls
 
-### Pitfall 1: "claude" / "anthropic" in Skill `name` — LINT-02 Fires on Your Own Skills
-
-> **THIS IS THE HIGHEST-PRIORITY TRAP FOR THIS MILESTONE. Read before naming any skill.**
+### Pitfall 1: Scaffolded `.gitignore` silently swallows the thing README tells users to commit
 
 **What goes wrong:**
-`validateSkill` enforces `RESERVED = ["anthropic", "claude"]` on the `name` field. Any skill whose folder name — which MUST equal its `name` frontmatter value — contains the substring `claude` or `anthropic` fails with LINT-02. Motto's skills document "how to author Claude Code Agent Skills." The most natural naming instinct produces exactly forbidden names.
-
-Forbidden names an author will reach for first:
-- `claude-code-guide` — contains `claude`
-- `for-claude` — contains `claude`
-- `claude-skill-format` — contains `claude`
-- `anthropic-conventions` — contains `anthropic`
-
-The check is a substring match, not a word-boundary match. `include-clause` would pass; `claudecode` would fail. The constraint lives in `src/schema.js` line 39 and runs at Step 3 of the name cascade in `validateSkill`.
-
-Critical asymmetry: LINT-02 applies ONLY to the `name` field. The `description` field and the Markdown body can freely mention "Claude", "Claude Code", "Anthropic" — no restriction. A skill describing Claude Code's plugin format can say "Claude Code" a hundred times in its body and pass lint cleanly.
+Motto's own `.gitignore` (checked today) contains a blanket `dist/`. The v0.0.4 goal explicitly requires the README to instruct users to **commit `dist/public/`** and push it so the self-hosted marketplace works (`/plugin marketplace add` reads it from the pushed repo). If `motto init` scaffolds a naive `.gitignore` copied from Motto's own (`dist/`), the new project's `dist/public/` is invisible to `git add -A` forever — the user follows the README ship instructions, `git status` shows nothing changed, and the marketplace never actually gets the built skills. This is not a hypothetical: it is a direct contradiction between two things in the same milestone (init's `.gitignore` output vs. README's "ship" instructions).
 
 **Why it happens:**
-Motto documents a Claude-specific toolchain. Naming skills after the platform being documented is natural. The constraint exists because Claude Code itself enforces it on plugin names loaded into its namespace — Motto propagates the rule to skill names so the rule is consistent throughout. But the author of Motto's OWN skills is the first person to hit this trap.
+The obvious move is "copy Motto's own `.gitignore` into the template" — but Motto's own `dist/` is disposable build output for the *tool*, whereas a scaffolded project's `dist/public/` is the *shipped artifact*. Same directory name, different semantics.
 
 **How to avoid:**
-Use Motto-centric or action-centric names that describe WHAT the skill does, not the platform it targets:
-
-| Natural (forbidden) | Correct alternative |
-|---------------------|---------------------|
-| `claude-code-skills` | `skill-authoring` |
-| `for-claude` | `motto-build` |
-| `claude-plugin-format` | `plugin-format` |
-| `anthropic-conventions` | `naming-conventions` |
-| `claude-skill-linter` | `lint-guide` |
-
-Before creating any skill folder, run this mental check: does the folder name contain the six-letter sequence `c-l-a-u-d-e` or the ten-letter sequence `a-n-t-h-r-o-p-i-c`? If yes, rename before creating.
+Scaffold `.gitignore` with `dist/private/` ignored (never shipped) but `dist/public/` tracked — e.g. `dist/*` + `!dist/public/` negation pattern, or simply ignore only `dist/private/` and `node_modules/`. Write a test that runs `motto init` into a temp dir, runs `motto build`, then greps the generated `.gitignore` to assert `dist/public` is NOT excluded (`git check-ignore` against the actual file is the authoritative check, not string matching).
 
 **Warning signs:**
-- LINT-02 error: `name must not contain the reserved substrings "anthropic" or "claude": "<name>"`
-- The dogfood lint step fails on your own skills, not on external input
-- You rename a folder but forget to update the `name:` frontmatter field (which then fails the name≠folder check instead)
+README says "commit dist/public/" but nobody ever actually ran `git add -A && git status` against a freshly-init'd + built project to confirm the file appears staged.
 
-**Phase to address:** Phase 4 — skill tree authoring. Name every skill before writing SKILL.md. Use a naming checklist.
+**Phase to address:**
+The `init` scaffold phase — write the `.gitignore` template and README's ship section together, and verify with one integration test that exercises both.
 
 ---
 
-### Pitfall 2: Dogfood Build Wipes `./dist/` During `npm test` — Pre-Commit Hook Destroys Manual Build
+### Pitfall 2: Scaffold template files excluded from the published npm package (works in dev, breaks for real users)
 
 **What goes wrong:**
-`buildProject(repoRoot)` wipes `dist/` at Step 4 (`rm(distDir, { recursive: true, force: true })`) before repacking. When the dogfood test calls `buildProject(REPO_ROOT)`, this wipe happens as part of every `npm test` run, including every pre-commit hook invocation.
-
-Consequences:
-1. A developer runs `motto build` manually to produce `./dist/` for local testing. They then stage a source file and commit. The husky pre-commit hook fires `npm test`. The dogfood test calls `buildProject(REPO_ROOT)`, wipes their `./dist/`, rebuilds it. If the build succeeds, `./dist/` is regenerated with the new code — may differ from what they tested. If the build fails (e.g., a skill has a lint error), `./dist/` is wiped and left empty. Either way, the developer did not expect `npm test` to mutate `./dist/`.
-2. If the dogfood test asserts something mid-way and throws before the test's `try/finally`, `./dist/` may be left in a partially-written state: wipe has run, some skills are packed, plugin.json may or may not exist.
-
-Note: `./dist/` is already in `.gitignore` (confirmed), so git does not see the wipe as a dirty working tree. The concern is practical, not git-cleanliness: repeated wipe-rebuild during test can mask a bug where the build produces wrong output that lint didn't catch, because the test immediately checks the freshly-built dist rather than a separately-built one.
+`package.json`'s `files` allowlist is currently `["bin/", "src/", "dist/public/"]`. Whatever new directory holds `init`'s templates (e.g. a `templates/` folder, or per-file `.tpl` assets) is invisible to `npm publish`/`npm pack` unless it's added to `files`. Running `motto init` from the dev checkout works fine (all files present on disk), giving false confidence — but a stranger who does `npm i -g @jeremiewerner/motto` gets a package missing the templates, and `motto init` throws `ENOENT` or silently produces empty/broken output. This is exactly the "no reverse-engineering" goal of the milestone failing for the actual target user.
 
 **Why it happens:**
-`buildProject` is designed as a production build command. Using it in a test that runs on every commit causes its side-effect (wipe + rebuild) to run on every commit. The `buildProject` API has no `dryRun` option or `outDir` override — it always writes to `<projectRoot>/dist`.
+`files` allowlist bugs are invisible in local development — `node bin/motto.js init` from the repo just reads whatever is on disk, allowlist or not. The gap only surfaces once the package is actually packed/installed from the registry.
 
 **How to avoid:**
-1. Accept the wipe behavior and document it clearly in the dogfood test's header comment: "This test writes and rewrites `./dist/`. This is intentional — it validates the real build output. `./dist/` is gitignored."
-2. The test must use `try/finally` to handle assertion failures gracefully — NOT to clean up `./dist/` (leaving the dist present is correct), but to ensure the test itself does not leave the process in a bad state.
-3. Do NOT add `outDir` option to `buildProject` to avoid wipe — that adds API surface without a real consumer need. Accept the current behavior.
-4. If the developer needs a stable `./dist/` across test runs, they must run `motto build` manually after the test suite completes.
+Two options, pick one deliberately:
+1. Add the templates directory to `files` in `package.json` explicitly.
+2. **Preferred**: embed templates as JS string/template-literal constants inside `src/` (already allowlisted) rather than separate template files — eliminates the whole bug class and keeps the "single runtime dependency" minimal-surface philosophy.
+
+Either way, add a test/CI step that runs `npm pack`, extracts the tarball to a temp dir, runs `node <tarball>/bin/motto.js init` from there, and asserts it succeeds — this is the only test that actually proves what a real `npm i -g` user experiences (mirrors the existing `test/dogfood.test.js` mkdtemp pattern, but against the packed tarball instead of the repo tree).
 
 **Warning signs:**
-- `./dist/` contents change unexpectedly after `git commit`
-- Pre-commit hook takes longer than expected (it's rebuilding the full dist)
-- A post-commit `motto build` produces different output than what the test verified (indicating the test ran against stale source state)
+`motto init` is only ever tested by running it from the repo checkout; no test exercises the packed/installed artifact.
 
-**Phase to address:** Phase 4 — dogfood test authoring. Add the wipe-behavior comment. Phase 5 — verify the pre-commit hook timing is acceptable.
+**Phase to address:**
+The `init` scaffold phase, verified before the milestone ships (this is a shipping-blocker class of bug, same severity as the v0.0.3 npm `files` allowlist work).
 
 ---
 
-### Pitfall 3: `process.cwd()` in Dogfood Test — Wrong Root When Run Outside Repo Root
+### Pitfall 3: `parseArgs({ options: {}, strict: true })` breaks in non-obvious ways when retrofitting `--help` and per-subcommand positionals
 
 **What goes wrong:**
-`node --test` discovers `*.test.js` recursively from wherever it is invoked. When invoked as `npm test` from the repo root, `process.cwd()` = repo root — correct. But if a developer runs `node --test test/dogfood.test.js` from inside `test/`, `process.cwd()` = `<repo>/test/`. The dogfood test then calls `lintProject('/path/to/motto/test/')`, which looks for:
-- `test/motto.yaml` — ENOENT → lint error "motto.yaml: file not found"
-- `test/skills/` — ENOENT → "no skills found"
+`bin/motto.js` currently calls `parseArgs` **once**, globally, with `options: {}` and `strict: true` — any flag at all (including `--help`) currently throws and falls into the generic "usage: motto <lint|build>" + exit 1 branch. Two integration bugs are easy to introduce when adding `--help` and `[path]`:
+1. **`--help` becomes "just another accepted flag" but dispatch order is wrong.** If `values.help` is only checked in the "no subcommand" branch, then `motto lint --help` (a real usage pattern) still runs `lint` instead of printing help — because the flag now parses successfully (no throw) and falls through to subcommand dispatch. The `--help`/`-h` check must run **before** the `sub === 'lint' | 'build' | 'init'` dispatch, not just as a fallback for "no subcommand given."
+2. **Positional index collides across subcommands.** Today `parsed.positionals[0]` is always the subcommand. Adding `[path]` to `lint`/`build` makes `positionals[1]` a path; adding `[name]` to `init` makes `positionals[1]` a project name. Both are "second positional" but mean different things — a shared, generic "`positionals[1]` is *the* second arg" mental model silently mixes up path-vs-name handling if the three subcommand branches aren't each explicit about what they expect there (e.g. `motto init lint` would currently be nonsensical, but once `init` takes a name arg, subtle argv-order mistakes in tests or docs become easy).
 
-The dogfood test fails with config errors, not a meaningful assertion failure. The error message "motto.yaml: file not found" gives no hint that the root path is wrong.
-
-A second form of the same bug: a test helper imported by another test file calls `lintProject(process.cwd())` as a side effect. If test files share a helper that computes root via `process.cwd()`, any test run from a non-root directory causes silent root miscalculation.
+Also: `strict: true` with a single flat `options: {}` object means **every** flag must be declared globally, valid for every subcommand — there's no per-subcommand flag scoping. Forgetting to declare `--help` (or any new flag) in `options` means it still throws under `strict: true`, silently reverting to generic "usage" text instead of the new dedicated help path.
 
 **Why it happens:**
-`process.cwd()` is a global process property, not a module property. It changes depending on how `node` is invoked. Every other test in the suite uses `mkdtemp` (explicit temp root) — none rely on `process.cwd()`. The dogfood test is the first test that needs to reference the actual repo root.
+`parseArgs`'s `strict: true` mode was originally chosen specifically to make "unknown flag → usage" work for free (see the existing code comment "Pitfall 4, D2-16"). That same mechanism now has to coexist with an *intentionally* recognized `--help` flag, and the "print usage, exit 1" catch-all needs to be split into "print usage, exit 0" (--help) vs. "print usage, exit 1" (actual unknown flag / no subcommand) — easy to conflate.
 
 **How to avoid:**
-Compute the repo root from `import.meta.url` inside the dogfood test file:
-
-```js
-import { fileURLToPath } from 'node:url'
-import { dirname, resolve } from 'node:path'
-
-const __dirname = dirname(fileURLToPath(import.meta.url))
-const REPO_ROOT = resolve(__dirname, '..') // test/ → repo root
-```
-
-This resolves to the same absolute path regardless of cwd. Verify the computed path with a `stat` check in the test's `before()` hook so a miscalculation fails loudly.
-
-Never pass `process.cwd()` to `lintProject` or `buildProject` in any test. The dogfood test is the only test that references the real source tree — keep that clearly isolated.
+Declare `--help`/`-h` explicitly in the `options` schema (`{ help: { type: 'boolean', short: 'h' } }`) so it no longer throws. Check `values.help` **immediately after parsing, before any subcommand dispatch** — return usage text + `process.exitCode = 0` and stop. Keep the existing catch block for genuinely unknown flags (still throws under `strict:true`, still exit 1). For positionals, name them explicitly per branch (`const target = sub === 'init' ? positionals[1] /* name */ : positionals[1] /* path */`) with a comment at each site clarifying what index 1 means for that subcommand — don't let "path" and "name" share unexamined code.
 
 **Warning signs:**
-- Dogfood test fails with `motto.yaml: file not found` or `no skills found` despite the file existing at the project root
-- Test passes on `npm test` but fails on `node --test test/dogfood.test.js`
-- Lint output shows zero skills where you expect N skills
+`motto lint --help` prints a lint error instead of usage. `motto --help` exits 1 instead of 0. A new flag is added to a subcommand's logic but omitted from the top-level `options` object and starts throwing "usage: ..." instead of working.
 
-**Phase to address:** Phase 4 — dogfood test authoring. Use `import.meta.url`-based root resolution from the first line.
+**Phase to address:**
+The `--help` + `[path]` CLI-ergonomics phase — write both a `--help`-after-subcommand test and a `--help`-exit-0 test explicitly (both are easy to miss with a single "bare `--help` works" test).
 
 ---
 
-### Pitfall 4: `lintProject` Picks Up Fixture `skills/` If One Is Ever Created at Repo Root
+### Pitfall 4: Three independent, non-identical "is this name valid" checks — `init` risks becoming a fourth
 
 **What goes wrong:**
-`lintProject(REPO_ROOT)` looks for skills at exactly `<repoRoot>/skills/`. Currently, all test fixtures use `mkdtemp` (temp dirs), so there is no `skills/` directory at the repo root until the dogfood milestone adds one. Once `skills/` is created for self-hosting, it becomes the canonical source. But if a future developer creates `skills/fixtures/` or a top-level `skills/bad-skill/` as a test fixture (instead of using mkdtemp), that directory gets linted as a real skill and may produce unexpected failures.
+The codebase today already has **two different strictness levels** for name validation, both built on the same `NAME_KEBAB` regex but diverging beyond it:
+- `src/schema.js` `validateSkill()` validates skill `name`: kebab format **+ max 64 chars + no `"anthropic"`/`"claude"` reserved substrings + must equal folder name**.
+- `src/config.js` `loadConfig()` validates `plugins.public`/`plugins.private`: kebab format **only** — no length cap, no reserved-substring check.
 
-The symmetrical risk: if a developer checks the behavior of `lintProject` on malformed skills by creating a folder under `skills/` rather than a temp dir, the dogfood test will pick it up and fail.
+If `motto init <name>` derives a project name / `plugins.public` value / starter-skill folder name from the CLI arg (or from the target directory's basename when `[name]` is omitted) using yet another ad-hoc slugify, you get a real instance of exactly the failure mode named in the milestone question: **init accepts a name that lint immediately rejects** (e.g. a folder called `claude-experiments` passes `NAME_KEBAB` and today's weaker `config.js` check, producing a `motto.yaml` that lints clean, but if that same string is also used as the starter skill's `name:` frontmatter, `validateSkill`'s reserved-substring check fails it — `motto init && motto lint` fails on the skill Motto itself just generated).
 
 **Why it happens:**
-`discoverSkillNames` uses one-level `readdir` on `<root>/skills/`, filtering for non-hidden directories. Any folder there is treated as a skill. There is no "fixture" or "example" marker in the directory structure.
+There is no single canonical "validate a Motto project/plugin/skill name" function — `NAME_KEBAB` is shared (good, and dogfood-tested for reference identity, see `test/dogfood.test.js` DOG-04), but the *surrounding* checks (length, reserved words) are not. Adding a third call site (`init`) that has to independently decide "which set of rules applies to a name I'm about to write into 3 different files" is where drift creeps in.
 
 **How to avoid:**
-- ALL test fixtures for lint/build tests must continue using `mkdtemp`. Document this as a firm convention in test file headers: "Never create fixtures under the real `skills/` directory."
-- If a real example or template skill must live in the repo for documentation purposes, prefix its folder with `.` (hidden) — `discoverSkillNames` filters out dotfiles.
-- The dogfood test's `before()` hook can assert that `skillNames.length` equals the exact expected count, catching accidental fixture pollution immediately.
+Before writing `init`, decide explicitly: does the *project name* need skill-grade validation (length + reserved words) because it's reused verbatim as the starter skill's `name:`? If yes, reuse `validateSkill`-equivalent checks (or extract a shared `validateName(name, { maxLen, checkReserved })` helper used by both `schema.js` and `config.js`) rather than writing new regex/logic in `init`. At minimum, `init` must call **the same `NAME_KEBAB`** import (not a copy), and should apply the *stricter* of the two existing rule sets, since the derived name flows into the skill's `name:` field. Add an integration test — mirroring `test/dogfood.test.js`'s existing DOG-04 reference-identity check — that runs `motto init <name>` for a handful of edge-case names (leading digit, uppercase, contains "claude", 65+ chars, double-hyphen) and asserts `init` **rejects** exactly the same names `validateSkill`/`loadConfig` would reject, with no name accepted by `init` that lint would later flag.
 
 **Warning signs:**
-- Dogfood test reports more skills than expected
-- A malformed skill folder appears in lint output that you did not author
-- `count` in `lintResult` is higher than the number of skills in `skills/`
+`init`'s name handling doesn't import `NAME_KEBAB` from `schema.js`; a name accepted by `init` produces a project where `motto lint` immediately fails on the very first run.
 
-**Phase to address:** Phase 4 — add count assertion to dogfood test; add convention note to test files.
+**Phase to address:**
+The `init` scaffold phase — this is core to "the starter skill lints+builds pass immediately" (an explicit v0.0.4 target feature), so it should be a named acceptance check for that phase, not an afterthought.
 
 ---
 
-### Pitfall 5: Body-Spine Requirement Forces Awkward `**Role:**` on Reference-Card Content
+### Pitfall 5: Starter-skill template silently drifts from the schema it's supposed to satisfy
 
 **What goes wrong:**
-`validateSkill` enforces two independent body checks:
-1. First non-blank line must be `# Title` (H1)
-2. Body must contain at least one `**Role:**` line
-
-Motto's own skills are likely to be reference material — schema field tables, command references, authoring guides. Pure reference cards do not naturally have a role statement. The requirement forces content that reads awkwardly:
-
-```markdown
-# Skill Schema Reference
-
-**Role:** Reference — consult this skill to look up Motto frontmatter field rules.
-
-| Field | Required | Rules |
-...
-```
-
-The `**Role:**` line is syntactically valid but semantically forced. For agent-instruction skills, the role statement is natural ("You are an expert who..."). For reference cards consumed by an agent as context, the role statement is just metadata.
-
-A related trap: authors trying to "fill in" the role requirement with a single-word line like `**Role:** Reference` — which technically passes the regex `/^\*\*Role:/m` — but produces content that looks like incomplete authoring.
+The starter skill's `SKILL.md` (frontmatter + body) will be static template content (a string or file) written once during this milestone. `src/schema.js` is the living source of truth for what's valid (spine requirement, `audience` enum, `shared_references` basename rule, name rules). Any future schema change — even a small one, like the recent D-08 letter-start-kebab fix or the XML-tag-in-description check — has **zero mechanical connection** to the template. Nothing breaks at merge time if a schema tightening makes the shipped template invalid; it just silently starts failing for every new user who runs `motto init` after that point, with no CI signal, because the only thing exercising the schema today is Motto's own hand-maintained `skills/` tree (`test/dogfood.test.js` DOG-03), not the init-generated template.
 
 **Why it happens:**
-The spine is intentionally mandatory (no template-waiver for v0.0.2). The decision was made in v0.0.1 to enforce the spine universally, with template-waiver deferred. Self-hosting is the first real exercise of this constraint against non-instructional content.
+Two independent artifacts (schema logic in `src/schema.js`, template content wherever it lives) evolve on separate clocks, and only one of them (`skills/` in the repo) has a regression test.
 
 **How to avoid:**
-Write natural, honest role lines for reference content:
-- `**Role:** Reference — use the table below to look up required frontmatter fields.`
-- `**Role:** Command reference — invoke this skill to recall the exact `motto lint` / `motto build` flags.`
-
-Do not fight the spine. A short but honest role line is correct. The real author value: it forces a sentence about HOW the agent should use this skill, which is actually useful even for reference material.
-
-Do NOT add a template-waiver mechanism for v0.0.2. The milestone explicitly defers concrete templates. The self-hosted skills should demonstrate that the spine works for reference content.
+Add an `init`-equivalent of the existing dogfood test: scaffold via `motto init` into a `mkdtemp` dir (same pattern already used in `test/dogfood.test.js`), then run `lintProject()` and `buildProject()` against that output and assert `ok: true` — this becomes a permanent regression gate, so any future schema tightening that breaks the template fails CI immediately instead of failing silently for real users. This is a near-zero-cost addition given the pattern already exists in the codebase.
 
 **Warning signs:**
-- LINT-04 error: `body must contain a **Role:** line`
-- Role line is `**Role:**` with nothing after it (fails the schema check? No — `validateSkill` only checks for `^\*\*Role:` prefix, not for content after the colon. But it produces unusable content for the agent.)
-- Authors try to hide the Role line at the bottom of a long document to "get it out of the way" — this passes lint but defeats the purpose
+The starter skill template was validated once, manually, during development, but no automated test re-runs `motto lint`/`motto build` against fresh `init` output on every CI run.
 
-**Phase to address:** Phase 4 — write role lines for each skill before writing the body. Accept the awkwardness for reference cards.
+**Phase to address:**
+The `init` scaffold phase, as a mandatory acceptance test (not "nice to have") — this is what "lint+build pass immediately" in the milestone's target features actually requires as ongoing proof, not a one-time check.
 
 ---
 
-### Pitfall 6: `motto.yaml` Config Errors Block Skill Lint — Bad Config Silences the Whole Tree
+### Pitfall 6: `marketplace.json` scaffold — three-way name consistency, and relative `source` paths only resolve when the marketplace is *git*-added
 
 **What goes wrong:**
-`lintProject` processes config first (step 1), then skills (step 4). If `motto.yaml` is missing or has a LINT error, config errors are pushed to the errors array but skill scanning still runs (per the `processConfig` implementation at `lint.js:54`). However, if `motto.yaml` is missing, `loadSharedRefs` still runs (returns empty set), and `discoverSkillNames` still runs. The final result is: config error + all skill errors (shared_references unresolvable because the Set is empty).
+Two distinct integration bugs bundle under "generated marketplace.json drifts from spec":
 
-In the dogfood context, Motto's own `motto.yaml` must be correct for the dogfood test to produce a meaningful clean result. If the `motto.yaml` is authored AFTER the `skills/` tree, the test will run on a partially-configured project and produce a cascade of errors — some real, some artifacts of the empty config.
-
-`buildProject` has a harder constraint: lint must pass entirely (`lintResult.ok`) before any build step runs. A config error blocks build completely.
-
-**Why it happens:**
-Config and skill authoring are decoupled but order-dependent at test time. A developer might create skills first and write `motto.yaml` last, assuming they can iterate.
-
-**How to avoid:**
-Author `motto.yaml` FIRST before any `skills/` content. The dogfood test's `before()` hook should explicitly verify `lintResult` and assert no config errors separately from skill errors. If config is broken, fail with a clear message: "motto.yaml has errors — fix config before running skill lint."
-
-Structure the dogfood test to check:
-1. `lintResult.errors.filter(e => e.skill === 'motto.yaml')` is empty (config clean)
-2. `lintResult.ok` is true (full tree clean)
-3. `buildProject` returns `ok: true`
-
-**Warning signs:**
-- Dogfood test fails with `motto.yaml: missing plugins.public` or similar
-- `lintResult.count` is 0 even though `skills/` has folders
-- Build returns `ok: false` with a `motto.yaml` error, not a skill error
-
-**Phase to address:** Phase 4 — author `motto.yaml` first; dogfood test assertions are layered (config first, then skills).
-
----
-
-### Pitfall 7: `buildProject` Calls `lintProject` Internally — Double Lint in Dogfood Test
-
-**What goes wrong:**
-`buildProject` calls `lintProject` at step 1 as a gate. A dogfood test that calls BOTH `lintProject(REPO_ROOT)` and `buildProject(REPO_ROOT)` runs lint twice: once explicitly, once inside build. This is harmless in terms of correctness (both see the same source tree) but creates two failure surfaces with different error shapes.
-
-When lint fails:
-- Explicit `lintProject` call returns `{ ok: false, errors: [...] }`
-- `buildProject` also returns `{ ok: false, errors: [...] }` (same errors)
-
-The test must assert on both if called, or choose one. Calling both in sequence to "verify lint is clean, then verify build succeeds" is valid but means lint I/O runs twice on the real tree.
-
-If the dogfood test only calls `buildProject`, it gets lint results embedded in the build result but doesn't get the lint `count` (number of skills found), which is useful for the "expected N skills" assertion.
+1. **Three-way name consistency.** A working marketplace.json requires the *same* plugin name to appear, character-for-character, in (a) `motto.yaml`'s `plugins.public`, (b) `marketplace.json`'s `plugins[].name`, and (c) the built `dist/public/.claude-plugin/plugin.json`'s `name` (emitted by `buildProject()` from `config.plugins.public` — see `src/build.js` step 6). If `init` hardcodes a literal string in the marketplace.json template instead of interpolating the same value it just wrote into `motto.yaml`, the three drift apart the moment a user picks a project name other than the template's default, and `/plugin marketplace add` either fails to resolve the plugin or resolves the wrong one.
+2. **Relative `source` paths in marketplace.json only resolve when the marketplace itself is added via git** (GitHub/GitLab/git URL) — confirmed against Claude Code's plugin-marketplace docs. If distributed via a direct URL or a local absolute path instead, relative `source` paths silently fail to resolve. Since the v0.0.4 README explicitly documents a git-based ship flow ("commit `dist/public/`, push public, `/plugin marketplace add` one-liner"), the relative-source scaffold is *correct for that documented flow* — but this is exactly the kind of assumption that breaks if a user (or a future README revision) ever suggests adding the marketplace by absolute path or raw file URL instead. Document the constraint explicitly next to the generated file, not just implicitly in the README prose.
 
 **Why it happens:**
-`buildProject`'s internal `lintProject` call is the lint gate, not the lint report surface. The architecture correctly makes lint a precondition of build, but test code treating them as a pipeline must account for the double invocation.
+`marketplace.json`'s shape isn't enforced by any Motto-owned validator (unlike `motto.yaml`/`SKILL.md`, which go through `loadConfig`/`validateSkill`) — it's Claude Code's spec, external to this codebase, and Motto currently just hand-copies a working example (see the repo's own `.claude-plugin/marketplace.json`, which uses `source: npm` — a **different** source type than what `init` needs to scaffold for a not-yet-published project, i.e. a relative/local source, not npm). Copying Motto's own file as the template starting point would generate a broken scaffold (points at an npm package the user hasn't published).
 
 **How to avoid:**
-Structure the dogfood test to call `lintProject` first for its count/error assertions, then call `buildProject` separately and assert on dist structure. Do not try to short-circuit by checking `buildResult.errors` to infer lint status — `buildResult.errors` on a lint failure returns lint errors, but on a build failure (post-lint) returns build-specific errors. Keep the two assertions separate.
-
-Alternatively: call only `buildProject` and infer lint cleanliness from `buildResult.ok`. Simpler test, but loses `skillCount` assertion.
+Template the plugin name as a single interpolated variable driven from the same value written to `motto.yaml`, never a second literal. Use `source: "./dist/public/"` (or equivalent local/relative source shape, not `npm`) since a freshly-init'd project has no npm package yet. Add a short inline comment in the generated `marketplace.json` (or the README ship section) noting the relative-source-requires-git-add constraint, so it's not a silent trap. If feasible, verify the generated `marketplace.json` against `claude plugin validate` (already used per the project's Development Tools) as part of the init acceptance test — mirrors the "verify build output" pattern used elsewhere.
 
 **Warning signs:**
-- Disk I/O on the skills tree happens twice per dogfood test run
-- A lint error appears in BOTH `lintResult.errors` and `buildResult.errors` (this is correct behavior, not a bug — but can look like a duplicate)
-- Test assertion on `buildResult.errors` misses a lint error because the error object shape is `{ skill: '...', message: '...' }` in both, and the test only checked message content
+Marketplace.json template built by copy-pasting Motto's own (npm-sourced) file instead of designing for the not-yet-published case; plugin name appears as a literal string in more than one generated file.
 
-**Phase to address:** Phase 4 — dogfood test design. Decide upfront: call lint + build separately (rich assertions) or build only (simpler, fewer assertions).
-
----
-
-### Pitfall 8: `NAME_KEBAB` Duplication — Config and Schema Can Silently Diverge
-
-**What goes wrong:**
-`NAME_KEBAB` is defined in `src/schema.js` (exported) and manually duplicated in `src/config.js` (private copy). The v0.0.1 tech debt list identifies this explicitly. A future edit to one file that doesn't update the other creates a divergence where:
-- A skill name passes `validateSkill` but fails `loadConfig` (or vice versa for plugin names)
-- Plugin names in `motto.yaml` are accepted/rejected differently from skill names
-
-The dogfood test does NOT surface this gap because it runs lint on a validly-authored tree — if both regexes happen to agree on all test inputs, the divergence is invisible.
-
-**Why it happens:**
-`src/config.js` intentionally avoids importing from `src/schema.js` to keep the validator pure (no cross-module dependency). The `// Intentional duplicate... Source of truth: src/schema.js export NAME_KEBAB.` comment is the only protection. Future contributors may not see the comment or may update one file without searching for duplicates.
-
-**How to avoid:**
-Add an equality self-test in the test suite:
-
-```js
-import { NAME_KEBAB } from '../src/schema.js'
-// config.js's private regex, extracted via a test-only export or literal comparison:
-const CONFIG_KEBAB = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/
-assert.strictEqual(NAME_KEBAB.source, CONFIG_KEBAB.source, 'NAME_KEBAB must be identical in schema.js and config.js')
-```
-
-This is the "equality self-test" referenced in the v0.0.1 tech debt log. Alternatively, export `NAME_KEBAB` from `schema.js` and import it in `config.js` — this removes the duplication entirely. The pure-validator argument is weaker than the sync guarantee. Dogfood milestone is the right time to close this gap.
-
-**Warning signs:**
-- A plugin name passes config validation but fails a skill name check (or vice versa) for a name that should behave identically under both
-- No lint error at add-regex-change time because no test compares the two regexes
-- The divergence only surfaces when a user's project uses a name that falls in the gap (e.g., the regex in config.js accidentally allows double-dash while schema.js doesn't)
-
-**Phase to address:** Phase 4 — add the NAME_KEBAB equality self-test to the existing `config.test.js` or `schema.test.js`. This is a one-assertion fix.
-
----
-
-### Pitfall 9: Private Skill Without `plugins.private` — Build Fails After Lint Passes
-
-**What goes wrong:**
-A private skill (audience: private) passes `lintProject` cleanly because the private-contradiction check runs only in `buildProject` (step 3, D3-12), not in `validateSkill`. Lint is schema validation; build is packaging validation. The sequence:
-1. Lint passes: `ok: true`
-2. Build fails: `"audience private but plugins.private not set in motto.yaml"`
-
-For a developer iterating on the skills tree, this is surprising: lint said clean, but build rejected it. The error message correctly identifies the fix, but the developer expected a clean build after a clean lint.
-
-In the dogfood context, if Motto authors ≥1 private skill but forgets to add `plugins.private` to `motto.yaml`, the dogfood test's `lintProject` assertion passes and the `buildProject` assertion fails. The test needs separate assertions for each stage to make this failure obvious.
-
-**Why it happens:**
-The lint/build separation is intentional: lint validates each skill independently; build validates the whole project as a packaging unit. Cross-skill and cross-config constraints that only matter at packaging time belong in build. The private-contradiction is a packaging constraint, not a schema constraint.
-
-**How to avoid:**
-Author `motto.yaml` with BOTH `plugins.public` and `plugins.private` set BEFORE adding any private skill, even if `plugins.private` is not yet used. The cost: build always emits a `dist/private/` placeholder — no, wait, build only emits `dist/private/` when `bucketsUsed.has('private')`, which only happens when at least one private skill exists. So having `plugins.private` set with zero private skills is harmless.
-
-Set `plugins.private` early; remove it only if you never author private skills.
-
-**Warning signs:**
-- `lintResult.ok === true` but `buildResult.ok === false`
-- `buildResult.errors[0].message` includes `"plugins.private not set"`
-- The failing skill has `audience: private` in its frontmatter
-
-**Phase to address:** Phase 4 — author `motto.yaml` with `plugins.private` set if the milestone requires a private skill. The milestone spec says "≥1 private" — so `plugins.private` is required.
-
----
-
-### Pitfall 10: `description` Mentions "Claude" — Authors Assume LINT-02 Bans It
-
-**What goes wrong:**
-Not a code bug, but a common misreading of LINT-02. Authors who read "name must not contain the reserved substrings 'anthropic' or 'claude'" assume the same restriction applies to `description` and the body. It does not. The `RESERVED` check at `schema.js:84` runs ONLY on `data.name`. No check is performed on `data.description` or `body`.
-
-Motto's own skill descriptions and bodies will naturally and correctly mention "Claude Code", "Anthropic", "Claude Code Agent Skills" throughout. Authors may self-censor their descriptions unnecessarily, producing weaker descriptions.
-
-**Why it happens:**
-The error message for LINT-02 says "name must not contain..." — the word "name" specifies the field. But authors skimming the rule assume it's a global content filter, not a field-specific name constraint.
-
-**How to avoid:**
-Write descriptions and body content freely. The restriction is ONLY on the `name` field (= folder name). Confirm by checking `src/schema.js:84`: the `RESERVED` check runs on `name` only, inside the NAME cascade block. The description check at line 95 only verifies non-empty.
-
-**Warning signs:**
-- A developer asks "can I mention Claude Code in the description?" — they've misread LINT-02
-- Skills descriptions are vague ("A skill for agent use") when they could be precise ("Author Claude Code Agent Skills using Motto's schema")
-- No warning sign from the linter — this is a human misreading, not a code issue
-
-**Phase to address:** Phase 4 — note in the skill authoring process that descriptions and bodies are unrestricted. Document in `motto.yaml` comments or a README.
+**Phase to address:**
+The `init` scaffold phase — verify end-to-end: `motto init` → `motto build` → generated `plugin.json` name matches generated `marketplace.json` plugin name matches `motto.yaml` `plugins.public`, as one assertion chain in a single test.
 
 ---
 
 ## Technical Debt Patterns
 
-| Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
-|----------|-------------------|----------------|-----------------|
-| Calling `process.cwd()` in dogfood test | Quick to write | Breaks when run from non-root dir; fragile for CI | Never — use `import.meta.url` root resolution |
-| Not asserting `skillCount` in dogfood test | Fewer assertions | A fixture folder accidentally in `skills/` goes undetected | Never — assert the exact expected count |
-| Skipping `NAME_KEBAB` equality self-test | Less test code | Schema and config regexes diverge silently over time | Never — this is a one-assertion fix with high value |
-| Setting `plugins.private` only when needed | "Minimal config" feeling | First private skill addition causes build failure if config is forgotten | Acceptable if milestone has zero private skills; set it early otherwise |
-| Dogfood test cleans up `./dist/` in `finally` | No build artifacts post-test | Defeats the purpose; `./dist/` should persist to show the real build worked | Never clean up `./dist/` in dogfood test |
+Shortcuts that seem reasonable but create long-term problems.
 
----
+| Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
+|----------|-------------------|-----------------|------------------|
+| Hardcode `"usage: motto <lint\|build>"` string at 2-3 call sites instead of one constant | Fast to ship | Adding `init` requires updating every site; miss one and `--help` output disagrees with the actual "unknown flag" error text | Never — extract one `USAGE` constant now, before adding the third subcommand |
+| No overwrite guard on `motto init` (v1: always writes, never checks for existing files) | Simplest possible implementation | A user re-running `init`, or running it in a dir with an existing `motto.yaml`/`skills/`, silently clobbers work with no backup | Acceptable only if `init` refuses to run (hard error, not silent overwrite) when `motto.yaml` already exists in the target dir — the "always overwrite" version is never acceptable |
+| Derive `owner` fields in `marketplace.json` from `git config user.name`/`user.email` with no fallback | Zero prompts, fully automated | Empty global git config (fresh machine, CI, Docker) produces an `owner: {"name": "", "email": ""}` that looks scaffolded-but-broken | Acceptable only paired with a placeholder + inline TODO comment when git config values are empty, so the gap is visible instead of silent |
+| Store templates as literal strings inline in `src/init.js` rather than separate template files | Sidesteps the npm `files` allowlist bug (Pitfall 2) entirely | Harder to visually diff/edit template content vs. a real `.md`/`.yaml` file | Acceptable and arguably *preferred* for this project's minimal-dependency philosophy — the "cost" is developer ergonomics only, not correctness |
 
 ## Integration Gotchas
 
-| Integration | Common Mistake | Correct Approach |
-|-------------|----------------|------------------|
-| Skill naming for Claude Code docs | Naming skills `claude-*` or `for-claude` | Use Motto-centric names: `skill-authoring`, `plugin-format`, `lint-guide` |
-| Husky pre-commit + dogfood build | Expecting `./dist/` to be stable across commits | `./dist/` is gitignored and rebuilt on every `npm test`; treat it as ephemeral |
-| Dogfood root path | Using `process.cwd()` to locate the project root | Use `resolve(dirname(fileURLToPath(import.meta.url)), '..')` from inside `test/` |
-| Lint vs build failure modes | Assuming lint-pass means build-pass | Private skills with no `plugins.private` pass lint but fail build; assert both stages |
-| Self-referential test | Calling `buildProject` then immediately asserting on dist | `buildProject` internally calls `lintProject`; lint runs twice; design assertions accordingly |
+Common mistakes when connecting to (or generating files for) external tooling.
 
----
+| Integration | Common Mistake | Correct Approach |
+|-------------|-----------------|-------------------|
+| Claude Code marketplace (`marketplace.json`) | Using `source: npm` (copied from Motto's own file) for a scaffold whose package hasn't been published yet | Scaffold a relative/local `source` (e.g. `./dist/public/`) pointing at the not-yet-published project's own build output |
+| Claude Code marketplace, relative `source` | Assuming relative paths resolve regardless of how the marketplace is added | Relative `source` paths only resolve when the marketplace is added via git (GitHub/GitLab/git URL) — document this next to the ship instructions |
+| `git config` (owner autofill) | Shelling out to `git config user.name`/`user.email` with no empty-value handling | Check for empty string, not just command success; fall back to a placeholder + visible TODO rather than an empty JSON string |
+| npm `files` allowlist | Adding new scaffold-template assets without updating `files` in `package.json` | Either add the new path to `files` explicitly, or (preferred) keep template content inside already-allowlisted `src/` as JS constants |
+| `claude plugin validate` (existing dev tool per stack doc) | Never running it against `init`-generated output, only against Motto's own hand-built `dist/` | Add it as a step in the init acceptance test/CI, exactly like it's already used for verifying Motto's own build output |
+
+## Performance Traps
+
+Not a meaningful category for this project at its actual scale (a local CLI scaffolding a handful of files into a project directory — no network calls in the hot path, no user-facing latency budget). The one item worth naming:
+
+| Trap | Symptoms | Prevention | When It Breaks |
+|------|----------|------------|-----------------|
+| Synchronous/blocking `git config` subprocess call to autofill `owner` fields | `motto init` hangs if git prompts for anything (rare, but possible with unusual git credential helpers configured) | Use a short explicit timeout around the `git config` read, and always have a non-git fallback path | Only on unusual local git configurations — low priority, but cheap to guard |
+
+## Security Mistakes
+
+Domain-specific concerns for a local scaffolding CLI (not web security — there's no server here).
+
+| Mistake | Risk | Prevention |
+|---------|------|------------|
+| `motto init <name>` uses `<name>` directly in `mkdir`/`join()` without rejecting path separators | A name like `../../elsewhere` writes outside the intended target directory | Reject any `name` containing `/`, `\`, or `..` before it reaches any filesystem call — same "unsafe basename" principle `schema.js` already applies to `shared_references` entries (reuse that pattern/check, don't reinvent it) |
+| Starter skill's generated `shared_references` entries bypass the existing basename guard | Template accidentally emits a path-shaped reference (e.g. `../shared/x`) that the real linter would reject | Generate the starter skill's frontmatter through the same code path/constants used elsewhere (or literally lint it as part of the init test, see Pitfall 5) rather than hand-typed YAML that might not match what `validateSkill` expects |
+
+## UX Pitfalls
+
+| Pitfall | User Impact | Better Approach |
+|---------|--------------|-------------------|
+| `motto --help` exits 1 (today's actual behavior, since `--help` currently isn't a declared flag) | Scripts/CI that check exit code after `--help` (a very common pattern) treat it as failure | Explicitly test and assert `--help` exits 0, at both `motto --help` and `motto <subcommand> --help` |
+| Usage text lists only `<lint|build>` after `init` ships | User has no idea `init` exists from `--help` output alone | Update usage text and this must be caught by a test asserting the string, not eyeballed |
+| Silent overwrite on re-running `init` in a populated directory | User loses uncommitted scaffold customizations with no warning | Hard-refuse (non-zero exit, clear message) when `motto.yaml` already exists in the target; don't silently proceed |
+| `[path]` arg silently resolves relative to an unexpected base (e.g. arg is relative to cwd but user assumed relative to a project root elsewhere) | Confusing "no skills found" errors when running from an unrelated directory | Print the *resolved absolute path* being linted/built as part of the output/error message, not just the raw arg the user typed |
 
 ## "Looks Done But Isn't" Checklist
 
-- [ ] **Skill names audit:** every skill in `skills/` has a `name` that passes `!name.includes('claude') && !name.includes('anthropic')` — checked before folder creation
-- [ ] **Dogfood root path:** test uses `resolve(dirname(fileURLToPath(import.meta.url)), '..')`, NOT `process.cwd()`
-- [ ] **Skill count assertion:** dogfood test asserts `lintResult.count === N` where N is the exact expected skill count
-- [ ] **Config clean before skill clean:** dogfood test asserts zero `motto.yaml` errors before asserting `lintResult.ok`
-- [ ] **`plugins.private` in `motto.yaml`:** set if any private skill exists; verified before build test runs
-- [ ] **`./dist/` gitignored:** `dist/` is in `.gitignore` (currently confirmed present) — if removed, every `npm test` makes the working tree dirty
-- [ ] **NAME_KEBAB equality self-test:** a test asserts `schema.NAME_KEBAB.source === config's_regex.source`
-- [ ] **Role lines present:** every skill has a `**Role:**` line that is meaningful, not just the bare colon
-- [ ] **No fixture folders in `skills/`:** all lint/build fixture usage uses `mkdtemp`; `skills/` is real skills only
+- [ ] **`motto init` works:** Often only tested from the dev checkout — verify it also works from a `npm pack` tarball installed in a clean temp dir (proves the `files` allowlist is correct, Pitfall 2).
+- [ ] **`--help` works:** Often only tested as bare `motto --help` — verify `motto lint --help`, `motto build --help`, `motto init --help` all short-circuit to help + exit 0 too, not just the no-args case (Pitfall 3).
+- [ ] **Starter skill "lints and builds immediately":** Often verified once by hand during development — verify there's an automated test that re-runs `motto init` + `motto lint` + `motto build` on every CI run, so future schema changes can't silently break it (Pitfall 5).
+- [ ] **`marketplace.json` scaffold "looks right":** Often verified by eyeballing the JSON shape — verify plugin name matches `motto.yaml`'s `plugins.public` and the built `plugin.json`'s name via an actual assertion, and ideally run `claude plugin validate` against it (Pitfall 6).
+- [ ] **`.gitignore` scaffold "looks standard":** Often copied from Motto's own `.gitignore` — verify `dist/public/` specifically survives `git add -A` after a build, not just that the file exists (Pitfall 1).
+- [ ] **`[path]` arg "works":** Often tested only with a bare relative path from the right cwd — verify it also works with an absolute path, a path with a trailing slash, and when invoked from a *different* cwd than the target.
 
----
+## Recovery Strategies
+
+| Pitfall | Recovery Cost | Recovery Steps |
+|---------|-----------------|-------------------|
+| `.gitignore` swallows `dist/public/` (Pitfall 1) | LOW | `git add -f dist/public/` once discovered, fix the `.gitignore` pattern, re-commit; no data loss since the build output is regenerable |
+| Templates missing from published npm package (Pitfall 2) | MEDIUM | Publish a patch version with the `files` fix; existing installs need to re-`npm i` — real user friction until discovered and patched |
+| Init overwrote an existing `motto.yaml`/`skills/` tree (Technical Debt row 2) | HIGH if uncommitted, LOW if the target dir was already a git repo (`git checkout`/`git stash` recovers it) | Recommend users always run `motto init` inside an already-`git init`'d (or otherwise backed-up) directory until an overwrite guard ships |
+| Name accepted by `init` but rejected by `lint` (Pitfall 4) | LOW | User reruns with a different name; the real cost is reputational (first-run experience is broken) — prioritize prevention over recovery here |
+| Marketplace name drift across 3 files (Pitfall 6) | LOW | Manually re-sync the three name occurrences; trivial once identified, but likely to go unnoticed for a while since nothing errors loudly |
 
 ## Pitfall-to-Phase Mapping
 
-| Pitfall | Prevention Phase | Verification |
-|---------|------------------|--------------|
-| "claude"/"anthropic" in skill name | Phase 4 (skill tree authoring) | `motto lint` passes on all skills; zero LINT-02 errors |
-| dist/ wipe during npm test destroys manual build | Phase 4 (dogfood test authoring) | Test header comment documents behavior; `./dist/` confirmed in `.gitignore` |
-| `process.cwd()` wrong root | Phase 4 (dogfood test authoring) | Test uses `import.meta.url` path; `node --test test/dogfood.test.js` from `test/` dir passes |
-| Fixture skills in `skills/` tree | Phase 4 (dogfood test authoring) | `skillCount` assertion catches extra folders; convention documented |
-| Body-spine forces awkward Role line | Phase 4 (skill tree authoring) | All skills have non-empty, meaningful `**Role:**` lines; lint passes |
-| Config errors cascade through lint | Phase 4 (authoring order) | `motto.yaml` authored first; dogfood test asserts config-clean before skill-clean |
-| Double lint (lintProject + buildProject) | Phase 4 (dogfood test design) | Test explicitly calls lint + build separately with distinct assertion blocks |
-| NAME_KEBAB duplication divergence | Phase 4 (regression guard) | Equality self-test added to existing test suite |
-| Private skill without plugins.private | Phase 4 (motto.yaml authoring) | `motto.yaml` has `plugins.private` set before any private skill is authored |
-| LINT-02 misread as global content ban | Phase 4 (authoring) | Descriptions mention Claude Code freely; no self-censoring |
+How roadmap phases should address these pitfalls. (Phase numbers are illustrative — assign real numbers during roadmap creation; groupings reflect the milestone's stated target features.)
 
----
+| Pitfall | Prevention Phase | Verification |
+|---------|--------------------|-----------------|
+| `.gitignore` vs. "commit dist/public" contradiction (1) | `init` scaffold phase | Test: init → build → `git add -A` → assert `dist/public/**` is staged |
+| Templates excluded from npm package (2) | `init` scaffold phase | Test: `npm pack` → extract → run `init` from tarball → assert success |
+| `parseArgs` strict-mode + `--help`/positional retrofit (3) | `--help` + `[path]` CLI phase | Tests: `motto <sub> --help` exits 0 for every subcommand; unknown flag still exits 1 |
+| Divergent name validation, init vs. lint (4) | `init` scaffold phase | Test: parametrized edge-case names — init's acceptance must equal lint's acceptance |
+| Starter skill drifts from schema (5) | `init` scaffold phase | Permanent CI test: init → lint → build, asserted `ok:true`, same pattern as existing `test/dogfood.test.js` |
+| `marketplace.json` name drift / wrong source type (6) | `init` scaffold phase | Test: assert plugin name identical across `motto.yaml`, `marketplace.json`, built `plugin.json`; confirm `source` is relative/local, not `npm` |
+| Silent overwrite on re-run (Technical Debt row 2) | `init` scaffold phase | Test: run `init` twice in the same dir, assert second run refuses with non-zero exit and a clear message |
+| `[path]` resolution edge cases (UX table) | `--help` + `[path]` CLI phase | Tests: absolute path, trailing slash, invocation from a different cwd, all produce the same result as a plain relative-cwd run |
 
 ## Sources
 
-- Motto `src/schema.js` — `RESERVED = ["anthropic", "claude"]` at line 39; name cascade at lines 76–92; description check at line 95 (field-specific, not global). Verified 2026-06-30.
-- Motto `src/lint.js` — `processConfig` continues after config errors (line 54); `lintProject` execution order (lines 186–206). Verified 2026-06-30.
-- Motto `src/build.js` — wipe at Step 4 (`rm(distDir, ...)` at line 150); lint gate at Step 1 (line 92); private-contradiction check at lines 134–141. Verified 2026-06-30.
-- Motto `src/config.js` — intentional `NAME_KEBAB` duplicate at line 35; cross-reference comment. Verified 2026-06-30.
-- Motto `.gitignore` — `dist/` is on line 2. Verified 2026-06-30.
-- Motto `.husky/pre-commit` — `npm test` (single line). Verified 2026-06-30.
-- Motto `package.json` — `"test": "node --test"` (discovers all `*.test.js` recursively). Verified 2026-06-30.
-- Motto `.planning/milestones/v0.0.1-ROADMAP.md` — tech debt section: NAME_KEBAB duplication identified as manual sync point. Verified 2026-06-30.
-- Motto `.planning/PROJECT.md` — v0.0.2 milestone goal: ≥1 public skill, ≥1 private skill, ≥1 shared_reference; dogfood test wired into node:test. Verified 2026-06-30.
+- Direct codebase inspection: `bin/motto.js`, `src/config.js`, `src/schema.js`, `src/lint.js`, `src/build.js`, `test/dogfood.test.js`, `package.json`, `motto.yaml`, `.claude-plugin/marketplace.json`, `.gitignore` (all read 2026-07-01). Confidence: HIGH — these are the actual load-bearing files this milestone modifies.
+- `.planning/PROJECT.md` — v0.0.4 milestone goal, target features, explicit "not building `motto ship`" scope note. Confidence: HIGH.
+- [Create and distribute a plugin marketplace — Claude Code Docs](https://code.claude.com/docs/en/plugin-marketplaces) — relative-`source`-requires-git-add-method constraint, `metadata.pluginRoot`, source type shapes. Confidence: MEDIUM (official docs page, cross-checked via web search summary rather than a full fetch; verify exact JSON shape again at implementation time since marketplace schema is external to this codebase and can evolve).
+- [claude-code-json-schema (unofficial JSON Schema definitions)](https://github.com/hesreallyhim/claude-code-json-schema) — corroborates marketplace/plugin.json schema shape exists as a distinct, versioned external spec Motto must track, not something Motto controls. Confidence: LOW-MEDIUM (community-maintained, unofficial).
 
 ---
-*Pitfalls research for: Motto v0.0.2 Self-Hosting (Dogfood)*
-*Researched: 2026-06-30*
+*Pitfalls research for: Motto v0.0.4 Project Bootstrap (`motto init`, `--help`, `[path]`)*
+*Researched: 2026-07-01*

@@ -10,15 +10,26 @@ The **strict schema + linter**. Skills that always conform to one rigid-yet-crea
 
 ## Current State
 
-**Shipped: v0.0.3 (2026-07-01)** — Motto is installable and distributable. The CLI publishes to npm as `@jeremiewerner/motto` (scoped/public, `files` allowlist, global `motto` command); public skills ship via a self-hosted Claude Code marketplace (`.claude-plugin/marketplace.json`, `source: npm` → `dist/public/`, `strict: false`, install `/plugin install motto@motto`); the `release` skill runs the real publish flow (pack-verify → publish → `git push --follow-tags` → `motto.yaml` sync); and a first project README documents every install path (npm, marketplace, Claude Desktop symlink/zip). 13/13 requirements, 75 tests, single dep `yaml`. Merged to `main` @ `450274c`, tagged `v0.0.3`. Repo `jeremiewerner/motto` is private (sole-user). See `milestones/v0.0.3-ROADMAP.md`.
+**Shipped: v0.0.4 (2026-07-02)** — Project bootstrap complete. A stranger with only `npm i -g @jeremiewerner/motto` can scaffold, build, and distribute their own skills project: `motto init [name] [--force]` scaffolds a complete, lint-and-build-clean project (starter skill, `motto.yaml`, `.gitignore`, `marketplace.json`) via never-throw `src/init.js`, guarded by a permanent init → lint → build dogfood test; `motto --help` (global + per-subcommand) and `lint`/`build [path]` make the CLI discoverable and relocatable; the README documents the full ship-your-plugin flow; the superseded `setup-project` skill is retired; and all 5 carried tech-debt items closed in Phase 13. 10/10 requirements, 131 tests, 1,380 LOC, single dep `yaml`. See `milestones/v0.0.4-ROADMAP.md`.
 
-**Prior:** v0.0.2 (2026-07-01) — Motto self-hosts: own `skills/` tree + dogfood guard + spec-complete `validateSkill` (10 reqs, 75 tests). See `milestones/v0.0.2-ROADMAP.md`. · v0.0.1 (2026-06-30) — core `motto lint` + `motto build` CLI (22 reqs, 53 tests). See `milestones/v0.0.1-ROADMAP.md`.
+**Prior:** v0.0.3 (2026-07-01) — installable + distributable: npm `@jeremiewerner/motto`, self-hosted marketplace, real `release` publish flow (13 reqs). · v0.0.2 (2026-07-01) — Motto self-hosts: own `skills/` tree + dogfood guard + spec-complete `validateSkill` (10 reqs). · v0.0.1 (2026-06-30) — core `motto lint` + `motto build` CLI (22 reqs). Archives in `milestones/`.
 
-**Hardening note:** post-merge `/code-review high` caught 3 D-01 never-throw violations the milestone tests missed (boolean name, unresolved YAML aliases in frontmatter/config); fixed + guarded. The never-throw invariant needs adversarial malformed-input tests — the GSD gates alone under-verified it.
+**Hardening note:** post-v0.0.2 `/code-review high` caught 3 D-01 never-throw violations the milestone tests missed; fixed + guarded. v0.0.4 continued the pattern: never-throw contract now enforced with adversarial malformed-input regression tests across scaffold paths (WR-01 closure, Phase 10-03).
 
-## Next Milestone
+## Next Milestone Goals
 
-None active — start the next with `/gsd-new-milestone`. Backlog candidates in `.planning/ROADMAP.md` (CLI ergonomics, `[path]` arg, TMPL-01, CI, cleanup of v0.0.2 phase remnants, instructional-skills review).
+Not yet defined — run `/gsd-new-milestone`. Backlog candidates (see ROADMAP.md Backlog): CLIX-01/02 (`--quiet`, `--format json`), SHIP-01 (`motto ship`, needs clarification), TMPL-01 (concrete-template validation), AUTH-SKILL (interactive `author-skill` rework — flagged for challenge: auto-trigger? lint-string sync?), CI-01 (GitHub Actions). Also open: making repo public (revisit when a second user exists).
+
+<details>
+<summary>Shipped: v0.0.4 — Project Bootstrap (2026-07-02)</summary>
+
+**Goal:** A stranger with only `npm i -g @jeremiewerner/motto` can scaffold, build, and distribute their own skills project — no Claude Code skills required, no reverse-engineering. ✅ Shipped — see `milestones/v0.0.4-ROADMAP.md`.
+
+**Delivered:** `motto init [name]` (scaffold + starter skill + marketplace.json + .gitignore, `--force` guard, name validation single-sourced from `schema.js`); `setup-project` skill deleted; README ship-your-plugin flow; `--help` global/per-subcommand; `[path]` arg for lint/build; Phase 13 tech-debt closure (DEBT-01..05).
+
+**Explicitly not built:** `motto ship` command — after init + build, shipping is two git commands; marketplace.json is already scaffolded by init. Backlog until real friction shows.
+
+</details>
 
 <details>
 <summary>Shipped: v0.0.3 — Distribution (2026-07-01)</summary>
@@ -40,16 +51,21 @@ None active — start the next with `/gsd-new-milestone`. Backlog candidates in 
 
 ### Validated
 
-(None yet — ship to validate)
+- [x] `motto lint` enforces the skill schema: frontmatter fields, kebab `name` = folder, Title + Role spine, `shared_references` resolve — v0.0.1–v0.0.2 (verified, dogfooded)
+- [x] `motto build` produces self-contained `dist/` plugins (public + optional private), named per project, with shared refs bundled in — v0.0.1–v0.0.2 (verified, dogfooded)
+- [x] `motto.yaml` carries project identity (name/version/description), plugin names, and preferences — v0.0.1
+- [x] Single shared scope (`shared/references/`) bundled into each skill at build — v0.0.1
+- [x] Universal body spine: `# Title` + `**Role:**`, mandatory, template-waivable — v0.0.1–v0.0.2
+- [x] Motto installable (npm) + skills distributable (self-hosted marketplace) — v0.0.3
+- [x] `motto init [name]` scaffolds a complete, buildable skills project (structure + motto.yaml + marketplace.json + starter skill + .gitignore) — Validated in Phase 10 (v0.0.4)
+- [x] `--help`/`-h` (global, per-subcommand, bare `motto`) prints usage to stdout, exit 0 — Validated in Phase 11 (v0.0.4)
+- [x] `lint`/`build` accept optional `[path]` arg (default cwd), with directory-existence guard — Validated in Phase 11 (v0.0.4)
+- [x] README documents the full ship-your-plugin path — v0.0.4 (DOC-04, accuracy gaps closed in Plan 12-03)
+- [x] `setup-project` skill removed (superseded by init + README) — v0.0.4 (DOC-05, atomic delete + dogfood count sync)
 
 ### Active
 
-- [ ] `motto lint` enforces the skill schema: frontmatter fields, kebab `name` = folder, Title + Role spine, `shared_references` resolve
-- [ ] `motto build` produces self-contained `dist/` plugins (public + optional private), named per project, with shared refs bundled in
-- [ ] `motto.yaml` carries project identity (name/version/description), plugin names, and preferences
-- [ ] Single shared scope (`shared/references/`) bundled into each skill at build
-- [ ] Universal body spine: `# Title` + `**Role:**`, mandatory, template-waivable
-- [ ] Template *mechanism* exists (schema add-ons via `template:`), with zero concrete templates shipped
+- [ ] Template *mechanism* exists (schema add-ons via `template:`), with zero concrete templates shipped — mechanism shipped v0.0.1; concrete-template validation deferred (TMPL-01)
 
 ### Out of Scope
 
@@ -65,6 +81,8 @@ None active — start the next with `/gsd-new-milestone`. Backlog candidates in 
 - Output is **standard Agent Skills** (`SKILL.md` + frontmatter + `references/`). The tooling is Claude-Code-specific; the output is portable.
 - A full design spec and a 6-task TDD implementation plan already exist: `.planning/superpowers/specs/2026-06-29-motto-design.md` and `.planning/superpowers/plans/2026-06-30-motto-core-cli.md`.
 - Repo layout for a Motto project: `skills/<name>/` (SKILL.md, references/, scripts/) + `shared/references/` → generated `dist/{public,private}/`.
+- Codebase state after v0.0.4: 1,380 LOC plain ESM JS (`bin/` + `src/`), 131 tests (`node --test`), single dep `yaml`, husky pre-commit full-suite hook, no CI.
+- Known debt: no CI (CI-01), `author-skill` instructional skill under review (challenge before rework), repo still private.
 
 ## Constraints
 
@@ -77,15 +95,19 @@ None active — start the next with `/gsd-new-milestone`. Backlog candidates in 
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Output = standard Agent Skills (not a bespoke format/runtime) | Portability is a fundamental | — Pending |
-| Build = lint + resolve-deps + copy (no content compiler) | Maintainability; compilers rot | — Pending |
-| Distribute via plugin; output named per-project (`/myproject`, not `/motto`) | Motto's brand never reaches consumers | — Pending |
-| `audience` binary (`public`\|`private`), private optional | A `both` value would collide across locally-installed plugins | — Pending |
-| Spine = Title + Role, mandatory but template-waivable | The rigid-vs-creative dial; escape hatch is explicit | — Pending |
-| v1 ships zero concrete templates (mechanism only) | YAGNI — design templates against real skills | — Pending |
-| Config in `motto.yaml` | Project-specific, room for future prefs (output language…) | — Pending |
+| Output = standard Agent Skills (not a bespoke format/runtime) | Portability is a fundamental | ✓ Good — dogfooded v0.0.2, marketplace-installed v0.0.3, scaffolded v0.0.4 |
+| Build = lint + resolve-deps + copy (no content compiler) | Maintainability; compilers rot | ✓ Good — verbatim copy held through 4 milestones |
+| Distribute via plugin; output named per-project (`/myproject`, not `/motto`) | Motto's brand never reaches consumers | ✓ Good — init scaffolds marketplace.json named per project |
+| `audience` binary (`public`\|`private`), private optional | A `both` value would collide across locally-installed plugins | ✓ Good — v0.0.2 |
+| Spine = Title + Role, mandatory but template-waivable | The rigid-vs-creative dial; escape hatch is explicit | ✓ Good — held through dogfood + scaffold |
+| v1 ships zero concrete templates (mechanism only) | YAGNI — design templates against real skills | — Pending (TMPL-01 still deferred) |
+| Config in `motto.yaml` | Project-specific, room for future prefs (output language…) | ✓ Good |
 | Install mechanism (global plugin vs repo-local `.motto/`) left open | Decide in the distribution follow-up plan | ✅ v0.0.3 — npm (CLI) + self-hosted marketplace (skills) |
 | No `--zip` build feature; document shell one-liner instead | Desktop Code tab is Claude Code → marketplace covers it; zip is web-upload-only edge case; keeps zero-dep + no Node zip code | ✅ v0.0.3 (research-backed) |
+| Init templates as inline strings in `src/init.js` (not `skills/` or `src/templates/`) | Avoids polluting Motto's own dogfood skill count and `dist/public/` | ✅ v0.0.4 |
+| `motto init` is flag-driven only — no interactive prompts | Would add a dep, break scriptable/agent use, duplicate lint's validation | ✅ v0.0.4 (research-backed anti-feature) |
+| No RESERVED-word check on `plugins.public/private` names (doc fix only, DEBT-01) | Over-strictness would reject spec-conformant names like `claude-notes-sync` | ✅ v0.0.4 |
+| No `motto ship` command | After init + build, shipping is two git commands; marketplace.json already scaffolded | ✅ v0.0.4 (backlog SHIP-01 until real friction) |
 
 ## Evolution
 
@@ -105,4 +127,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-01 — v0.0.3 (Distribution) shipped + archived*
+*Last updated: 2026-07-02 after v0.0.4 milestone*

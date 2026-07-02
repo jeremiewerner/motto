@@ -1,342 +1,260 @@
-# Architecture Research
+# Architecture Research — v0.0.4 Project Bootstrap (`motto init`)
 
-**Domain:** Node.js lint/build CLI — self-hosting integration (v0.0.2)
-**Researched:** 2026-06-30
-**Confidence:** HIGH (all decisions derived by reading the live source tree; no speculation)
+**Domain:** Internal integration design (not external ecosystem research) — how `motto init`, `--help`, and `[path]` fit into Motto's existing pure-core/thin-I/O-shell architecture.
+**Researched:** 2026-07-01
+**Confidence:** HIGH — derived directly from reading `bin/motto.js`, `src/lint.js`, `src/build.js`, `src/schema.js`, `src/config.js`, `src/frontmatter.js`, `test/dogfood.test.js`, `test/build.test.js`, `package.json`, `.claude-plugin/marketplace.json`, `motto.yaml`, `skills/setup-project/SKILL.md`. No external sources needed — the question is "how does this fit the codebase we already have," not "what does the ecosystem do."
 
----
+## Existing Architecture (baseline)
 
-## Part 1 — v0.0.1 Core Architecture (existing, for context)
-
-### System Overview
+Motto already follows one consistent shape across `lint` and `build`, and v0.0.4 should extend it rather than invent a new one.
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│  CLI Entry (bin/motto.js)                                        │
-│  parse argv → call lintProject/buildProject → print → exitCode  │
-├──────────────────────────┬──────────────────────────────────────┤
-│  Orchestration           │                                       │
-│  lint.js                 │  build.js                             │
-│  (fs → schema core)      │  (lint-guard → fs → emit)            │
-├───────┬──────────────────┴────────────┬──────────────────────────┤
-│  IO shell (inline in lint.js/build.js)│  Pure Core               │
-│  ┌──────────────┐ ┌────────────────┐  │  ┌──────────┐ ┌───────┐ │
-│  │processConfig │ │discoverSkill   │  │  │frontmattr│ │schema │ │
-│  │(reads yaml)  │ │Names/Skill     │  │  │.js       │ │.js    │ │
-│  └──────────────┘ └────────────────┘  │  │(pure str)│ │(pure) │ │
-└───────────────────────────────────────┴──────────────────────────┘
+┌──────────────────────────────────────────────────────────────────┐
+│ bin/motto.js  (thin I/O shell — argv, exit codes, stdout/stderr)  │
+│   parseArgs({ strict:true, allowPositionals:true })                │
+│   dispatch on positionals[0]: lint | build | (init, --help — NEW) │
+└───────────────┬─────────────────────────────┬─────────────────────┘
+                │                             │
+                ▼                             ▼
+   ┌─────────────────────────┐   ┌─────────────────────────┐   ┌───────────────────────┐
+   │ src/lint.js              │   │ src/build.js             │   │ src/init.js  (NEW)     │
+   │ lintProject(projectRoot) │   │ buildProject(projectRoot)│   │ initProject(root,name) │
+   │ — I/O shell, NEVER throws│   │ — I/O shell, gates on    │   │ — I/O shell, NEVER     │
+   │   collect-errors pattern │   │   lintProject, collect-  │   │   throws, collect-     │
+   │                          │   │   errors-before-mutate   │   │   errors-before-write  │
+   └────────────┬──────────────┘   └────────────┬──────────────┘   └────────────┬──────────┘
+                │ imports                       │ imports                       │ imports
+                ▼                                ▼                                ▼
+   ┌──────────────────────────────────────────────────────────────────────────────────┐
+   │ Pure core — no I/O, NEVER throws (D-01), unit-tested directly                     │
+   │  src/frontmatter.js  parseFrontmatter(text), safeToJS(doc)                         │
+   │  src/schema.js       validateSkill(skill, sharedRefs), NAME_KEBAB (single source)  │
+   │  src/config.js       loadConfig(text)  — re-exports NAME_KEBAB from schema.js      │
+   │  src/templates.js    starterSkillTemplate(), motoYamlTemplate(name), … (NEW)       │
+   └──────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### Actual module shape (as-built — corrects pre-implementation plan)
+**Established conventions v0.0.4 must not break:**
+- **Pure core / thin I/O shell split.** `frontmatter.js` / `schema.js` / `config.js` take strings/objects, return `{ data|config, errors[] }`, never touch disk, never throw. `lint.js` / `build.js` are the only modules that call `fs/promises`. This split is *why* those three modules are trivially unit-testable and why `lint.js`/`build.js` are tested via `mkdtemp` fixtures instead.
+- **Never-throw invariant (D-01).** Every public entry point returns `{ ok, errors[], ... }`. Errors are collected, not thrown, and the caller decides `process.exitCode` (never `process.exit(1)` after buffered writes — Pitfall 7).
+- **Check-before-mutate ordering.** `build.js` runs ALL pre-pack checks (collision D3-07, private-contradiction D3-12) and returns early on any failure *before* wiping `dist/`. Nothing destructive happens until every check has passed.
+- **Single source of truth for shared constants.** `NAME_KEBAB` lives in `schema.js` only; `config.js` re-exports it (proven by reference-identity in `dogfood.test.js`) rather than holding its own copy.
+- **`projectRoot` as a plain absolute-path parameter.** `lintProject(projectRoot)` and `buildProject(projectRoot)` already take the root as an argument — `bin/motto.js` is the only place that currently hardcodes `process.cwd()`. This was foreseen: v0.0.3's PROJECT.md explicitly carries forward "optional `[path]` arg" as deferred scope, and the signatures were already designed decoupled from cwd to make that trivial.
 
-| File | Layer | Exported symbol | Signature |
-|------|-------|----------------|-----------|
-| `src/frontmatter.js` | Pure core | `parseFrontmatter` | `(text) → {data, body, errors[]}` |
-| `src/schema.js` | Pure core | `validateSkill` | `({dirName,data,body}, sharedRefs) → errors[]` |
-| `src/config.js` | **Pure core** (takes text, not path) | `loadConfig` | `(text) → {config, errors[]}` |
-| `src/lint.js` | IO orchestration | `lintProject` | `(projectRoot) → {ok, errors[], count}` |
-| `src/build.js` | IO orchestration + emit | `buildProject` | `(projectRoot) → {ok, outDir, errors[], skillCount, bucketCount}` |
-| `bin/motto.js` | CLI entry | (executable) | parse argv → call lint/build → exitCode |
+## New vs Modified Components
 
-`config.js` is pure (accepts a string, not a path). The IO wiring — read `motto.yaml` from disk, pass text to `loadConfig` — lives inside `lint.js` (`processConfig`) and `build.js`. `discover.js` was not created as a separate module; discover logic is inlined as private helpers in `lint.js` and `build.js`.
+| Component | New / Modified | Responsibility |
+|---|---|---|
+| `src/init.js` | **NEW** | I/O-shell orchestrator, `initProject(targetPath, name)`. Mirrors `lint.js`/`build.js` shape: never throws, collects errors, checks-before-write. |
+| `src/templates.js` | **NEW** | Pure module. Exports pure string-generator functions (no I/O): `motoYamlTemplate(name)`, `marketplaceJsonTemplate(name)`, `gitignoreTemplate()`, `starterSkillTemplate()`. Unit-testable in isolation exactly like `schema.js`/`config.js`. |
+| `test/init.test.js` | **NEW** | Two layers: (1) pure unit tests feeding `templates.js` output straight through `parseFrontmatter`/`validateSkill`/`loadConfig`; (2) `mkdtemp`-based integration test calling `initProject` → `lintProject` → `buildProject` (the "scaffold-dogfood" round trip). |
+| `bin/motto.js` | **MODIFIED** | Add `init` subcommand dispatch; add `--help`/`-h` to the `parseArgs` options schema + a global help branch; resolve an optional `[path]` positional for `lint`/`build` via `node:path resolve()`. |
+| `skills/setup-project/` | **DELETED** | Folded into `motto init` + README. Deleting this changes Motto's own skill count from 3 → 2. |
+| `test/dogfood.test.js` | **MODIFIED** | Hardcoded assertions (`count === 3`, `skillCount === 3`) must drop to 2, and the `dist/public/setup-project/SKILL.md` existence check must be removed. **Must land in the same commit as the `skills/setup-project/` deletion** — a split would leave `main` red. |
+| `README.md` | **MODIFIED** | New "ship your plugin" section (init → build → commit `dist/public/` → `/plugin marketplace add` one-liner). Pure docs, no code dependency — can be written independently of the other work. |
+| `package.json` | **NOT MODIFIED** | `files` allowlist (`bin/`, `src/`, `dist/public/`) already covers `src/init.js` and `src/templates.js`. No change needed for packaging. |
 
----
+## `src/init.js` — Orchestrator Design
 
-## Part 2 — v0.0.2 Self-Hosting Integration Architecture
-
-### The Integration Question
-
-Motto has no skills of its own. v0.0.2 adds a real `skills/` tree + `motto.yaml` to the repo and wires a dogfood test into `node --test`. The key tension: `buildProject(projectRoot)` **wipes and rewrites `dist/`**. If the dogfood test passes the repo root as `projectRoot`, every `npm test` / pre-commit hook destroys the repo's `dist/`.
-
-### Repo Layout After v0.0.2
-
-```
-motto/                              ← repo root (REPO_ROOT)
-├── bin/motto.js                    unchanged
-├── src/                            unchanged + possible gap-fix edits
-│   ├── frontmatter.js
-│   ├── schema.js
-│   ├── config.js
-│   ├── lint.js
-│   └── build.js
-├── test/
-│   ├── build.test.js               unchanged
-│   ├── config.test.js              unchanged
-│   ├── frontmatter.test.js         unchanged
-│   ├── lint.test.js                unchanged
-│   ├── schema.test.js              unchanged
-│   └── dogfood.test.js             NEW — integration regression guard
-├── skills/                         NEW — Motto's own skill source files
-│   ├── <public-skill>/
-│   │   └── SKILL.md
-│   └── <private-skill>/
-│       └── SKILL.md
-├── shared/                         NEW — shared reference files
-│   └── references/
-│       └── <ref>.md
-├── motto.yaml                      NEW — Motto's own project config
-├── dist/                           RUNTIME ARTIFACT — gitignored; never written by tests
-├── package.json                    unchanged
-├── .gitignore                      unchanged (dist/ already listed)
-└── .husky/pre-commit               unchanged (npm test covers dogfood automatically)
-```
-
-### Component Responsibilities
-
-| Component | Status | Responsibility | Integration point |
-|-----------|--------|----------------|-------------------|
-| `motto.yaml` (repo root) | NEW | Project identity: name, version, description, plugins.public, plugins.private | Read by `lintProject(REPO_ROOT)` and `buildProject(tempDir)` |
-| `skills/<name>/SKILL.md` | NEW (≥2) | Real Motto skill content — ≥1 public, ≥1 private | Discovered by `lintProject` / `buildProject` |
-| `shared/references/<ref>.md` | NEW (≥1) | Shared reference bundled into each skill at build | Bundled by `buildProject` |
-| `dist/` (repo root) | EXISTING (gitignored) | Build output — written by `motto build` CLI invocations | NOT written by any test; developers run `motto build` manually |
-| `test/dogfood.test.js` | NEW | Integration regression guard: lint passes + build produces expected output | Discovered by `node --test` auto-discovery; calls `lintProject(REPO_ROOT)` and `buildProject(tempDir)` |
-| `src/*.js` | POSSIBLY MODIFIED | Schema/lint/build gap fixes surfaced by dogfooding real content | Modified only if gaps are discovered |
-
----
-
-## Architectural Patterns
-
-### Pattern 1: Split lint and build concerns in the dogfood test
-
-**What:** Lint is read-only. Build is destructive. Treat them separately in the dogfood test.
-
-- **Lint assertion**: call `lintProject(REPO_ROOT)` directly. No mutation, no temp dir needed. This is equivalent to the developer running `motto lint` — a pure read operation over the real tree.
-- **Build assertion**: copy `skills/`, `shared/`, `motto.yaml` to a `mkdtemp` temp dir, then call `buildProject(tempDir)`. The wipe runs on `tempDir/dist`, not `REPO_ROOT/dist`.
-
-**Why this split:** `buildProject` calls `rm(distDir, {recursive:true,force:true})` unconditionally (step 4 in build.js). If `projectRoot = REPO_ROOT`, every test run destroys whatever `dist/` the developer last built. This turns the pre-commit hook from a regression guard into an adversary.
-
-**Trade-off:** The build test uses a copy of the source tree, so it's testing the snapshot at test time. This is correct — the test asserts the committed tree builds cleanly, not some in-flight edit.
+`initProject` is the third I/O-shell orchestrator, but its risk profile differs from `lint`/`build`: it *writes into a target that may not yet be a Motto project*, so its main job is refusing to clobber, not validating an existing tree.
 
 ```js
-// test/dogfood.test.js — canonical shape
+export async function initProject(targetPath, name) {
+  const errors = [];
 
-import { describe, it } from 'node:test';
-import assert from 'node:assert/strict';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { mkdtemp, cp, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { lintProject } from '../src/lint.js';
-import { buildProject } from '../src/build.js';
+  // 1. Validate the incoming name FIRST — reuse NAME_KEBAB from schema.js,
+  //    the same single-source-of-truth pattern config.js already uses (D-16).
+  //    Reject rather than silently slugify (matches "manual validation, specific
+  //    actionable errors" philosophy already used in schema.js/config.js).
+  if (!NAME_KEBAB.test(name)) {
+    errors.push({ skill: '(init)', message: `name must be letter-start kebab-case: "${name}"` });
+    return { ok: false, errors, dir: null };
+  }
 
-// Two dirname() calls: test/dogfood.test.js → test/ → repo root
-const REPO_ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
+  // 2. Pre-flight collision checks — collect ALL, write NOTHING yet
+  //    (mirrors build.js: checks before ANY mutation).
+  //    - motto.yaml already exists?
+  //    - skills/ already exists and is non-empty?
+  //    ... push to errors[], do not throw, do not partially write.
 
-describe('dogfood: Motto self-validates its own skills tree', () => {
-  it('lintProject passes with zero errors on the real skills/ tree', async () => {
-    const result = await lintProject(REPO_ROOT);
-    assert.strictEqual(result.ok, true, JSON.stringify(result.errors, null, 2));
-  });
+  if (errors.length > 0) return { ok: false, errors, dir: null };
 
-  it('buildProject produces expected dist/ layout (isolated temp dir)', async () => {
-    const tmp = await mkdtemp(join(tmpdir(), 'motto-dogfood-'));
-    try {
-      // Copy real source tree to isolated temp dir — build writes tmp/dist, not REPO_ROOT/dist
-      await cp(join(REPO_ROOT, 'skills'), join(tmp, 'skills'), { recursive: true });
-      await cp(join(REPO_ROOT, 'shared'), join(tmp, 'shared'), { recursive: true });
-      await cp(join(REPO_ROOT, 'motto.yaml'), join(tmp, 'motto.yaml'));
+  // 3. Only after all checks pass: mkdir + writeFile everything, using the
+  //    PURE generator functions from src/templates.js.
 
-      const result = await buildProject(tmp);
-      assert.strictEqual(result.ok, true, JSON.stringify(result.errors, null, 2));
-      // Assert specific structure: skill counts, bucket counts, plugin names
-      // e.g.: assert.strictEqual(result.skillCount, 2);
-    } finally {
-      await rm(tmp, { recursive: true, force: true });
-    }
-  });
+  return { ok: true, errors: [], dir: targetPath };
+}
+```
+
+Key decisions:
+- **Return shape mirrors `lintProject`/`buildProject`**: `{ ok, errors[], ... }`, never throws at the boundary, `bin/motto.js` decides `process.exitCode`.
+- **Refuse, don't overwrite.** An existing `motto.yaml` or non-empty `skills/` is a hard error, not a merge/overwrite. This is the `init`-specific analogue of build's collision checks — same "collect all problems, mutate nothing until clean" discipline.
+- **`initProject` does NOT call `lintProject` on itself at runtime.** Running a full lint pass after every `motto init` would be redundant work and — if a schema regression ever slipped through — would surface as a *confusing failure inside init* rather than a clear test failure. Self-verification belongs in the test suite (see Scaffold-Dogfood below), not in the production code path.
+
+## `src/templates.js` — Where Scaffold Content Lives
+
+**Decision: inline pure JS template functions, not template files under `src/templates/`.**
+
+| Option | Verdict |
+|---|---|
+| Inline pure functions (`starterSkillTemplate()` etc., string arrays joined by `\n`) | **Chosen.** No new I/O, no path-resolution surface, matches existing test-fixture idiom (`test/build.test.js`'s `makeSkillMd(name)` already builds SKILL.md content exactly this way — array of lines, `.join('\n')`). Unit-testable with zero filesystem. |
+| Static `.md`/`.json` files under `src/templates/`, read via `fileURLToPath(import.meta.url)`-relative paths | Rejected for v0.0.4. Requires resolving paths relative to the *installed npm package location* (not cwd) — correct but adds a whole failure mode (wrong relative depth, `files` allowlist must include the new subfolder, symlink/verbatim copy concerns echo `build.js`'s `verbatimSymlinks` pitfall). For ~4 short files this is solving a problem Motto doesn't have yet. Revisit only if/when TMPL-01 (concrete templates) ships and the content volume actually justifies a file-based system. |
+
+`src/templates.js` stays a **pure module** — same category as `frontmatter.js`/`schema.js`/`config.js`: no `fs`, no `path` I/O, string in (where relevant) → string out, never throws (trivially true since there's no I/O to fail). `src/init.js` is the only consumer, and is the only place `fs/promises` gets called for these strings.
+
+Two of the four templates need the user-supplied name; two don't:
+
+| Template | Needs `name`? | Notes |
+|---|---|---|
+| `motoYamlTemplate(name)` | Yes | `name:` and `plugins.public: <name>` |
+| `marketplaceJsonTemplate(name)` | Yes | `.claude-plugin/marketplace.json`, mirrors Motto's own (`source: npm` pattern is Motto-specific — a fresh project's marketplace should point at a relative/local source, not npm, since the user hasn't published yet. Confirm this shape against `PROJECT.md`'s "relative source → `dist/public/`" note before implementing.) |
+| `gitignoreTemplate()` | No | Static: `node_modules/`, `dist/` |
+| `starterSkillTemplate()` | No — **fixed, name-independent** | See below. |
+
+**The starter skill's own name is deliberately decoupled from the project name.** `motto init my-cool-project` should not need to slugify `my-cool-project` into a *skill* name — that invites exactly the kind of double-validation bug this milestone should avoid. Instead, the starter skill folder is always a fixed, hand-verified-conformant literal (e.g. `skills/example/`), independent of what the user names their project. Only `motto.yaml`'s `name`/`plugins.public` fields carry the user's name, and those are validated against `NAME_KEBAB` up front in `initProject` (see above) — reusing the same regex `schema.js` already exports, making `init.js` the third consumer of that single source of truth (after `schema.js` itself and `config.js`'s re-export).
+
+## `[path]` Arg — Threading Through Existing Signatures
+
+`lintProject(projectRoot)` and `buildProject(projectRoot)` **already take an absolute root path as their only argument** — no signature change needed in either file. This is purely a `bin/motto.js` concern:
+
+```js
+const targetPath = parsed.positionals[1]
+  ? resolve(process.cwd(), parsed.positionals[1])
+  : process.cwd();
+
+const result = await lintProject(targetPath); // was: lintProject(process.cwd())
+```
+
+`resolve()` (not `join()`) handles both relative (`motto lint ./sub`) and already-absolute (`motto lint /tmp/proj`) inputs correctly, and matches the "absolute path to project root" contract already documented in both orchestrators' JSDoc.
+
+**`init` is NOT the same arg.** `motto init [name]` takes a *name*, not a *path* — it always scaffolds into `process.cwd()`. Mixing the two semantics (`[path]` for lint/build vs `[name]` for init) is intentional and matches the requirement text (`motto init [name]` vs `lint`/`build`'s `[path]`), but it's a point worth flagging explicitly in planning: a first-time reader could reasonably expect `motto init` to behave like `npm init <dir>` (create-and-cd-into a new directory). **Recommendation for scope: `motto init [name]` writes into the current directory; `[name]` only populates `motto.yaml`/`marketplace.json` fields (defaulting to `basename(process.cwd())` when omitted).** Directory-creation semantics (`motto init foo` → `mkdir foo && cd foo`) are a plausible future nice-to-have but add scope (must then also decide what happens if `foo/` exists, nested cwd resolution, etc.) — defer unless the roadmapper/PM wants to lock it in now.
+
+## `--help` Coexisting With `strict:true`
+
+Current `bin/motto.js` passes `options: {}` to `parseArgs({ strict: true, allowPositionals: true })`. With an empty options schema, **any** flag — including `--help` — is "unknown" and throws, landing in the generic `catch` that prints the terse one-liner usage and exits 1. That's the wrong behavior for `--help` (needs exit 0 + real usage text) but the *right* behavior to preserve for genuinely unknown flags.
+
+**Fix: declare `--help` as a known option, don't touch `strict:true`.**
+
+```js
+parsed = parseArgs({
+  args: process.argv.slice(2),
+  options: { help: { type: 'boolean', short: 'h' } }, // NEW
+  allowPositionals: true,
+  strict: true, // unchanged — still rejects truly unknown flags
 });
+
+if (parsed.values.help) {
+  process.stdout.write(USAGE_TEXT);
+  process.exit(0); // safe: nothing async has happened yet, nothing buffered to lose (same precedent as the existing catch-block process.exit())
+}
 ```
 
-### Pattern 2: REPO_ROOT via `import.meta.url`
+This is the entire fix — `strict:true` only rejects flags *absent from the schema*; adding `help` to the schema makes it a recognized, typed flag, so strict-mode rejection and `--help` support are not in tension. Check `parsed.values.help` **before** the `sub === 'lint' | 'build' | 'init'` dispatch chain so `motto --help`, `motto lint --help`, and `motto init --help` all short-circuit to the same usage text + exit 0, regardless of what subcommand (if any) was also present — standard CLI convention (help always wins).
 
-**What:** Compute the absolute repo root from the test file's own URL — not from `process.cwd()`.
+`USAGE_TEXT` is a plain string constant in `bin/motto.js` (mirrors the existing `'usage: motto <lint|build>\n'`, just expanded to document `lint [path]`, `build [path]`, `init [name]`, `--help`). No new module needed — this is CLI-shell-only content, matching the "commander is heavyweight for two subcommands, write help as a constant string" decision already recorded in STACK.md.
 
-```js
-const REPO_ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
-// test/dogfood.test.js → test/ → repo root
-```
+## Scaffold-Dogfood: Keeping the Starter Skill Conformant as `schema.js` Evolves
 
-**Why not `process.cwd()`:** `npm test` happens to run from the package root, so `process.cwd()` works. But `node --test test/dogfood.test.js` run from a different directory breaks silently. `import.meta.url` is always an absolute URL for the file, stable regardless of invocation directory.
+This is the sharpest integration risk in this milestone. `schema.js`'s rules have already changed three times across v0.0.1–v0.0.3 (letter-start kebab fix D-08, reserved-substring check D-09, XML-tag description check D-05, max-length checks D-03). None of those changes are visible to a template that lives outside Motto's own `skills/` tree — and the starter skill emitted by `motto init` is exactly that: content Motto ships but never lints against itself, unless a test forces it to.
 
-### Pattern 3: `node --test` auto-discovery of `dogfood.test.js`
+**Answer: yes, dogfood-test the scaffold output — as a dedicated regression test, not a runtime check.**
 
-**What:** `node --test` (the `"test"` script in `package.json`) discovers all `*.test.js` files recursively from the package root. Adding `test/dogfood.test.js` is sufficient — no `package.json` change needed.
+Two layers, both in `test/init.test.js`:
 
-**Discovery collision check:**
-- `skills/` directories contain `SKILL.md`, not `*.test.js` — not discovered
-- `shared/references/` contains `.md` files — not discovered
-- `dist/` contains `.json` and `.md` files — not discovered (and usually absent during test runs)
-- `node_modules/` — excluded by default in Node 20+
+1. **Fast, pure unit check** (no filesystem): call `templates.starterSkillTemplate()` directly, feed its output straight through `parseFrontmatter()` then `validateSkill()` (both pure, already imported this way in `test/schema.test.js`/`test/frontmatter.test.js`), assert `errors.length === 0`. Catches most schema-shape regressions in milliseconds, same style as existing unit tests.
+2. **Slow, full round-trip check** (mirrors `test/dogfood.test.js`'s existing "dogfood build (DOG-03)" block, just pointed at `initProject`'s output instead of the repo's own `skills/`):
+   ```js
+   tempDir = await mkdtemp(...);
+   const initResult = await initProject(tempDir, 'demo-project');
+   assert.strictEqual(initResult.ok, true, ...);
 
-No runner config changes required.
+   const lintResult = await lintProject(tempDir);
+   assert.strictEqual(lintResult.ok, true, `scaffold failed lint:\n${JSON.stringify(lintResult.errors)}`);
 
----
+   const buildResult = await buildProject(tempDir);
+   assert.strictEqual(buildResult.ok, true, ...);
+   ```
 
-## Data Flow
+This makes the starter skill a continuously-verified artifact using the exact machinery already built for Motto's own dogfooding — no new validation logic, just a new fixture target. Any future `schema.js` change that breaks the template fails this test immediately, the same safety net `dogfood.test.js` already provides for `skills/author-skill` and `skills/release`.
 
-### Dogfood Lint Flow (read-only, real tree)
+**Sequencing implication:** `src/templates.js` (and therefore `starterSkillTemplate()`) has a hard dependency on `schema.js`'s *current* rules being stable at the moment it's authored — the template's frontmatter (`name`, `description`, `audience: public`) and body (`# Title` then a `**Role:**` line) must satisfy every current `validateSkill` check by construction. Since `schema.js` is not changing in this milestone, this is a one-time authoring constraint, not an ongoing coupling risk — but the two-layer test above is what prevents it from becoming one later.
 
-```
-test/dogfood.test.js
-    │
-    └─ lintProject(REPO_ROOT)
-           ├─ processConfig(REPO_ROOT)     reads REPO_ROOT/motto.yaml
-           ├─ loadSharedRefs(REPO_ROOT)    reads REPO_ROOT/shared/references/*.md → Set
-           ├─ discoverSkillNames()         reads REPO_ROOT/skills/ → sorted names[]
-           └─ processSkill() × N          reads each REPO_ROOT/skills/<n>/SKILL.md
-                                           calls parseFrontmatter → validateSkill
-           ↓
-    assert result.ok === true
-    (no files written anywhere)
-```
-
-### Dogfood Build Flow (isolated temp dir)
+## Data Flow: `motto init [name]`
 
 ```
-test/dogfood.test.js
-    │
-    ├─ mkdtemp() → /tmp/motto-dogfood-XXXXX/   (OS temp, not repo)
-    ├─ cp(REPO_ROOT/skills  → tmp/skills,  {recursive})
-    ├─ cp(REPO_ROOT/shared  → tmp/shared,  {recursive})
-    ├─ cp(REPO_ROOT/motto.yaml → tmp/motto.yaml)
-    │
-    └─ buildProject(tmp)
-           ├─ lintProject(tmp)              [gate — reads tmp/]
-           ├─ loadConfig(tmp/motto.yaml)
-           ├─ discoverSkillNames(tmp/skills)
-           ├─ pre-pack checks
-           ├─ rm(tmp/dist, recursive)       ← wipes tmp/dist, NOT REPO_ROOT/dist
-           ├─ cp(tmp/skills/<n> → tmp/dist/...)
-           └─ writeFile(tmp/dist/.../plugin.json)
-           ↓
-    assert result.ok === true
-    ↓
-    rm(tmp, recursive)                      ← cleanup
+motto init my-project
+        │
+        ▼
+bin/motto.js: parseArgs → sub='init', positionals[1]='my-project'
+        │
+        ▼
+name = positionals[1] ?? basename(process.cwd())
+        │
+        ▼
+initProject(process.cwd(), name)
+        │
+        ├─ 1. NAME_KEBAB.test(name) → error+return if invalid (schema.js import)
+        │
+        ├─ 2. pre-flight collision checks (motto.yaml exists? skills/ non-empty?)
+        │       → collect ALL, return early if any — nothing written yet
+        │
+        └─ 3. write (only after checks pass):
+                motto.yaml                       ← templates.motoYamlTemplate(name)
+                .claude-plugin/marketplace.json  ← templates.marketplaceJsonTemplate(name)
+                .gitignore                       ← templates.gitignoreTemplate()
+                skills/example/SKILL.md          ← templates.starterSkillTemplate()
+                shared/references/               ← mkdir (empty; ready for future refs)
+        │
+        ▼
+bin/motto.js: print success + next-step hint ("run `motto lint`" / "`motto build`")
 ```
 
----
+## Suggested Build Order (for the roadmapper)
 
-## Anti-Patterns
+Ordered by hard dependency, not by requirement priority:
 
-### Anti-Pattern 1: Dogfood build test calls `buildProject(REPO_ROOT)`
+1. **`src/templates.js` (pure functions) + unit tests.** No dependency on `init.js` or filesystem. Proves schema-conformance of the starter skill content early and cheaply by piping template output through the already-existing pure validators (`parseFrontmatter`, `validateSkill`, `loadConfig`). This is the highest-risk piece (schema drift) — do it first and lock it down with tests before building anything on top of it.
+2. **`src/init.js` (I/O shell) + integration tests.** Depends on (1) for content and on `schema.js`'s `NAME_KEBAB` for name validation. Uses the same `mkdtemp` fixture pattern already established in `test/build.test.js`/`test/dogfood.test.js`.
+3. **Scaffold-dogfood round trip.** Depends on (2) plus the already-existing `lintProject`/`buildProject`. This is the regression guard described above — write it right after `init.js` works, not as an afterthought.
+4. **`bin/motto.js` wiring**: `init` subcommand dispatch, `[path]` positional resolution for `lint`/`build`, `--help`/`-h` support. Depends on (2) existing; otherwise independent of (1)/(3). The `[path]` and `--help` changes have no dependency on `init.js` at all and could technically ship first/in parallel if useful for sequencing flexibility.
+5. **Delete `skills/setup-project/` + update `test/dogfood.test.js` counts.** Must depend on (4) being functional enough that README/users have a replacement path (`motto init`) before the instructional skill disappears. **The deletion and the `count: 3→2` test-assertion fix must land together** — never split across commits/phases, or `main` goes red between them.
+6. **README "ship your plugin" section.** Pure docs. No code dependency — can be written in parallel with any of 1–5, but should be finished after (4)/(5) so the documented commands and skill count are accurate.
 
-**What people do:** Pass `REPO_ROOT` to `buildProject` in the dogfood test for simplicity — the real tree is already there.
+## Anti-Patterns to Avoid
 
-**Why it's wrong:** `buildProject` runs `rm(join(projectRoot,'dist'), {recursive:true,force:true})` in step 4 before writing. Every `npm test` invocation — including every Husky pre-commit hook — wipes the repo's `dist/`. A developer who runs `motto build` and then `git commit` finds their build gone. If two tests run in the same process and one expects `dist/` to exist, test order becomes load-bearing.
+### Anti-Pattern 1: Running `lintProject` inside `initProject` at runtime
+**What people do:** "Just call lint after scaffolding to be safe."
+**Why it's wrong:** Turns a should-never-fail code path into one with a new failure mode, and hides a template bug behind a confusing user-facing lint error from `motto init` itself instead of a clean test failure at development time.
+**Instead:** Verify the template's conformance in tests (scaffold-dogfood, above), keep `initProject` itself simple and trustworthy by construction.
 
-**Do this instead:** Copy `skills/`, `shared/`, `motto.yaml` to `mkdtemp`, call `buildProject(tempDir)`. The lint sub-test can still call `lintProject(REPO_ROOT)` — lint never writes.
+### Anti-Pattern 2: Slugifying the project name into the starter skill's folder/name
+**What people do:** Reuse the user's `[name]` argument for both `motto.yaml`'s project name and the starter skill's `name:`/folder, running it through some slugify step.
+**Why it's wrong:** Doubles the surface that must satisfy `NAME_KEBAB` + reserved-word + max-length checks, and couples two independent concerns (project identity vs. one example skill's identity) for no benefit.
+**Instead:** Fixed, hand-verified starter skill name (e.g. `example`), decoupled from the user-supplied project name.
 
-### Anti-Pattern 2: Placing `skills/` inside `src/`, `test/`, or a nested subdirectory
+### Anti-Pattern 3: Splitting the `setup-project` deletion from the `dogfood.test.js` count fix
+**What people do:** Delete the skill in one phase/commit, "fix tests later."
+**Why it's wrong:** `test/dogfood.test.js` hardcodes `count === 3` / `skillCount === 3` and a `dist/public/setup-project/SKILL.md` existence check — any gap between the two leaves `main` red.
+**Instead:** One phase/commit does both.
 
-**What people do:** Put the real skills tree at `src/skills/` or `example/` to "group it with the code".
+## Integration Points
 
-**Why it's wrong:** Motto users place `skills/` at repo root. Putting it elsewhere in Motto's own repo means the dogfood doesn't mirror the user experience — the regression guard tests a different layout than what users actually have. Also, `lintProject(process.cwd())` and `lintProject(REPO_ROOT)` diverge from what `motto lint` would do when run from the CLI.
+### Internal boundaries
 
-**Do this instead:** `skills/`, `shared/`, `motto.yaml` at repo root — the canonical Motto project layout.
-
-### Anti-Pattern 3: Asserting on `dist/` contents at `REPO_ROOT/dist` in tests
-
-**What people do:** After the build test, read assertions from `join(REPO_ROOT, 'dist', ...)`.
-
-**Why it's wrong:** The isolated build test writes to `tmp/dist`, not `REPO_ROOT/dist`. Reading from `REPO_ROOT/dist` asserts on whatever the last manual `motto build` left behind — a phantom dependency on developer state.
-
-**Do this instead:** All assertions read from `join(tmp, 'dist', ...)`. The temp dir is the single source of truth for the build test.
-
-### Anti-Pattern 4: Using unit-test fixture helpers to author real skill content
-
-**What people do:** Reuse `makeSkillMd(name)` from `build.test.js` to generate `SKILL.md` content for the real `skills/` tree.
-
-**Why it's wrong:** Unit-test helpers produce minimal synthetic content. The real `skills/` tree should contain actual documentation that exercises the schema fully (including `shared_references`, `template:`, body spine, etc.). Using synthetic helpers defeats the dogfood purpose — the whole point is to lint content that a human would author.
-
-**Do this instead:** Hand-author the real `SKILL.md` files. This is the dogfood moment — if authoring is painful, that's signal to fix the schema.
-
----
-
-## Integration Points — New vs Modified Files
-
-### New Files
-
-| Path | Why new |
-|------|---------|
-| `motto.yaml` | Motto's own project config — required by `lintProject` / `buildProject` |
-| `skills/<public-skill>/SKILL.md` | ≥1 public-audience skill |
-| `skills/<private-skill>/SKILL.md` | ≥1 private-audience skill |
-| `shared/references/<ref>.md` | ≥1 shared reference (required for full schema surface coverage) |
-| `test/dogfood.test.js` | Lint + build integration test; permanent regression guard |
-
-### Possibly Modified Files (gap fixes)
-
-| Path | When modified |
-|------|--------------|
-| `src/schema.js` | If authoring real content surfaces a validation gap |
-| `src/lint.js` | If a lint orchestration edge case appears |
-| `src/build.js` | If a build edge case appears (e.g., `shared/` copy behavior) |
-| `src/config.js` | If `motto.yaml` config validation is missing a rule |
-
-### Unchanged Files
-
-| Path | Reason |
-|------|--------|
-| `bin/motto.js` | CLI unchanged |
-| `test/*.test.js` (existing 5) | Unit tests use `mkdtemp` fixtures; no conflict with real tree |
-| `.gitignore` | `dist/` already listed |
-| `package.json` | No new deps; `node --test` auto-discovers `dogfood.test.js` |
-| `.husky/pre-commit` | `npm test` already runs everything; dogfood test becomes a free regression guard |
-
----
-
-## Suggested Build Order
-
-Two sub-phases within Phase 4 (content-first, then wire test).
-
-**Sub-phase 4a — Author real content + fix gaps**
-
-1. Create `motto.yaml` with valid project config (name, version, description, `plugins.public`, `plugins.private`)
-2. Author `skills/<public-skill>/SKILL.md` — hand-written real documentation content
-3. Author `skills/<private-skill>/SKILL.md`
-4. Author `shared/references/<ref>.md` — referenced by at least one skill's `shared_references:`
-5. Run `node bin/motto.js lint` from repo root — expect clean; fix any schema/lint gaps in `src/`
-6. Run `npm test` — existing 53 unit tests must still pass after any gap fixes
-7. Run `node bin/motto.js build` from repo root — inspect `dist/` manually; fix any build gaps
-
-**Sub-phase 4b — Wire dogfood test**
-
-1. Write `test/dogfood.test.js`:
-   - Lint assertion: `lintProject(REPO_ROOT)` → `result.ok === true`
-   - Build assertion: copy to `mkdtemp`, `buildProject(tmp)` → `result.ok`, `skillCount`, `bucketCount`, specific plugin names from `motto.yaml`
-2. Run `npm test` — all tests (53 existing + dogfood) must pass
-3. Commit — Husky pre-commit now catches any future skill authoring that breaks lint/build
-
-**Why content-first (not TDD):** The skill names and plugin names in `motto.yaml` must be known before you can write specific assertions in `dogfood.test.js` (e.g., `assert.strictEqual(result.skillCount, 2)`). Authoring content first makes the test assertions concrete rather than provisional.
-
-**Dependency chain within 4a:**
-`motto.yaml` (lint needs it) → `skills/` content (lint validates it) → `shared/references/` (lint resolves refs) → gap fixes in `src/` → `npm test` green. Only then write `dogfood.test.js`.
-
----
-
-## Collision Risk Analysis
-
-| Risk | Assessment | Mitigation |
-|------|------------|------------|
-| `skills/` naming conflicts with Node.js conventions | None — Node has no special treatment for this dirname | None needed |
-| `node --test` discovers files in `skills/` or `dist/` | No — only `*.test.js` / `*.spec.js` are discovered; `.md` and `.json` are ignored | None needed |
-| `shared/` conflicts with existing tooling | None | None needed |
-| `motto.yaml` at root read by tools other than Motto | Harmless — it's a custom YAML file with no standard meaning | None needed |
-| `dist/` mutated by tests | **Real hazard** — addressed by Pattern 1 (temp dir isolation for build tests) | Use `mkdtemp` in dogfood build test |
-| Gap fixes in `src/` break existing 53 unit tests | Possible if a fix changes error message text that tests assert on | Run `npm test` after each gap fix before committing |
-
----
+| Boundary | Communication | Notes |
+|---|---|---|
+| `bin/motto.js` ↔ `src/init.js` | Direct async function call, `initProject(targetPath, name)` → `{ ok, errors[], dir }` | Same contract shape as `lintProject`/`buildProject`; `bin/motto.js` sets `process.exitCode`, never `process.exit(1)` post-write. |
+| `src/init.js` ↔ `src/templates.js` | Direct pure function calls, string in/out | `templates.js` never touches `fs`; `init.js` is the sole `fs/promises` caller for this content. |
+| `src/init.js` ↔ `src/schema.js` | Imports `NAME_KEBAB` | Third consumer of the single-source regex (after `schema.js` itself and `config.js`'s re-export) — keep it an import, never a re-implementation. |
+| `test/init.test.js` ↔ `src/lint.js` / `src/build.js` | Full round trip via `mkdtemp` fixtures | The scaffold-dogfood safety net; no production code depends on this, only tests. |
+| `bin/motto.js` ↔ `parseArgs` (`node:util`) | `options: { help: { type: 'boolean', short: 'h' } }`, `strict: true` unchanged | Declaring `help` removes it from "unknown flag" territory without weakening strict-mode rejection of anything else. |
 
 ## Sources
 
-- `/Users/jeremie/Projects/motto/src/build.js` — confirms `rm(join(projectRoot,'dist'), ...)` at step 4; confirmed `buildProject(projectRoot)` signature
-- `/Users/jeremie/Projects/motto/src/lint.js` — confirms `lintProject(projectRoot)` is read-only (no fs writes)
-- `/Users/jeremie/Projects/motto/test/build.test.js` — confirms `mkdtemp` isolation pattern used throughout existing tests
-- `/Users/jeremie/Projects/motto/.gitignore` — confirms `dist/` already gitignored
-- `/Users/jeremie/Projects/motto/.husky/pre-commit` — confirms `npm test` runs on every commit
-- `/Users/jeremie/Projects/motto/package.json` — confirms `"test": "node --test"` (auto-discovery); no existing test glob config
-- `/Users/jeremie/Projects/motto/.planning/PROJECT.md` — v0.0.2 goals: ≥1 public + ≥1 private + ≥1 shared ref; Phase numbering continues from 4
+- Direct codebase reads (2026-07-01): `bin/motto.js`, `src/lint.js`, `src/build.js`, `src/schema.js`, `src/config.js`, `src/frontmatter.js`, `test/dogfood.test.js`, `test/build.test.js`, `package.json`, `.claude-plugin/marketplace.json`, `motto.yaml`, `skills/setup-project/SKILL.md`. Confidence HIGH — first-party, current-state ground truth, not inferred from docs.
+- `.planning/PROJECT.md` — v0.0.4 milestone scope, requirements, explicitly-deferred `[path]` arg carried forward from v0.0.3.
+- `.planning/research/STACK.md` (prior milestone) — `parseArgs`/`commander` decision, `fileURLToPath` "__dirname equivalent" note (informs the inline-vs-file-template tradeoff above).
 
 ---
-*Architecture research for: Motto v0.0.2 Self-Hosting Integration*
-*Researched: 2026-06-30*
+*Architecture research for: motto init scaffold command (v0.0.4 Project Bootstrap)*
+*Researched: 2026-07-01*

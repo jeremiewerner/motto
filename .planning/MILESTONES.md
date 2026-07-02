@@ -2,6 +2,26 @@
 
 A historical record of shipped versions.
 
+## v0.0.4 — Project Bootstrap
+
+**Shipped:** 2026-07-02 · **Closeout:** override (4/4 phases verified, audit passed; 1 acknowledged artifact — see below)
+
+A stranger with only `npm i -g @jeremiewerner/motto` can now scaffold, build, and distribute their own skills project: `motto init` produces a complete, immediately-buildable project; `--help` and `[path]` make the CLI discoverable and relocatable; the README documents the full ship-your-plugin flow; the superseded `setup-project` skill is retired; and all five carried tech-debt items were closed in Phase 13.
+
+**Key accomplishments:**
+
+- `motto init [name] [--force]` scaffolds a complete, lint-and-build-clean skills project (starter skill, motto.yaml, .gitignore, marketplace.json) via never-throw `src/init.js`
+- Permanent scaffold-dogfood test: from-nothing init → lint → build passes with zero edits (41 new assertions)
+- Global + per-subcommand `--help` and `motto lint/build [path]` targeting with pre-dispatch directory guard (15 spawn-based CLI tests)
+- README rewritten around `motto init` with full ship-your-plugin flow; `skills/setup-project/` retired atomically (dogfood count synced, main never red)
+- All 5 deferred tech-debt items closed in Phase 13 — reserved-word doc claim corrected, git stderr leakage suppressed, process.exit() item verify-closed
+- Never-throw hardening across scaffold paths: WR-01 throw paths closed with adversarial regression tests
+
+- **Phases:** 4 (Project Scaffold · CLI Ergonomics · Docs & Cleanup · Tech-Debt Closure) · **Plans:** 9 · **Tasks:** 19 · **Commits:** 75 · **Tests:** 131
+- **Requirements:** 10/10 (INIT-01..06, CLIX-03..04, DOC-04..05) + DEBT-01..05
+- **Archives:** [roadmap](milestones/v0.0.4-ROADMAP.md) · [requirements](milestones/v0.0.4-REQUIREMENTS.md) · [audit](milestones/v0.0.4-MILESTONE-AUDIT.md)
+- Known verification overrides: 1 (quick task `260630-vzh-review-fixes` missing SUMMARY.md; work verified complete in git — see STATE.md Deferred Items)
+
 ## v0.0.3 — Distribution
 
 **Shipped:** 2026-07-01 · **Closeout:** verified (3/3 phases passed; merged to `main` @ `450274c`, tagged `v0.0.3`)
