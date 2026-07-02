@@ -26,39 +26,54 @@
 ## Phase Details
 
 ### Phase 10: Project Scaffold (`motto init`)
+
 **Goal**: A stranger with only `npm i -g @jeremiewerner/motto` can run one command and get a complete skills project that lints and builds with zero edits.
 **Depends on**: Nothing (extends the shipped v0.0.3 lint/build CLI)
 **Requirements**: INIT-01, INIT-02, INIT-03, INIT-04, INIT-05, INIT-06
 **Success Criteria** (what must be TRUE):
+
   1. Running `motto init [name]` in an empty directory produces `skills/` (with a starter example skill), `shared/references/`, `motto.yaml`, `.gitignore`, and `.claude-plugin/marketplace.json` — with `[name]` filling `motto.yaml` fields and defaulting to the cwd basename
   2. The scaffolded starter skill passes `motto lint` and `motto build` with zero edits, guarded by a permanent scaffold-dogfood test that runs init → lint → build on every commit
   3. `motto init` refuses to scaffold into a non-empty directory and reports why; `--force` overrides the guard
   4. An invalid project name is rejected by `motto init` using the exact rule `motto lint` enforces (single source: `schema.js`) — no name that init accepts is later rejected by lint
   5. The scaffolded `.gitignore` ignores `dist/private/` while keeping `dist/public/` tracked, and the `marketplace.json` plugin name matches `motto.yaml` by construction (relative source pointing at `dist/public/`, owner from git config with a placeholder fallback)
+
 **Plans**: 2 plans
+**Wave 1**
+
 - [ ] 10-01-PLAN.md — src/init.js scaffoldProject (guards, name validation, inline templates) + bin/motto.js init subcommand
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 10-02-PLAN.md — test/init.test.js unit coverage + test/init-dogfood.test.js permanent init→lint→build guard
+
 **UI hint**: no
 
 ### Phase 11: CLI Ergonomics (--help, [path])
+
 **Goal**: Users can discover Motto's usage without reading source and can lint or build a project that isn't the current directory.
 **Depends on**: Nothing (independent of scaffold; sequenced after Phase 10)
 **Requirements**: CLIX-03, CLIX-04
 **Success Criteria** (what must be TRUE):
+
   1. `motto --help` and `motto -h` print usage text to stdout and exit 0
   2. `motto <subcommand> --help` (e.g. `motto lint --help`) prints that subcommand's usage instead of running the subcommand
   3. `motto lint [path]` and `motto build [path]` operate on the given directory, defaulting to the current working directory when the path is omitted
+
 **Plans**: TBD
 **UI hint**: no
 
 ### Phase 12: Docs & Cleanup
+
 **Goal**: The README documents the full ship-your-plugin path built around `motto init`, and the now-superseded `setup-project` instructional skill is removed without ever leaving main red.
 **Depends on**: Phase 10 (README describes `motto init` output; the ship flow relies on the scaffolded `marketplace.json`)
 **Requirements**: DOC-04, DOC-05
 **Success Criteria** (what must be TRUE):
+
   1. The README documents the end-to-end ship-your-plugin flow: commit `dist/public/`, push the repo public, and the consumer's `/plugin marketplace add` one-liner
   2. The README scaffold section is rewritten around `motto init` (no manual tree instructions)
   3. `skills/setup-project/` is deleted in the same commit that updates the dogfood-test count, so `main` never goes red
+
 **Plans**: TBD
 **UI hint**: no
 
