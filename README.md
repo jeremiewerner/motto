@@ -86,7 +86,7 @@ plugins:
 Two guards protect the scaffold:
 
 - **Name:** `[name]` (or the directory name it defaults to) must be letter-start kebab-case — the same rule `motto lint` enforces on skill names.
-- **`--force`:** lets `motto init` write into a non-empty directory. It never deletes existing files; it only skips the empty-directory check.
+- **`--force`:** lets `motto init` write into a non-empty directory. It never deletes files, but the five scaffold paths (`motto.yaml`, `.gitignore`, `skills/hello-world/SKILL.md`, `shared/references/.gitkeep`, `.claude-plugin/marketplace.json`) are **overwritten** if they already exist.
 
 ---
 
@@ -126,7 +126,7 @@ motto lint [path]
 Reports every schema violation across all skills and the project config in a single run. Defaults to the current directory when `[path]` is omitted. Clean output:
 
 ```
-✓ 3 skills OK
+✓ 2 skills OK
 ```
 
 ```sh
@@ -161,10 +161,10 @@ Consumers then add your marketplace and install your plugin:
 
 ```
 /plugin marketplace add <owner>/<repo>
-/plugin install <plugin>@<repo>
+/plugin install <plugin>@<marketplace>
 ```
 
-> **Prerequisite:** substitute `<owner>/<repo>` with your own public GitHub repository, and `<plugin>` with the `plugins.public` name from your `motto.yaml`.
+> **Prerequisite:** substitute `<owner>/<repo>` with your own public GitHub repository, and `<plugin>` with the `plugins.public` name from your `motto.yaml`. `<marketplace>` is the `name` field of the scaffolded `.claude-plugin/marketplace.json` — `motto init` sets it to your project name, so for a project named `my-project` the install command is `/plugin install my-project@my-project`.
 
 ---
 
@@ -223,7 +223,7 @@ motto build
 
 ```
 # 8 — Install your public skills into Claude Code (Claude Code slash command)
-/plugin install <plugin>@<repo>
+/plugin install <plugin>@<marketplace>
 # → your project's skills (e.g. /my-project:hello-world) are now available
 ```
 
