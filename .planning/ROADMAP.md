@@ -22,7 +22,7 @@
 - [x] **Phase 10: Project Scaffold (`motto init`)** - Scaffold a complete, immediately-buildable skills project in one command (completed 2026-07-02)
 - [x] **Phase 11: CLI Ergonomics (--help, [path])** - Usage text on demand and lint/build against any directory (completed 2026-07-02)
 - [x] **Phase 12: Docs & Cleanup** - Document the ship-your-plugin path and retire the superseded `setup-project` skill (plans 3/3 executed; verification gaps from 12-VERIFICATION.md closed by Plan 03) (completed 2026-07-02)
-- [ ] **Phase 13: Address tech debt** - plugins.public reserved-word enforcement + init/CLI review items
+- [x] **Phase 13: Address tech debt** - plugins.public reserved-word enforcement + init/CLI review items (completed 2026-07-02)
 
 ## Phase Details
 
@@ -124,7 +124,7 @@ Candidates for a future milestone (detail in `milestones/v0.0.3-REQUIREMENTS.md`
 **Goal:** Close the five v0.0.4-audit tech-debt items — correct the false plugins.public/private reserved-word documentation (a DOC bug, not a validation gap; no RESERVED check added), suppress git stderr leakage in `motto init`, harden the path-escape regression test, correct the `/motto:release` namespace reference, and verify-close the already-fixed `process.exit()` item — without adding any unwarranted validation strictness.
 **Requirements**: DEBT-01, DEBT-02, DEBT-03, DEBT-04, DEBT-05 (assigned during planning; no REQUIREMENTS.md entries pre-existed)
 **Depends on:** Phase 12
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 
 **Wave 1**
 
@@ -132,4 +132,4 @@ Candidates for a future milestone (detail in `milestones/v0.0.3-REQUIREMENTS.md`
 
 **Wave 2** *(blocked on Wave 1 — shared file README.md)*
 
-- [ ] 13-02-PLAN.md — checkpoint-gated `/motto:release` namespace correction (DEBT-04)
+- [x] 13-02-PLAN.md — checkpoint-gated `/motto:release` namespace correction (DEBT-04)
