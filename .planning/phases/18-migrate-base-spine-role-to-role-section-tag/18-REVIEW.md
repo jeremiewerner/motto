@@ -20,7 +20,7 @@ findings:
   warning: 3
   info: 2
   total: 6
-status: issues_found
+status: remediated
 ---
 
 # Phase 18: Code Review Report
@@ -128,6 +128,19 @@ return (openRemainder + "\n" + between).trim().length > 0;
 **Fix:** When next touching this file, extract a shared `collectUnfencedLines(bodyStr)` helper both functions consume; the two regex-matching tails stay separate.
 
 ---
+
+## Remediation (2026-07-03, same session)
+
+CR-01, WR-01, WR-02, WR-03, and IN-01 fixed by gsd-code-fixer before phase verification; suite 211/211 green and `motto lint` clean after every commit. IN-02 deferred (structural refactor, recorded as debt):
+
+| Finding | Status | Commit |
+|---------|--------|--------|
+| CR-01 | fixed — `BASE_SPINE: SPINE = BASE_SPINE` destructuring default + `Array.isArray` fallback at the spine loop; pre-18 `{ SECTIONS, TEMPLATES }` registry shape regression-tested (no throw, role error still reported) | `878d8dc` |
+| WR-01 | fixed — emptiness check now includes the open tag's same-line trailing remainder (A2 parity with `hasClosedSection`); §4 of skill-schema.md updated to match; helper + validateSkill regression tests added | `3a7065c` |
+| WR-02 | fixed — `hasClosedSection` uses the typeof guard (`body || ""` → `typeof body === "string" ? body : ""`); never-throw test extended to `123`/`{}`/`[]`/`true`; the stale `hasNonEmptyClosedSection` docblock paragraph advertising the throw path rewritten | `515f676` |
+| WR-03 | fixed — doc-sync reads `src/templates.js` and guards `'Behavioral instruction that tells the agent who it is and how to act.'` and `'BASE_SPINE = ["role"]'` (code→doc direction preserved) | `0c39187` |
+| IN-01 | fixed — README reworded: "a body spine — an H1 title line plus a non-empty `<role>…</role>` section" | `2027a15` |
+| IN-02 | deferred — fence-loop duplication is a documented D-06 decision; extracting a shared `collectUnfencedLines` helper is a structural refactor out of fix scope. Do it when next touching src/schema.js to keep the D-08 missing/empty verdicts computed from one unfenced-line set. | — |
 
 _Reviewed: 2026-07-03T15:00:46Z_
 _Reviewer: Claude (gsd-code-reviewer)_
