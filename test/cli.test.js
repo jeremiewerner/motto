@@ -1,7 +1,7 @@
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { join, basename } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -9,6 +9,14 @@ import { fileURLToPath } from 'node:url';
 import { scaffoldProject } from '../src/init.js';
 
 const CLI_PATH = fileURLToPath(new URL('../bin/motto.js', import.meta.url));
+
+/**
+ * Malformed SKILL.md (unterminated YAML string) — reused from
+ * test/lint.test.js's fixture pattern to force lintProject/buildProject
+ * into an `ok:false` result deterministically.
+ */
+const MALFORMED_SKILL_MD =
+  '---\nname: "unterminated string\n---\n# malformed-skill\n\n<role>\nHelper.\n</role>\n';
 
 /**
  * Spawn the CLI as a real child process — this phase's surface (argv
@@ -23,6 +31,38 @@ function runCli(args, opts = {}) {
     encoding: 'utf8',
     cwd: opts.cwd,
   });
+}
+
+/**
+ * Scaffold a clean project fixture into a fresh tempdir. Throws if scaffold
+ * fails (test setup bug, not a case under test).
+ *
+ * @param {string} prefix - mkdtemp prefix, also doubles as a readable label
+ * @param {string} name - project name passed to scaffoldProject
+ * @returns {Promise<string>} the tempdir path
+ */
+async function scaffoldCleanFixture(prefix, name) {
+  const dir = await mkdtemp(join(tmpdir(), prefix));
+  const result = await scaffoldProject(dir, { name });
+  if (!result.ok) {
+    throw new Error(`scaffold failed for ${prefix} fixture: ${JSON.stringify(result.errors)}`);
+  }
+  return dir;
+}
+
+/**
+ * Scaffold a project fixture, then corrupt its starter skill's SKILL.md so
+ * lintProject/buildProject deterministically return `ok:false` with a
+ * populated errors array.
+ *
+ * @param {string} prefix
+ * @param {string} name
+ * @returns {Promise<string>} the tempdir path
+ */
+async function scaffoldFailingFixture(prefix, name) {
+  const dir = await scaffoldCleanFixture(prefix, name);
+  await writeFile(join(dir, 'skills', 'hello-world', 'SKILL.md'), MALFORMED_SKILL_MD);
+  return dir;
 }
 
 describe('CLI help (CLIX-03, D-01..D-05, D-08, D-09)', () => {
@@ -176,5 +216,199 @@ describe('CLI [path] targeting (CLIX-04, D-06, D-07)', () => {
     const r = runCli(['lint', filePath]);
     assert.strictEqual(r.status, 1);
     assert.match(r.stderr, /✗ not a directory: /);
+  });
+});
+
+describe('--quiet (CLIX-01)', () => {
+  let cleanDir;
+  let failDir;
+
+  before(async () => {
+    cleanDir = await scaffoldCleanFixture('motto-cli-quiet-clean-', 'quiet-clean-proj');
+    failDir = await scaffoldFailingFixture('motto-cli-quiet-fail-', 'quiet-fail-proj');
+  });
+
+  after(async () => {
+    if (cleanDir) await rm(cleanDir, { recursive: true, force: true });
+    if (failDir) await rm(failDir, { recursive: true, force: true });
+  });
+
+  it('lint --quiet on a clean fixture: stdout is empty, exit 0', () => {
+    const r = runCli(['lint', '--quiet'], { cwd: cleanDir });
+    assert.strictEqual(r.stdout, '', `stderr: ${r.stderr}`);
+    assert.strictEqual(r.status, 0);
+  });
+
+  it('build --quiet on a clean fixture: stdout is empty, exit 0', () => {
+    const r = runCli(['build', '--quiet'], { cwd: cleanDir });
+    assert.strictEqual(r.stdout, '', `stderr: ${r.stderr}`);
+    assert.strictEqual(r.status, 0);
+  });
+
+  it('lint --quiet on a failing fixture: stderr still has ✗ lines, exit 1 (errors still print — Pitfall 2 guard)', () => {
+    const r = runCli(['lint', '--quiet'], { cwd: failDir });
+    assert.match(r.stderr, /✗/);
+    assert.strictEqual(r.status, 1);
+  });
+});
+
+describe('--format json (CLIX-02)', () => {
+  let cleanDir;
+  let failDir;
+
+  before(async () => {
+    cleanDir = await scaffoldCleanFixture('motto-cli-json-clean-', 'json-clean-proj');
+    failDir = await scaffoldFailingFixture('motto-cli-json-fail-', 'json-fail-proj');
+  });
+
+  after(async () => {
+    if (cleanDir) await rm(cleanDir, { recursive: true, force: true });
+    if (failDir) await rm(failDir, { recursive: true, force: true });
+  });
+
+  it('lint --format json on a clean fixture: single-line JSON {ok:true, count:<number>} on stdout, stderr empty', () => {
+    const r = runCli(['lint', '--format', 'json'], { cwd: cleanDir });
+    assert.strictEqual(r.status, 0, `stderr: ${r.stderr}\nstdout: ${r.stdout}`);
+    assert.strictEqual(r.stdout.trim().split('\n').length, 1);
+    const parsed = JSON.parse(r.stdout);
+    assert.strictEqual(parsed.ok, true);
+    assert.strictEqual(typeof parsed.count, 'number');
+    assert.strictEqual(r.stderr, '');
+  });
+
+  it('build --format json on a clean fixture: single-line JSON {ok:true, outDir, skillCount, bucketCount}', () => {
+    const r = runCli(['build', '--format', 'json'], { cwd: cleanDir });
+    assert.strictEqual(r.status, 0, `stderr: ${r.stderr}\nstdout: ${r.stdout}`);
+    assert.strictEqual(r.stdout.trim().split('\n').length, 1);
+    const parsed = JSON.parse(r.stdout);
+    assert.strictEqual(parsed.ok, true);
+    assert.ok(parsed.outDir);
+    assert.strictEqual(typeof parsed.skillCount, 'number');
+    assert.strictEqual(typeof parsed.bucketCount, 'number');
+  });
+
+  it('lint --format json on a failing fixture: {ok:false, errors:[...]} on stdout, no duplicate ✗ echo on stderr (D-09)', () => {
+    const r = runCli(['lint', '--format', 'json'], { cwd: failDir });
+    assert.strictEqual(r.status, 1);
+    const parsed = JSON.parse(r.stdout);
+    assert.strictEqual(parsed.ok, false);
+    assert.ok(Array.isArray(parsed.errors) && parsed.errors.length > 0);
+    assert.doesNotMatch(r.stderr, /✗/);
+  });
+
+  it('lint <bad-path> --format json (pre-dispatch path-guard failure): empty stdout, plain-text ✗ on stderr, exit 1, no JSON document (D-04)', () => {
+    const badPath = join(cleanDir, 'does-not-exist-xyz');
+    const r = runCli(['lint', badPath, '--format', 'json']);
+    assert.strictEqual(r.status, 1);
+    assert.strictEqual(r.stdout, '');
+    assert.match(r.stderr, /✗/);
+  });
+
+  it('lint --format json --quiet on a failing fixture: JSON doc still prints — quiet never suppresses it (D-08)', () => {
+    const r = runCli(['lint', '--format', 'json', '--quiet'], { cwd: failDir });
+    assert.strictEqual(r.status, 1);
+    const parsed = JSON.parse(r.stdout);
+    assert.strictEqual(parsed.ok, false);
+  });
+});
+
+describe("--format <bad value> (D-10)", () => {
+  it("lint --format yaml: unknown format error + usage line on stderr, empty stdout, exit 1, lint does not run", () => {
+    const r = runCli(['lint', '--format', 'yaml']);
+    assert.strictEqual(r.status, 1);
+    assert.match(r.stderr, /unknown format 'yaml'/);
+    assert.match(r.stderr, /usage: motto <init\|lint\|build>/);
+    assert.strictEqual(r.stdout, '');
+  });
+
+  it("build --format yaml: same unknown-format shape as lint", () => {
+    const r = runCli(['build', '--format', 'yaml']);
+    assert.strictEqual(r.status, 1);
+    assert.match(r.stderr, /unknown format 'yaml'/);
+    assert.strictEqual(r.stdout, '');
+  });
+
+  it('lint --format text equals lint (no flag) — text is the explicit-default alias (D-11)', async () => {
+    let dir;
+    try {
+      dir = await scaffoldCleanFixture('motto-cli-textalias-', 'text-alias-proj');
+      const withFlag = runCli(['lint', '--format', 'text'], { cwd: dir });
+      const withoutFlag = runCli(['lint'], { cwd: dir });
+      assert.strictEqual(withFlag.status, 0, `stderr: ${withFlag.stderr}`);
+      assert.strictEqual(withoutFlag.status, 0, `stderr: ${withoutFlag.stderr}`);
+      assert.match(withFlag.stdout, /skills OK/);
+      assert.strictEqual(withFlag.stdout, withoutFlag.stdout);
+    } finally {
+      if (dir) await rm(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('stdout/stderr split (CLIX-03)', () => {
+  let failDir;
+
+  before(async () => {
+    failDir = await scaffoldFailingFixture('motto-cli-split-', 'split-proj');
+  });
+
+  after(async () => {
+    if (failDir) await rm(failDir, { recursive: true, force: true });
+  });
+
+  it('lint on a failing fixture: stdout has no ✗ character; ✗ lines appear only in stderr', () => {
+    const r = runCli(['lint'], { cwd: failDir });
+    assert.strictEqual(r.status, 1);
+    assert.ok(!r.stdout.includes('✗'), `expected stdout to have no ✗, got:\n${r.stdout}`);
+    assert.match(r.stderr, /✗/);
+  });
+
+  it('build on a failing fixture: stdout has no ✗ character; ✗ lines appear only in stderr', () => {
+    const r = runCli(['build'], { cwd: failDir });
+    assert.strictEqual(r.status, 1);
+    assert.ok(!r.stdout.includes('✗'), `expected stdout to have no ✗, got:\n${r.stdout}`);
+    assert.match(r.stderr, /✗/);
+  });
+});
+
+describe('init stderr split (D-07)', () => {
+  it('init on a not-empty directory: ✗ line is on stderr, none on stdout', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'motto-cli-init-notempty-'));
+    try {
+      await writeFile(join(dir, 'existing-file.txt'), 'hi\n');
+      // Explicit valid name (D-05 name-validation runs before the
+      // not-empty check) — the mkdtemp basename itself may contain
+      // uppercase/random chars that fail NAME_KEBAB independently of the
+      // not-empty guard under test here.
+      const r = runCli(['init', 'notempty-proj'], { cwd: dir });
+      assert.strictEqual(r.status, 1);
+      assert.match(r.stderr, /✗ directory is not empty/);
+      assert.ok(!r.stdout.includes('✗'), `expected stdout to have no ✗, got:\n${r.stdout}`);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('init on a clean directory: ✓ scaffolded project tree stays on stdout', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'motto-cli-init-clean-'));
+    try {
+      const r = runCli(['init', 'clean-init-proj'], { cwd: dir });
+      assert.strictEqual(r.status, 0, `stderr: ${r.stderr}`);
+      assert.match(r.stdout, /✓ scaffolded project:/);
+      assert.ok(!r.stdout.includes('✗'), `expected stdout to have no ✗, got:\n${r.stdout}`);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('init --format json: rejected as unknown option (D-03, D-11)', () => {
+    const r = runCli(['init', '--format', 'json']);
+    assert.strictEqual(r.status, 1);
+    assert.match(r.stderr, /unknown option/);
+  });
+
+  it('init --quiet: rejected as unknown option (D-03, D-11)', () => {
+    const r = runCli(['init', '--quiet']);
+    assert.strictEqual(r.status, 1);
+    assert.match(r.stderr, /unknown option/);
   });
 });
