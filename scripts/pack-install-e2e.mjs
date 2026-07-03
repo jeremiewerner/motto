@@ -30,8 +30,11 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 /**
- * Run a command, echoing the command line + raw stdout/stderr and throwing
- * on non-zero status — never a bare exit with no context (Pitfall 3).
+ * Run a command, echoing the command line + status/signal/spawn-error +
+ * raw stdout/stderr and throwing on non-zero status — never a bare exit
+ * with no context (Pitfall 3). `r.error`/`r.signal` are load-bearing: on
+ * ENOENT (bin not spawnable) or a signal kill, stdout/stderr are null and
+ * the root cause lives only in those fields.
  * Throws (rather than calling `process.exit(1)` directly) so the caller's
  * `finally` block still runs tmp-dir cleanup on a failure path.
  *
@@ -44,7 +47,9 @@ function run(cmd, args, opts = {}) {
   const r = spawnSync(cmd, args, { encoding: 'utf8', ...opts });
   if (r.status !== 0) {
     throw new Error(
-      `${cmd} ${args.join(' ')}\nstdout: ${r.stdout}\nstderr: ${r.stderr}`,
+      `${cmd} ${args.join(' ')}\nstatus: ${r.status} signal: ${r.signal}` +
+        `${r.error ? `\nspawn error: ${r.error.message}` : ''}` +
+        `\nstdout: ${r.stdout}\nstderr: ${r.stderr}`,
     );
   }
   return r;

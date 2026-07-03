@@ -56,7 +56,8 @@ async function main() {
 
     if (result.status !== 0) {
       console.error(
-        `prepare-guard-check FAILED — npm ci in a .git-less tree exited ${result.status}. Root cause:\nstdout: ${result.stdout}\nstderr: ${result.stderr}`,
+        `prepare-guard-check FAILED — npm ci in a .git-less tree exited ${result.status} (signal: ${result.signal})` +
+          `${result.error ? ` — spawn error: ${result.error.message}` : ''}. Root cause:\nstdout: ${result.stdout}\nstderr: ${result.stderr}`,
       );
       process.exitCode = 1;
       return;
