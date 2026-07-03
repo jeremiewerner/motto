@@ -2,7 +2,7 @@
 
 **Project:** Motto
 **Latest shipped:** v0.0.4 (2026-07-02)
-**Active milestone:** v0.0.5 Skill Builder (Phases 14-17)
+**Active milestone:** v0.0.5 Skill Builder (Phases 14-18)
 **Core Value:** A strict schema + linter that guarantees authored skills conform before they ship, then packages them into self-contained standard Agent Skill plugins.
 **Granularity:** Coarse
 
@@ -16,7 +16,7 @@
   - Published `@jeremiewerner/motto` to npm, self-hosted Claude Code marketplace, wired the `release` skill's real publish flow, and a full-install-path README. 13 requirements, 75 tests.
 - [x] **v0.0.4** — Project Bootstrap (Phases 10-13) — SHIPPED 2026-07-02 → [archive](milestones/v0.0.4-ROADMAP.md)
   - `motto init` scaffolds a complete, immediately-buildable skills project; `--help` + `[path]` CLI ergonomics; README ship-your-plugin flow; `setup-project` retired; 5 tech-debt items closed. 10 requirements, 131 tests.
-- [ ] **v0.0.5** — Skill Builder (Phases 14-17) — IN PROGRESS
+- [ ] **v0.0.5** — Skill Builder (Phases 14-18) — IN PROGRESS
   - Template mechanism live (`template:` enforced, data-driven), new validated optional fields (`outputs:`/`dependencies:`/`allowed-tools`) with integrity guards, a `build-skill` Agent Skill that structures any input into a conforming skill, `author-skill` retired, and `skill-schema.md` brought current. 19 requirements.
 
 ## Phases
@@ -43,6 +43,7 @@ Full phase details: [milestones/v0.0.4-ROADMAP.md](milestones/v0.0.4-ROADMAP.md)
 - [x] **Phase 15: Field Validation & Integrity Guards** - Validate `outputs:`/`dependencies:`/`allowed-tools` with audience-direction, self-reference, and path-safety guards (completed 2026-07-03)
 - [x] **Phase 16: build-skill & author-skill Retirement** - `build-skill` Agent Skill structures any input into a conforming skill; `author-skill` retired atomically (completed 2026-07-03)
 - [x] **Phase 17: Docs Audit** - Rewrite `skill-schema.md` current and update README for build-skill (completed 2026-07-03)
+- [ ] **Phase 18: Role Section Tag Migration** - Migrate base-spine `**Role:**` line to a `<role>` section tag (added post-audit)
 
 ## Phase Details
 
@@ -137,10 +138,30 @@ Full phase details: [milestones/v0.0.4-ROADMAP.md](milestones/v0.0.4-ROADMAP.md)
 - [x] 17-01-PLAN.md — Rewrite `skill-schema.md` current (header/§2 fix/§6 rewrite/new §7-§9/§10 renumber) + `doc-sync.test.js` drift guard + trim build-skill Step 2 (DOC-06)
 - [x] 17-02-PLAN.md — Rewrite README "Author a skill" body around build-skill's flow + swap all 8 author-skill sites to build-skill (DOC-07)
 
+### Phase 18: Role Section Tag Migration
+
+**Goal**: The base-spine role declaration moves from the `**Role:**` bold-line convention to a `<role>…</role>` section tag, consistently across linter, existing skills, init scaffold, build-skill generation, and docs.
+**Depends on**: Phase 17 (documents the settled schema this phase changes)
+**Requirements**: TBD (run /gsd-discuss-phase 18 — key decisions: hard break vs transitional dual-accept; registry-driven base spine vs hardcoded tag swap)
+**Known touch points** (from pre-phase scoping):
+
+  - `src/schema.js:322-327` — Role check is base-spine code, not registry data
+  - `skills/release/SKILL.md`, `skills/build-skill/SKILL.md` — migrate live skills
+  - `src/init.js` `hello-world` starter template
+  - `skills/build-skill/SKILL.md` — generation instructions + quality gate ("no empty Role")
+  - `shared/references/skill-schema.md` base-spine section + `test/doc-sync.test.js` segments
+  - README examples
+
+**Plans**: 0 plans
+
+Plans:
+
+- [ ] TBD (run /gsd-plan-phase 18 to break down)
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 14 → 15 → 16 → 17
+Phases execute in numeric order: 14 → 15 → 16 → 17 → 18
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -152,6 +173,7 @@ Phases execute in numeric order: 14 → 15 → 16 → 17
 | 15. Field Validation & Integrity Guards | v0.0.5 | 2/2 | Complete    | 2026-07-03 |
 | 16. build-skill & author-skill Retirement | v0.0.5 | 2/2 | Complete    | 2026-07-03 |
 | 17. Docs Audit | v0.0.5 | 2/2 | Complete    | 2026-07-03 |
+| 18. Role Section Tag Migration | v0.0.5 | 0/? | Not planned | — |
 
 ## Backlog
 
@@ -161,4 +183,4 @@ Candidates for a future milestone (detail in `REQUIREMENTS.md` Future Requiremen
 - `motto ship` command (SHIP-01) — deferred until real friction shows; after init + build, shipping is `git commit && git push`, and `marketplace.json` is already scaffolded by init.
 - CI workflow (GitHub Actions) — remote exists (`jeremiewerner/motto`); husky-only today (CI-01).
 - `--zip` build feature — dropped for v0.0.3 (marketplace + `~/.claude/skills/` cover Claude Desktop's Code tab). Revisit only on real demand.
-- Deferred design-ledger items: action section tags (`<drill>`/`<run>`/`<mcp>`), skill-calls-skill with params, `{var}` interpolation engine, `template:` as array (multi-template), `agent` template, base-spine `**Role:**` → `<role>` registry migration.
+- Deferred design-ledger items: action section tags (`<drill>`/`<run>`/`<mcp>`), skill-calls-skill with params, `{var}` interpolation engine, `template:` as array (multi-template), `agent` template. (`**Role:**` → `<role>` migration promoted to Phase 18.)
