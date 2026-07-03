@@ -4,10 +4,17 @@
  *
  * Proves the real consumer path: `npm pack` the repo -> install the
  * resulting tarball into a throwaway consumer project (exactly as a
- * stranger installing `@jeremiewerner/motto` from npm would) -> `npx motto
- * init` a project -> `npx motto lint --format json` -> `npx motto build
+ * stranger installing `@jeremiewerner/motto` from npm would) -> `motto
+ * init` a project -> `motto lint --format json` -> `motto build
  * --format json`, asserting exit codes and parsed JSON at every step
  * (D-05). No file-tree diffing (brittle against init template evolution).
+ *
+ * The CLI is invoked via the installed `node_modules/.bin/motto` path —
+ * never bare `npx motto`: in CI (non-TTY) npx assumes `--yes` and
+ * auto-installs missing packages from the public registry, and an
+ * unrelated `motto` package exists on npmjs.org, so a bin-linking
+ * regression would silently execute a stranger's package instead of
+ * failing here. Direct bin invocation makes broken linking fail loudly.
  *
  * The pack destination is a tempdir and the consumer project is a separate
  * tempdir — this script never writes into the repo working tree.
@@ -89,17 +96,19 @@ async function main() {
     // name inside motto.yaml/marketplace.json). consumerDir itself already
     // has package.json/package-lock.json/node_modules from step (3), which
     // would trip the non-empty-dir guard, so the scaffold target is a
-    // nested, genuinely-empty project dir. npx resolves `motto` by walking
-    // up from cwd to consumerDir's node_modules/.bin, exactly like a real
-    // nested consumer project would.
+    // nested, genuinely-empty project dir. The CLI is the bin path npm
+    // linked into consumerDir's node_modules/.bin during step (3) — if the
+    // `bin` entry or `files` allowlist ever regresses, this spawn fails
+    // loudly (ENOENT) instead of npx falling back to the registry.
+    const mottoBin = join(consumerDir, 'node_modules', '.bin', 'motto');
     const projectDir = join(consumerDir, 'e2e-project');
     await mkdir(projectDir, { recursive: true });
-    run('npx', ['motto', 'init'], { cwd: projectDir });
+    run(mottoBin, ['init'], { cwd: projectDir });
 
-    // (5) npx motto lint --format json — assert .ok === true, .count >= 1.
+    // (5) motto lint --format json — assert .ok === true, .count >= 1.
     // Field names match the Phase 19 contract exactly (lint uses `count`,
     // not `skillCount`).
-    const lintResult = run('npx', ['motto', 'lint', '--format', 'json'], { cwd: projectDir });
+    const lintResult = run(mottoBin, ['lint', '--format', 'json'], { cwd: projectDir });
     const lintJson = parseJsonOrFail(lintResult.stdout, 'lint');
     if (lintJson.ok !== true || !(lintJson.count >= 1)) {
       throw new Error(
@@ -107,11 +116,11 @@ async function main() {
       );
     }
 
-    // (6) npx motto build --format json — assert .ok === true, .skillCount >= 1.
+    // (6) motto build --format json — assert .ok === true, .skillCount >= 1.
     // Kept as a variable (packedFiles / packManifest) so Phase 21's D-05
     // tarball-leak assertion (PUB-03) can slot in as one more step cleanly —
     // NOT added here by design (deferred).
-    const buildResult = run('npx', ['motto', 'build', '--format', 'json'], { cwd: projectDir });
+    const buildResult = run(mottoBin, ['build', '--format', 'json'], { cwd: projectDir });
     const buildJson = parseJsonOrFail(buildResult.stdout, 'build');
     if (buildJson.ok !== true || !(buildJson.skillCount >= 1)) {
       throw new Error(
