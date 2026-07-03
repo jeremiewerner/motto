@@ -1,20 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v0.0.5
-milestone_name: Skill Builder
-current_phase: 0.5
-status: Awaiting next milestone
-stopped_at: Completed 18-02-PLAN.md
-last_updated: "2026-07-03T15:39:20.371Z"
+milestone: v0.0.6
+milestone_name: Prove & Publish
+status: planning
+last_updated: "2026-07-03T15:56:56.462Z"
 last_activity: 2026-07-03
-last_activity_desc: Milestone v0.0.5 completed and archived
 progress:
-  total_phases: 5
-  completed_phases: 5
-  total_plans: 11
-  completed_plans: 11
-  percent: 100
-current_phase_name: migrate-base-spine-role-to-role-section-tag
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -28,10 +24,10 @@ See: .planning/PROJECT.md (updated 2026-07-02 after v0.0.4)
 
 ## Current Position
 
-Phase: Milestone v0.0.5 complete
+Phase: Not started (defining requirements)
 Plan: —
-Status: Awaiting next milestone
-Last activity: 2026-07-03 — Milestone v0.0.5 completed and archived
+Status: Defining requirements
+Last activity: 2026-07-03 — Milestone v0.0.6 started
 
 ## Performance Metrics
 

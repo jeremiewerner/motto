@@ -16,9 +16,19 @@ The **strict schema + linter**. Skills that always conform to one rigid-yet-crea
 
 **Hardening note:** post-v0.0.2 `/code-review high` caught 3 D-01 never-throw violations the milestone tests missed; fixed + guarded. v0.0.4 continued the pattern (adversarial scaffold-path tests). v0.0.5 made it structural: phase 18's review caught a Critical never-throw registry-shape crash (CR-01) *before* verification instead of after ship, and the twice-deferred WR-04 shape guard was closed at milestone close — zero known never-throw gaps at ship for the first time.
 
-## Next Milestone Goals
+## Current Milestone: v0.0.6 Prove & Publish
 
-Not yet defined — run `/gsd-new-milestone`. Backlog candidates in ROADMAP.md: CLI ergonomics (`--quiet`, `--format json`), CI workflow, `motto ship`, design-ledger items (action section tags, skill-calls-skill, `{var}` interpolation, multi-template, `agent` template), build-skill human-verify session.
+**Goal:** Motto's ship path becomes automated and trustworthy — CI gates every push, tags publish themselves to npm, repo goes public, and build-skill is proven on a real skill.
+
+**Target features:**
+- CI workflow: Node 20/22/24 test matrix + dogfood lint/build + pack-install E2E (tarball → tmp dir → init/lint/build) + publish-on-tag + npm-drift warning
+- Release skill rewrite: local = bump + tag + push only; publish + D-05 tarball assertion move to CI
+- Pre-public gate: git-history secrets scan + explicit `.planning/` visibility decision → repo flips public
+- Build-skill human-verify via authoring one real skill (BSKL-01, BSKL-05, WR-01 — closes v0.0.5 tech debt)
+- CLI ergonomics: `--quiet`, `--format json` (CLIX-01..02 — CI is first real consumer)
+- Changelog surface: release flow gains GitHub Release notes step
+
+**Key context:** npm stuck at 0.0.3 — v0.0.4/v0.0.5 were never published (release skill never ran; drift confirmed against registry 2026-07-03). Catch-up publish of 0.0.5 happens manually via the existing `release` skill before this milestone's CI work lands. Trusted publishing (OIDC) is sequenced after the public flip; `NPM_TOKEN` secret is the interim if CI publishes earlier. Repo public is a one-way door — secrets scan and `.planning/` decision are explicit gates, not assumptions. Remaining backlog (not this milestone): `motto ship`, design-ledger items (action section tags, skill-calls-skill, `{var}` interpolation, multi-template, `agent` template).
 
 **Standing principles (every step):** heavy research; design for unknown purpose; lightweight (readable code/md, no doc sprawl); agentic best practice (skills + agents + subagents + API/MCP are first-class); simple to adapt, creativity free; rigor in a small easy spine.
 
@@ -86,7 +96,7 @@ Not yet defined — run `/gsd-new-milestone`. Backlog candidates in ROADMAP.md: 
 
 ### Active
 
-(None — define with the next milestone via `/gsd-new-milestone`.)
+(v0.0.6 — defined in `.planning/REQUIREMENTS.md`; validated entries move here at phase transitions.)
 
 ### Out of Scope
 
@@ -153,4 +163,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-03 after v0.0.5 milestone*
+*Last updated: 2026-07-03 — milestone v0.0.6 Prove & Publish started*
