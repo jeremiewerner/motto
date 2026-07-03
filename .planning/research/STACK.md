@@ -1,8 +1,280 @@
 # Stack Research
 
 **Domain:** Node.js CLI tool — YAML/Markdown linter and plugin packager
-**Researched:** 2026-06-30 (base) · 2026-07-01 (v0.0.4 addendum) · 2026-07-02 (v0.0.5 addendum)
-**Confidence:** HIGH (v0.0.5 and v0.0.4 additions verified directly against official Anthropic/Claude Code docs, the open agentskills.io spec, official Node.js docs, and the existing codebase; base stack MEDIUM per original research)
+**Researched:** 2026-06-30 (base) · 2026-07-01 (v0.0.4 addendum) · 2026-07-02 (v0.0.5 addendum) · 2026-07-03 (v0.0.6 addendum)
+**Confidence:** HIGH (v0.0.6, v0.0.5, and v0.0.4 additions verified directly against official npm/GitHub/Node.js docs, the open agentskills.io spec, and the existing codebase; base stack MEDIUM per original research)
+
+---
+
+## v0.0.6 Prove & Publish Addendum
+
+**Verdict: Zero new runtime deps. Zero new npm dev deps. Every new capability (CI matrix, publish-on-tag, secrets scan, npm-drift warning, `--quiet`/`--format json`, release notes) is either a GitHub-Actions-native building block (`actions/checkout`, `actions/setup-node`, `gh` CLI — all pre-installed on GitHub-hosted runners) or Node stdlib (`fetch`, `JSON.stringify`, the existing `lintProject`/`buildProject` `{ok, errors}` return shape). The one new tool this milestone needs — `gitleaks` for git-history secret scanning — is a standalone Go binary, not an npm package, so it does not touch `package.json` at all.**
+
+This section answers the four stack questions for the v0.0.6 milestone: GitHub Actions CI with a Node matrix; npm publish-on-tag (trusted publishing/OIDC vs `NPM_TOKEN`); one-shot git-history secrets scanning before the repo goes public; and machine-readable CLI output (`--quiet`, `--format json`). The base, v0.0.4, and v0.0.5 stack below is unchanged.
+
+### Q1 — CI workflow: `actions/checkout@v6` + `actions/setup-node@v6`, Node 20/22/24 matrix
+
+**Verdict: Two official GitHub Actions, both current-major, cover checkout + Node install + npm caching. No third-party CI action needed.**
+
+| Action | Current major | Notes |
+|--------|---------------|-------|
+| `actions/checkout` | `v6` | GitHub is forcing JS-based Actions onto the Node 24 runtime by default from **June 2, 2026** and fully dropping the Node 20 Actions-runtime from **September 2026** — `checkout@v6` is the version built against that runtime. This is about the runtime the *action itself* executes on, unrelated to which Node versions your own test matrix targets. |
+| `actions/setup-node` | `v6` (latest `v6.4.0`, April 2026) | Installs the matrix Node version and supports built-in `cache: 'npm'` (keyed off `package-lock.json`) — no separate `actions/cache` step needed. |
+
+**Recommended matrix job** (mirrors the milestone's stated Node 20/22/24 matrix):
+
+```yaml
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        node-version: [20, 22, 24]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+      - run: npm ci
+      - run: npm test                              # node --test
+      - run: node bin/motto.js lint                # dogfood
+      - run: node bin/motto.js build                # dogfood
+
+  pack-install:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with: { node-version: 24, cache: 'npm' }
+      - run: npm ci
+      - run: npm pack --pack-destination /tmp
+      - run: |
+          mkdir /tmp/e2e && cd /tmp/e2e
+          npm init -y
+          npm install /tmp/jeremiewerner-motto-*.tgz
+          npx motto init test-project
+          cd test-project && npx motto lint && npx motto build
+```
+
+**Flag for the roadmap — Node 20 is already EOL.** Node.js 20 reached end-of-life on **April 30, 2026** (three years after its initial release, per Node's even-release LTS cadence). `package.json` still declares `"engines": {"node": ">=20"}` and the milestone explicitly specifies a 20/22/24 matrix — this is a defensible floor for a library whose consumers may lag behind, but it means the matrix is deliberately testing an unsupported runtime with no further security patches. Recommend keeping the matrix as specified (existing installs on Node 20 are real) but treat "bump `engines` floor to `>=22`" as a follow-up decision to make explicitly, not silently — not a blocker for this milestone.
+
+**`pack-install` E2E needs no new tooling.** `npm pack` (writes a real `.tgz` using the same `files` allowlist and `prepublishOnly` hook as a real publish) → `npm install <tarball>` in a scratch directory → run the installed `motto` binary via `npx`. This is the same tarball-integrity idea already encoded in the `release` skill's Step 4 script (D-05 tarball assertion) — CI's job is the *install-and-run* half; the *content-allowlist* half should move into CI too (see Q2).
+
+### Q2 — Publish-on-tag: trusted publishing (OIDC) requirements verified — sequencing after the public flip is correct but for a narrower reason than "it doesn't work on private repos"
+
+**Verdict: npm trusted publishing itself works on private repos. The reason to sequence it after the public flip is `--provenance`, not OIDC eligibility — worth knowing precisely, because it changes what "interim" actually means.**
+
+Verified directly against npm's own docs (`docs.npmjs.com/trusted-publishers/`):
+
+| Fact | Detail | Confidence |
+|------|--------|------------|
+| Minimum npm CLI | **npm ≥ 11.5.1** and Node ≥ 22.14.0 for the *publishing* step. | HIGH (official npm docs) |
+| Works on private repos? | **Yes.** "Trusted publishing works with both public and private repositories." | HIGH (official npm docs) |
+| Provenance on private repos? | **No.** "Provenance generation is not supported for private repositories, even when publishing public packages" — because provenance is signed by Sigstore's *public-good* instance and logged to the public Rekor transparency log; a private-Sigstore alternative exists only for GitHub Enterprise Cloud customers. | HIGH (official npm docs + Sigstore blog, cross-checked) |
+| Automatic provenance | When trusted publishing is used from a **public** GitHub Actions/GitLab CI repo, npm auto-generates and publishes provenance — no `--provenance` flag needed. CircleCI trusted publishing does not auto-generate provenance. | HIGH (official npm docs) |
+| Required workflow permissions | `permissions: { id-token: write, contents: read }` at the job (or workflow) level. If the publish step lives in a called (`workflow_call`) sub-workflow, both parent and child need `id-token: write`. | HIGH (official npm docs) |
+| `repository.url` match | npm compares the trusted-publisher config against the package's `repository.url` in `package.json`; current value is the shorthand `"repository": "github:jeremiewerner/motto"` — verify this resolves/matches during setup (npm's own examples show the expanded `git+https://github.com/...` form; shorthand is npm-normalized but worth a dry-run check before relying on it). | MEDIUM (inferred from setup examples; not independently confirmed against the shorthand form specifically) |
+| Policy change | Trusted-publisher configs created **before May 20, 2026** default to "npm publish only" with no behavior change; configs created **after** that date must explicitly select which actions (publish, access changes, etc.) the trusted publisher is allowed to perform. Since Motto hasn't configured trusted publishing yet, this milestone's setup falls under the post-May-20 explicit-selection flow. | MEDIUM (WebSearch synthesis of npm changelog/blog coverage — recommend confirming the exact selection UI at setup time) |
+
+**What this means concretely for sequencing:** the milestone's plan ("trusted publishing sequenced after the public flip; `NPM_TOKEN` is the interim") is the right call, but the *reason* is that Motto wants provenance (a real supply-chain-security win worth having, and free once public) — not because OIDC itself is blocked on a private repo. If CI needs to publish before the public flip lands, trusted publishing would technically work today on the private repo, just without provenance attestation. Recommend keeping the milestone's stated sequencing (simpler mental model: one publish mechanism, not two), and treating this nuance as a documentation note in the release skill rather than a reason to change the plan.
+
+**`NPM_TOKEN` interim — verified pattern, one recommendation:** use a **granular access token scoped to `@jeremiewerner/motto` with publish permission only** (not a classic/legacy token with account-wide scope), stored as a GitHub Actions repository secret (`NPM_TOKEN`), consumed via `NODE_AUTH_TOKEN`:
+
+```yaml
+- uses: actions/setup-node@v6
+  with:
+    node-version: 24
+    registry-url: 'https://registry.npmjs.org'
+- run: npm publish
+  env:
+    NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+```
+
+**Trusted publishing (post-public-flip) target shape:**
+
+```yaml
+permissions:
+  id-token: write     # OIDC token for npm
+  contents: write      # gh release create needs this too
+jobs:
+  publish:
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24               # ships npm 11.x; satisfies the ≥11.5.1 floor without an extra step
+          registry-url: 'https://registry.npmjs.org'
+      - run: npm ci
+      - run: npm test
+      - run: node bin/motto.js lint && node bin/motto.js build
+      - run: npm publish                 # no --provenance flag needed; OIDC handles auth AND provenance
+```
+
+**npm-version floor for the publish job matters — pin it, don't inherit the matrix.** Node 24 currently bundles npm 11.x (satisfying the ≥11.5.1 floor); Node 20/22 patch releases may still ship an older npm 10.x that is *below* the trusted-publishing floor. Since the publish job is a single job (not a matrix leg), run it once on Node 24 specifically — do not reuse a Node 20 matrix leg for the publish step. If pinning to an older Node is ever required for another reason, add an explicit `npm install -g npm@latest` step first and verify with `npm --version` in CI logs.
+
+### Q3 — Git-history secrets scan: `gitleaks`, one-shot local run, no CI job required this milestone
+
+**Verdict: `gitleaks` (Go binary, MIT license) is the right tool for this specific job — a fast, zero-network, regex-based one-shot scan of full git history before flipping a repo public. `trufflehog`'s differentiator (live-credential verification against provider APIs) is unneeded for a pre-flip gate and adds both a network dependency and scan time this one-shot check doesn't need.**
+
+| Tool | Approach | Fit for "one-shot local scan before going public" |
+|------|----------|------------------------------------------------------|
+| **`gitleaks`** (recommended) | Regex/entropy pattern matching against every commit, every branch — no network calls, no API verification. 150+ built-in rules (AWS keys, GitHub tokens, private keys, connection strings, etc). Sub-second on typical repo sizes. | Best fit — exactly the shape of check needed: "did a secret shape ever appear in this history," answered locally and instantly. |
+| `trufflehog` | Same detection plus live verification (calls out to AWS/GitHub/etc APIs to confirm a found credential is still active) and scans beyond git (S3, Docker images, Slack). 800+ detectors. | Overkill and slower for a single pre-flip gate; its verification step is valuable for a *scheduled* recurring scan, not a one-shot check run once before a repo visibility change. |
+
+**Not a new project dependency.** `gitleaks` is a standalone Go binary — it never touches `package.json`, `node_modules`, or the npm dependency tree. Install for the one-shot local run via Homebrew (macOS, matches this dev environment) or Docker (no local install at all):
+
+```bash
+# Homebrew (macOS)
+brew install gitleaks
+gitleaks git . -v                 # scans full git history of the current repo, all branches
+
+# OR, zero local install:
+docker run --rm -v "$(pwd):/repo" ghcr.io/gitleaks/gitleaks:latest git /repo -v
+```
+
+`gitleaks git .` walks every commit on every branch and reports the commit SHA, file path, line number, and a redacted preview for each match — exactly what's needed to triage before the public flip: if it reports zero findings, the history is clear to go public; if it reports findings, they need remediation (rotate the credential, then either accept the historical exposure or rewrite history) *before* flipping visibility, since a public flip makes the entire commit history — not just the current tree — visible immediately and irreversibly to anyone.
+
+**This is a one-shot pre-flip gate, not a new CI job, per the milestone's scope.** A recurring `gitleaks-action` (official GitHub Action, SARIF output, blocks PRs) is a reasonable post-public hardening step but is out of scope for this milestone — flag it as backlog, not build it now.
+
+### Q4 — `--quiet` / `--format json`: CLI output conventions, grounded in the existing `{ok, errors}` return shape
+
+**Verdict: No new dependency — `motto`'s `lintProject`/`buildProject` already return a structured `{ ok, errors: [...] }` object; `--format json` is `JSON.stringify` of that object to stdout, and `--quiet` suppresses the human-readable success/progress lines, not error output.**
+
+Cross-checked against the dominant convention in the Node CLI-linter ecosystem (ESLint's `--format`/`-f` flag family, ESLint's `--quiet`) and general CLI design guidance (structured data to stdout, diagnostics to stderr; help/success info to stdout, errors to stderr):
+
+| Convention | What it means for Motto | Precedent |
+|------------|--------------------------|-----------|
+| `--format json` emits **one JSON object**, not NDJSON or an array-of-files | Matches the existing `lintProject`/`buildProject` return shape (`{ok: boolean, errors: [{skill, message}, ...]}`) — no new data model to design, just serialize what already exists | ESLint's `json` formatter emits one JSON array of per-file result objects; Jest's `--json` emits one JSON object — single-payload-to-stdout is the norm for tools with a bounded, non-streaming result set (Motto lints a small, known skill tree, not an unbounded stream) |
+| `--format json` output goes to **stdout only**; nothing else touches stdout in that mode | CI must be able to pipe `motto lint --format json` straight into `jq`/a parser without pre-filtering banner text | "Separate data from diagnostics" — structured data to stdout, progress/diagnostic text to stderr, is the cross-tool convention agentic/CI consumers rely on |
+| `--quiet` suppresses **success/progress noise**, not errors | ESLint's own `--quiet` semantic is "only report errors, suppress warnings" — Motto's analog: suppress the `✓ N skills OK` / progress-per-skill lines on success, but always print (and always exit non-zero on) failures | ESLint CLI reference |
+| Exit codes stay the CI-facing contract, unaffected by `--quiet`/`--format` | `0` = ok, `1` = lint/build errors — CI should be able to gate on exit code alone even without parsing output, with `--format json` as the *drill-down* mechanism, not the sole signal | Standard Unix convention; already how `motto lint`/`build` behave today via `process.exit(1)` |
+
+**Implementation shape (no new deps, extends existing return-value plumbing):**
+
+```js
+// bin/motto.js — after lintProject()/buildProject() resolves
+if (parsed.values.format === 'json') {
+  process.stdout.write(JSON.stringify(result) + '\n');
+} else if (!parsed.values.quiet || !result.ok) {
+  printHuman(result);   // existing human-readable printer, gated by --quiet on success only
+}
+process.exitCode = result.ok ? 0 : 1;
+```
+
+`parseArgs` needs two new declared boolean/string options (`quiet: {type:'boolean'}`, `format: {type:'string'}`) — same pattern already used for `help`/`version` in the v0.0.4 addendum; `strict:true` requires them declared, not a new parsing approach.
+
+### npm-drift warning — `fetch` (stdlib, Node ≥ 18, unflagged-stable ≥ 21) against `registry.npmjs.org`
+
+**Verdict: No new dependency.** The milestone's context notes npm is stuck at 0.0.3 while `package.json`/`motto.yaml` have moved past it — a CI (or pre-publish) check that catches this class of drift automatically is a global `fetch()` call against the public registry, comparing the published `dist-tags.latest` to the local `package.json` version:
+
+```js
+const res = await fetch('https://registry.npmjs.org/@jeremiewerner/motto');
+const { 'dist-tags': { latest } } = await res.json();
+if (latest !== localVersion && !isNewerThan(localVersion, latest)) {
+  process.stderr.write(`WARNING: npm registry (${latest}) is ahead of or diverged from local (${localVersion})\n`);
+}
+```
+
+**One caveat, not a blocker:** global `fetch` has been available since Node 18 but only lost its `ExperimentalWarning` in Node 21 — on the Node 20 matrix leg specifically, this check will print a harmless stderr experimental-warning line the first time `fetch` is invoked. Since Node 20 is already EOL (see Q1) and this is a *warning* check (not a hard gate), this is cosmetic, not a functional issue; do not add a `--experimental-fetch`-suppression workaround for it.
+
+### GitHub Release notes step — `gh release create --generate-notes`, not a third-party Action
+
+**Verdict: Use the GitHub CLI (`gh`), pre-installed on every GitHub-hosted runner — not `softprops/action-gh-release` or any other third-party release Action. Zero added Action-supply-chain surface, and `--generate-notes` already does what this milestone needs (auto-generated release notes from merged PRs since the last tag).**
+
+```yaml
+- run: gh release create ${{ github.ref_name }} --generate-notes
+  env:
+    GH_TOKEN: ${{ github.token }}     # GITHUB_TOKEN is sufficient; no extra secret needed
+```
+
+`softprops/action-gh-release` is a fine choice when you need asset-upload globbing or cross-repo release automation at scale — Motto needs neither (npm's tarball is the only artifact, and it's already going to the npm registry, not a GitHub Release asset). `gh` being preinstalled means one less pinned third-party Action version to track for drift/supply-chain review, consistent with the "actions-native where possible" constraint.
+
+### Why NOT `semantic-release` (or similar release-automation frameworks)
+
+**Verdict: Explicitly rejected — Motto's release flow is a deliberate two-phase split (local bump+tag+push, CI publish+notes) that `semantic-release`'s all-in-one model works against, not with.**
+
+| Reason | Detail |
+|--------|--------|
+| Commit-message convention lock-in | `semantic-release` requires Conventional Commits (or a configured equivalent) to compute the next version automatically. Motto's `release` skill already has an explicit, human-decided `npm version X.Y.Z` step (Step 2) — the maintainer chooses the version, not a commit-parser heuristic. Adopting `semantic-release` would mean either retrofitting commit-message discipline across the whole history or fighting the tool's assumptions. |
+| Wrong ownership split | The milestone's design is explicit: **local = bump + tag + push only; CI = publish + notes.** `semantic-release` is built around the opposite model — it does the version bump, changelog, tag, *and* publish, all inside CI, triggered by every push to the release branch. That collapses the two-phase split this milestone is deliberately introducing. |
+| New dependency, new config surface, for a solved problem | `semantic-release` plus its plugin ecosystem (`@semantic-release/npm`, `@semantic-release/github`, `@semantic-release/changelog`, etc.) is 6+ new npm packages for what `npm version` (already wired to `motto.yaml` sync via the existing `version` lifecycle script) + `gh release create --generate-notes` (zero deps, preinstalled) already cover. |
+| `motto.yaml` version sync already solved differently | The existing `version` lifecycle script (`package.json` `scripts.version`) keeps `motto.yaml` in sync with `package.json` on every `npm version` bump — a bespoke, working mechanism `semantic-release`'s plugin model has no native hook for without a custom plugin. |
+
+**What NOT to add:** `semantic-release`, `standard-version`, `release-please` (Google's alternative, same "infer version from commits" model), `changesets` (closer fit for monorepos with independently-versioned packages — Motto is a single package). All solve "infer the next version and changelog from commit history," a problem this milestone's design explicitly sidesteps by keeping the human-decided `npm version` step.
+
+### New Capabilities → Tool Mapping (v0.0.6)
+
+| Needed for | How to get it | New dep? |
+|------------|----------------|----------|
+| CI checkout | `actions/checkout@v6` | No — GitHub Action, not an npm dep |
+| CI Node install + npm cache | `actions/setup-node@v6` with `cache: 'npm'` | No — GitHub Action |
+| Node 20/22/24 matrix | `strategy.matrix.node-version` in the workflow YAML | No |
+| Dogfood lint/build in CI | `node bin/motto.js lint && node bin/motto.js build` — already exists | No |
+| Pack-install E2E | `npm pack` + `npm install <tarball>` + `npx motto ...` in a scratch dir | No — stdlib npm commands |
+| Publish-on-tag (interim) | `NODE_AUTH_TOKEN` env + granular `NPM_TOKEN` secret + `npm publish` | No |
+| Publish-on-tag (post-public-flip) | npm trusted publishing (OIDC): `permissions.id-token: write` + `registry-url` in `setup-node` + `npm publish` | No |
+| npm-version drift warning | Global `fetch()` (stdlib, Node ≥ 18) against `registry.npmjs.org/@jeremiewerner/motto` | No |
+| Git-history secrets scan (one-shot, pre-public-flip) | `gitleaks git .` — standalone Go binary via Homebrew or Docker | No (not an npm dep at all) |
+| `--quiet` / `--format json` CLI flags | Two new `parseArgs` option declarations + `JSON.stringify(result)` on the existing `{ok, errors}` shape | No |
+| GitHub Release notes | `gh release create --generate-notes` (`gh` CLI, preinstalled on GitHub-hosted runners) | No |
+
+**Do not add:** `semantic-release`/`standard-version`/`release-please`/`changesets` (see rejection table above), `softprops/action-gh-release` or any third-party release Action (`gh` CLI covers it, zero added Action-supply-chain surface), `trufflehog` (verification/breadth aimed at a different job than a one-shot pre-flip gate — revisit only if a recurring/continuous secrets-scanning job is added later), any HTTP client library for the npm-drift check (`node-fetch`, `axios`, `got` — all superseded by stdlib `fetch`), any JSON-output formatting library (`json-stringify-pretty-compact`, `ndjson`) — `JSON.stringify` on the existing plain-object return shape is sufficient.
+
+### Alternatives Considered (v0.0.6-specific)
+
+| Recommended | Alternative | Why Not |
+|-------------|-------------|---------|
+| `gitleaks` for one-shot pre-flip scan | `trufflehog` | Live-credential-verification and multi-source scanning (S3, Docker, Slack) solve a different, broader problem than "did a secret shape ever appear in this repo's git history" — slower, adds network calls, better suited to a recurring scheduled job than a one-shot gate. |
+| `gh release create --generate-notes` | `softprops/action-gh-release` | `gh` is preinstalled on GitHub-hosted runners (zero pinned third-party Action to track); Motto has no asset-upload-globbing need `action-gh-release` specializes in — its extra surface (file globs, draft/prerelease flags, cross-repo targeting) is unused complexity here. |
+| npm trusted publishing (OIDC), sequenced after public flip | `NPM_TOKEN` permanently (skip trusted publishing) | Trusted publishing removes a long-lived credential from GitHub secrets entirely (short-lived, workflow-scoped tokens instead) and unlocks automatic provenance attestation once public — a real security upgrade worth the one-time OIDC setup, not just interim scaffolding. |
+| Single JSON object to stdout for `--format json` | NDJSON (one JSON object per skill/error, streamed) | Motto lints a small, bounded, in-memory-resident skill tree per invocation — there's no streaming/backpressure need NDJSON solves, and it would require a second serialization path alongside the existing single-shot `{ok, errors}` return value. |
+| Node 24 pinned for the publish job (not matrix-inherited) | Reuse whichever Node the workflow happens to be on | The trusted-publishing/OIDC npm-CLI floor (≥11.5.1) is not guaranteed on Node 20/22 patch releases' bundled npm; a single explicitly-pinned Node 24 publish job avoids a flaky "works on this runner, not that one" failure mode. |
+
+### What NOT to Use (v0.0.6-specific)
+
+| Avoid | Why | Use Instead |
+|-------|-----|--------------|
+| `semantic-release` / `standard-version` / `release-please` / `changesets` | All infer version + changelog from commit-message conventions; Motto's release flow keeps the version decision human (`npm version X.Y.Z`) and deliberately splits local-bump from CI-publish — these tools collapse that split back into one CI-driven step | Existing `npm version` (already synced to `motto.yaml` via the `version` lifecycle script) + `gh release create --generate-notes` |
+| `softprops/action-gh-release` (or any third-party release Action) | Unused feature surface (asset globbing, cross-repo targeting) for a single-artifact (npm tarball) release; one more pinned Action version to track | `gh release create --generate-notes` — preinstalled, zero added Action |
+| `trufflehog` for the pre-public-flip gate | Live-verification + multi-source scanning is aimed at continuous/scheduled scanning, not a one-shot local check before a visibility flip | `gitleaks git .` |
+| `node-fetch` / `axios` / `got` for the npm-drift registry check | All superseded by Node's stable global `fetch` (Node ≥ 21 unflagged, usable-with-warning on Node ≥ 18) | Global `fetch()` |
+| A permanent, unscoped/classic `NPM_TOKEN` | Classic tokens carry account-wide publish rights; a leak has blast radius beyond this one package | A granular access token scoped to `@jeremiewerner/motto` publish-only, as the interim before trusted publishing |
+| Reusing a Node 20/22 matrix leg for the publish job | Bundled npm on non-24 Node releases may sit below the ≥11.5.1 trusted-publishing floor | Pin the publish job to Node 24 explicitly |
+
+### Version Compatibility (v0.0.6 additions)
+
+| Tool/API | Requirement | Notes |
+|----------|-------------|-------|
+| `actions/checkout` | `@v6` | Built for the GitHub Actions Node 24 runner (forced default from June 2, 2026; Node 20 Actions-runtime removed September 2026) — this is the Action's own execution runtime, independent of your test matrix. |
+| `actions/setup-node` | `@v6` (`v6.4.0`, April 2026) | Native `cache: 'npm'` support; supports `node-version` matrix values 20/22/24. |
+| npm trusted publishing | npm CLI ≥ 11.5.1, Node ≥ 22.14.0 for the publish step | Node 24 bundles npm 11.x by default, satisfying the floor; do not assume Node 20/22 patch releases do. |
+| `gh` CLI | Preinstalled on all GitHub-hosted runners | No version pin needed; `--generate-notes` has been GA for multiple `gh` major versions. |
+| `gitleaks` | Any current release (Go binary, independently versioned from npm/Node) | Not part of the Node/npm dependency tree at all. |
+| Global `fetch()` | Node ≥ 18 (experimental, prints `ExperimentalWarning`), Node ≥ 21 (stable, silent) | Project floor is Node ≥ 20 — the npm-drift check will emit a harmless warning line on the Node 20 matrix leg only. |
+
+### Sources (v0.0.6 addendum)
+
+- `docs.npmjs.com/trusted-publishers/` — npm CLI ≥11.5.1 / Node ≥22.14.0 floor; works on both public and private repos; provenance NOT supported on private repos even for public packages; required `id-token: write`/`contents: read` permissions; `workflow_call` nested-permission requirement; `repository.url` matching. Verified 2026-07-03 (WebFetch, official npm docs). Confidence: HIGH.
+- `blog.sigstore.dev` (npm provenance GA post) + cross-checked community write-ups — confirms provenance is signed against Sigstore's public-good instance and logged to the public Rekor transparency log, explaining why private repos can't generate it (private-Sigstore alternative is GitHub Enterprise Cloud-only). Verified 2026-07-03 (WebSearch synthesis, multiple independent sources agree). Confidence: MEDIUM (community/blog sources corroborating the official npm docs' bare statement).
+- `github.com/actions/checkout` (releases + issue #2322) — confirms `v6` current major, rationale tied to the Actions Node-24-runtime migration timeline (forced default June 2, 2026; Node 20 runtime removed September 2026). Verified 2026-07-03 (WebSearch synthesis of official repo release notes/issues). Confidence: MEDIUM (not fetched directly from a single canonical page, but consistent across GitHub's own changelog and the project's own issue tracker).
+- `github.com/actions/setup-node` (releases) — confirms `v6.4.0` (April 2026) as latest, native `cache: 'npm'` support. Verified 2026-07-03 (WebSearch synthesis). Confidence: MEDIUM.
+- Node.js EOL schedule (`endoflife.date/nodejs`, `nodejs.org/en/about/eol`, cross-checked) — confirms Node 20 reached end-of-life April 30, 2026; Node 22 Maintenance LTS; Node 24 Active LTS through April 2028. Verified 2026-07-03 (WebSearch synthesis, multiple independent EOL-tracking sources agree). Confidence: MEDIUM-HIGH (consistent across independent sources, but not fetched from the single canonical `nodejs.org/en/about/previous-releases` page directly).
+- Node.js bundled-npm-version research (`github.com/nodejs/node` issue #58423, npm registry version history) — confirms Node 24 ships npm 11.x; npm itself is at 11.18.0 as of late June 2026 (well past the 11.5.1 trusted-publishing floor), while earlier Node 20/22 patch releases shipped npm 10.x. Verified 2026-07-03 (WebSearch synthesis). Confidence: MEDIUM (directionally confirmed across multiple sources; exact npm version per specific Node 20.x/22.x patch release not independently pinned).
+- `gitleaks/gitleaks` (GitHub repo) + multiple 2026 secret-scanner comparison write-ups (appsecsanta.com, rafter.so, jit.io) — confirms `gitleaks git .` full-history scan usage, installation via Homebrew/Docker, regex/entropy-only detection with no network calls; `trufflehog`'s live-verification differentiator and broader-than-git scanning scope. Verified 2026-07-03 (WebSearch synthesis, cross-checked across multiple independent comparison sources). Confidence: MEDIUM.
+- `eslint.org/docs/latest/use/command-line-interface` and `eslint.org/docs/latest/use/formatters/` — confirms `--format`/`-f` flag convention, `json` formatter semantics, `--quiet` suppresses warnings (not errors) as the precedent semantic. Verified 2026-07-03 (WebSearch synthesis of official ESLint docs). Confidence: MEDIUM-HIGH.
+- Node.js global `fetch` stabilization history (`nodejs.org` v21 release notes, cross-checked) — confirms `fetch` available unflagged-but-experimental since Node 18, stable (no warning) since Node 21. Verified 2026-07-03 (WebSearch synthesis). Confidence: MEDIUM-HIGH.
+- `cli.github.com/manual/gh_release_create` and GitHub's own "Using GitHub CLI in workflows" docs — confirms `gh` is preinstalled on GitHub-hosted runners, `--generate-notes` flag, `GH_TOKEN`/`GITHUB_TOKEN` sufficiency (no extra PAT needed for same-repo release creation). Verified 2026-07-03 (WebSearch synthesis). Confidence: MEDIUM.
+- Direct codebase inspection — `package.json`, `skills/release/SKILL.md`, `.planning/PROJECT.md` — confirms current `npm version` lifecycle script (`motto.yaml` sync), existing `release` skill's manual 6-step flow (tests → version bump → dogfood → tarball verify → publish → housekeeping) as the baseline this milestone splits between local and CI, and the absence of any existing `.github/workflows/`. Verified 2026-07-03. Confidence: HIGH (primary source).
 
 ---
 
@@ -440,7 +712,7 @@ These are content authoring tasks, not stack changes. No new tooling needed.
 
 ## Verdict on Chosen Stack
 
-The project's chosen stack (Node ≥ 20, plain ESM, `node --test`, single dep `yaml`) is correct and defensible. No changes recommended for v0.0.2, v0.0.4, or v0.0.5. Three gaps discovered in v0.0.1 research are documented below, plus one implementation-risk gap discovered in v0.0.5 research (see Q2 above: `allowed-tools` whitespace-free constraint vs. real-world parenthesized syntax).
+The project's chosen stack (Node ≥ 20, plain ESM, `node --test`, single dep `yaml`) is correct and defensible. No changes recommended for v0.0.2, v0.0.4, v0.0.5, or v0.0.6. Three gaps discovered in v0.0.1 research are documented below, plus one implementation-risk gap discovered in v0.0.5 research (see Q2 above: `allowed-tools` whitespace-free constraint vs. real-world parenthesized syntax), plus one flag discovered in v0.0.6 research (Node 20 is now EOL — the milestone's own matrix already covers this deliberately; see the v0.0.6 addendum's Q1 note).
 
 ---
 
@@ -450,7 +722,7 @@ The project's chosen stack (Node ≥ 20, plain ESM, `node --test`, single dep `y
 
 | Technology | Version | Purpose | Why Recommended |
 |------------|---------|---------|-----------------|
-| Node.js | ≥ 20 LTS | Runtime | First LTS with stable `node:test`, stable `parseArgs`, native ESM `.js` without loader flags. Node 24 is current Active LTS (through April 2028), Node 22 Maintenance LTS (through April 2027) — `"engines": { "node": ">=20" }` covers both. |
+| Node.js | ≥ 20 LTS | Runtime | First LTS with stable `node:test`, stable `parseArgs`, native ESM `.js` without loader flags. Node 24 is current Active LTS (through April 2028), Node 22 Maintenance LTS (through April 2027). Node 20 itself reached end-of-life April 30, 2026 (v0.0.6 finding) — `"engines": { "node": ">=20" }` remains the documented floor for now but is a candidate for an explicit follow-up bump decision. |
 | ESM (`"type":"module"`) | — | Module format | Zero transpilation, native `import/export`, direct execution via `node`. No build step. |
 | `yaml` | 2.9.0 | YAML 1.2 parsing | Only runtime dep needed. YAML 1.2 core schema by default (no `yes`/`no` boolean surprises). `parseDocument()` accumulates errors in `doc.errors[]` without throwing — ideal for a linter that must report all errors, not just the first. |
 | `node:test` | stdlib (Node ≥ 20) | Test runner | Stable since Node 20. `describe`/`it`/`mock`/`beforeEach` all present. ESM-native. `node --test` auto-discovers `*.test.js`. No install. |
@@ -462,11 +734,12 @@ The project's chosen stack (Node ≥ 20, plain ESM, `node --test`, single dep `y
 |--------|---------|-------|
 | `node:fs/promises` | Async file I/O | `readFile`, `readdir`, `mkdir`, `cp`, `rm`, `writeFile`, `stat` — covers all lint, build, init, and (new in v0.0.5) `outputs:`/`dependencies:` existence-check I/O |
 | `node:path` | Path manipulation | `join`, `resolve`, `relative`, `basename`, `extname`, and (new in v0.0.5) `sep` for path-safety containment checks |
-| `node:process` | Exit codes, argv | `process.exit(1)` on lint failure; `process.argv` fed to `parseArgs` |
+| `node:process` | Exit codes, argv | `process.exit(1)` on lint failure; `process.argv` fed to `parseArgs`; (new in v0.0.6) `process.exitCode` set alongside `--quiet`/`--format json` output |
 | `node:assert` | Assertions in tests | `assert.strictEqual`, `assert.deepStrictEqual`, `assert.throws` — enough for all unit assertions |
 | `node:url` | `fileURLToPath` | Needed for `__dirname` equivalent in ESM: `path.dirname(fileURLToPath(import.meta.url))` |
 | `node:os` | `tmpdir()` | Used in unit tests for `mkdtemp`-based temp fixture directories |
 | `node:child_process` | `execFileSync` | v0.0.4 — reads `git config user.name`/`user.email` for `motto init`'s marketplace `owner` field, without spawning a shell |
+| `fetch` (global) | HTTP requests | v0.0.6 — npm registry `dist-tags.latest` lookup for the npm-version-drift warning; stable (no warning) on Node ≥ 21, usable-with-`ExperimentalWarning` on Node 18–20 |
 
 ### Development Tools
 
@@ -476,6 +749,10 @@ The project's chosen stack (Node ≥ 20, plain ESM, `node --test`, single dep `y
 | `node --test --experimental-test-coverage` | Coverage | Built-in; available in Node 20+; marks `--experimental` but reliable enough for CI |
 | `claude plugin validate` | Validate output | Run against `dist/` to verify plugin structure before shipping; built into Claude Code CLI |
 | `husky` | Pre-commit hook | Runs `npm test` (= `node --test`) before every commit; catches dogfood regressions automatically |
+| `actions/checkout@v6` | CI checkout | v0.0.6 — GitHub Action, not an npm dependency |
+| `actions/setup-node@v6` | CI Node install + npm cache | v0.0.6 — GitHub Action, `cache: 'npm'` built in |
+| `gitleaks` | One-shot git-history secrets scan | v0.0.6 — standalone Go binary (Homebrew/Docker), run once before the repo-public flip; not part of the npm dependency tree |
+| `gh` CLI | GitHub Release creation | v0.0.6 — preinstalled on GitHub-hosted runners; `gh release create --generate-notes` |
 
 ---
 
@@ -488,10 +765,14 @@ npm install yaml
 # One dev dependency (pre-commit hook runner)
 npm install -D husky
 
-# No other dependencies needed — v0.0.4's init/--help/[path] and v0.0.5's
-# template mechanism / outputs / dependencies / allowed-tools additions are
-# built entirely on Node stdlib (fs/promises, node:path, util.parseArgs,
-# child_process) plus plain data modules.
+# No other npm dependencies needed — v0.0.4's init/--help/[path], v0.0.5's
+# template mechanism / outputs / dependencies / allowed-tools additions, and
+# v0.0.6's CI/publish/secrets-scan/CLI-flags additions are all built on Node
+# stdlib (fs/promises, node:path, util.parseArgs, child_process, global fetch),
+# plain data modules, and GitHub-Actions-native tooling (actions/checkout,
+# actions/setup-node, the preinstalled gh CLI). gitleaks (v0.0.6) is a
+# standalone Go binary installed via Homebrew/Docker for a one-shot local
+# scan — it never touches package.json.
 ```
 
 ---
@@ -627,6 +908,7 @@ const [subcommand] = positionals;
 | `node:child_process execFileSync` (v0.0.4) | `simple-git` / `execa` | A single synchronous read of two git config values doesn't warrant a git wrapper library. |
 | `node:path` `resolve`+`sep` containment check (v0.0.5) | `path-is-inside` / `is-path-inside` | Both are thin wrappers around the same 4-line stdlib pattern; a dependency for four lines contradicts the zero-dep constraint. |
 | Plain string/regex tag-presence check (v0.0.5) | Markdown/XML/HTML parser | Only boolean presence of two literal substrings needs checking; content between tags is explicitly unparsed by design. |
+| GitHub-Actions-native CI (`actions/checkout`, `actions/setup-node`, `gh` CLI) (v0.0.6) | Third-party release/publish Actions (`semantic-release`, `softprops/action-gh-release`) | Motto's release flow keeps the version decision human and the artifact set minimal (one npm tarball); native building blocks cover it with zero added Action-supply-chain surface. |
 
 ---
 
@@ -649,6 +931,10 @@ const [subcommand] = positionals;
 | `degit` / `giget` / `tiged` (v0.0.4) | Starter skill content is local and known at build time — nothing to fetch remotely | Inline string templates in `src/init.js` |
 | `fast-xml-parser` / `htmlparser2` / `remark` (v0.0.5) | Overkill for boolean tag-presence detection; content between tags is explicitly unparsed | `String.prototype.includes()` per `template.requiredSections` |
 | `path-is-inside` / `sanitize-filename` (v0.0.5) | Both are thin wrappers around `node:path` primitives already imported elsewhere in this codebase | `resolve()`/`sep` containment check |
+| `semantic-release` / `standard-version` / `release-please` / `changesets` (v0.0.6) | Infer version from commit-message conventions; collapses Motto's deliberate local-bump/CI-publish split back into one CI-driven step | `npm version` (human-decided, already synced to `motto.yaml`) + `gh release create --generate-notes` |
+| `softprops/action-gh-release` (v0.0.6) | Unused feature surface for a single-artifact (npm tarball) release; one more pinned third-party Action to track | `gh release create --generate-notes` — preinstalled, zero added Action |
+| `trufflehog` for the pre-public-flip gate (v0.0.6) | Live-verification/multi-source scanning aimed at continuous scanning, not a one-shot local check | `gitleaks git .` |
+| `node-fetch` / `axios` / `got` (v0.0.6) | Superseded by Node's stable global `fetch` | Global `fetch()` |
 
 ---
 
@@ -661,6 +947,10 @@ const [subcommand] = positionals;
 **Gap 3 — `audience` field (`public`|`private`) is a Motto-specific concept, not a Claude Code field.** The output plugin directory name (your project name) is what separates public from private plugins — they are two separately-packaged plugin directories in `dist/`. Claude Code itself has no concept of audience; both are standard plugins. Motto's `build` command routes skills into `dist/public/<name>/` vs `dist/private/<name>/` based on the `audience` frontmatter key. Lint rule: `audience` must be `"public"` or `"private"` (no `"both"`).
 
 **Gap 4 (v0.0.5) — `allowed-tools` "whitespace-free string" (D-05) conflicts with real, documented Claude Code syntax.** Parenthesized permission-rule entries like `Bash(git add *)` are normal, working `allowed-tools` values shown in Claude Code's own docs, and they contain internal spaces. A strict per-item whitespace-free check would reject valid input. See the v0.0.5 addendum's Q2 section above for the two reconciliation options (recommended: validate array-of-non-empty-strings shape only, drop the whitespace-free constraint).
+
+**Gap 5 (v0.0.6) — Node 20 is already end-of-life (April 30, 2026), yet is both the project's `engines` floor and an explicit CI matrix leg.** Not a bug to fix within this milestone (the milestone's matrix is deliberate — real installs may still be on Node 20), but worth an explicit, separate decision later: either keep testing an EOL runtime because real users are on it, or bump the floor to `>=22`. Do not let this decision default silently.
+
+**Gap 6 (v0.0.6) — npm trusted publishing works on private repos; only provenance requires public.** The milestone's sequencing (OIDC after the public flip, `NPM_TOKEN` as interim) is still the right call, but for the provenance benefit, not because OIDC itself is blocked pre-flip — worth stating explicitly in the release skill so a future reader doesn't assume trusted publishing is technically impossible on a private repo.
 
 ---
 
@@ -675,6 +965,8 @@ const [subcommand] = positionals;
 | `fs.cp()` | ≥ 16.7 | Available and stable in Node 20 |
 | `child_process.execFileSync` (`encoding` option) | Long-stable (pre-v10) | No floor concern at Node ≥ 20; does not spawn a shell by default (v0.0.4) |
 | `path.resolve()`, `path.sep` | Long-stable (pre-v10) | No floor concern at Node ≥ 20 (v0.0.5) |
+| Global `fetch()` | ≥ 18 (experimental warning), ≥ 21 (stable, silent) | v0.0.6 — npm-drift check; harmless warning on the Node 20 matrix leg only |
+| npm trusted publishing (OIDC) | npm CLI ≥ 11.5.1, Node ≥ 22.14.0 for the publish step | v0.0.6 — pin the publish job to Node 24, do not inherit the test matrix |
 
 ---
 
@@ -692,9 +984,12 @@ const [subcommand] = positionals;
 - `nodejs.org/api/child_process.html#child_processexecfilesyncfile-args-options` — execFileSync does not spawn a shell by default, encoding option, error shapes. Verified 2026-07-01. Confidence: HIGH (official Node.js docs).
 - Node.js path-traversal prevention pattern (`resolve()`+`sep` containment check) — cross-checked across multiple independent Node.js security write-ups. Verified 2026-07-02 (WebSearch synthesis). Confidence: MEDIUM (community write-ups; underlying `node:path` API itself is HIGH confidence, official stdlib docs).
 - Model Context Protocol `inputSchema`/`outputSchema` — `modelcontextprotocol.io/specification` — confirmed as a different protocol/object with no relationship to SKILL.md `outputs:`/`dependencies:`. Verified 2026-07-02 (WebSearch synthesis). Confidence: MEDIUM.
-- Direct codebase inspection — `bin/motto.js`, `src/build.js`, `src/lint.js`, `src/config.js`, `src/schema.js`, `test/build.test.js`, `package.json`, `.gitignore`, `motto.yaml`, `.claude-plugin/marketplace.json`, `.planning/superpowers/specs/2026-07-02-skill-builder-design.md`. Verified 2026-06-30 (re-verified 2026-07-01, 2026-07-02). Confidence: HIGH.
+- `docs.npmjs.com/trusted-publishers/` — npm trusted publishing (OIDC) requirements, provenance constraints, permissions. Verified 2026-07-03 (WebFetch, official npm docs). Confidence: HIGH. See v0.0.6 addendum for full detail.
+- `gitleaks/gitleaks` (GitHub) + 2026 secret-scanner comparison sources — one-shot git-history scan usage and rationale vs `trufflehog`. Verified 2026-07-03 (WebSearch synthesis). Confidence: MEDIUM. See v0.0.6 addendum.
+- Node.js EOL schedule (`endoflife.date/nodejs`, cross-checked) — Node 20 EOL April 30, 2026. Verified 2026-07-03 (WebSearch synthesis). Confidence: MEDIUM-HIGH. See v0.0.6 addendum.
+- Direct codebase inspection — `bin/motto.js`, `src/build.js`, `src/lint.js`, `src/config.js`, `src/schema.js`, `test/build.test.js`, `package.json`, `.gitignore`, `motto.yaml`, `.claude-plugin/marketplace.json`, `skills/release/SKILL.md`, `.planning/superpowers/specs/2026-07-02-skill-builder-design.md`, `.planning/PROJECT.md`. Verified 2026-06-30 (re-verified 2026-07-01, 2026-07-02, 2026-07-03). Confidence: HIGH.
 
 ---
 
-*Stack research for: Motto CLI (Node ESM, YAML linter, Claude Code plugin packager) — base + v0.0.2 dogfood addendum + v0.0.4 project bootstrap addendum + v0.0.5 skill builder addendum*
-*Researched: 2026-06-30 (base) · 2026-07-01 (v0.0.4 addendum) · 2026-07-02 (v0.0.5 addendum)*
+*Stack research for: Motto CLI (Node ESM, YAML linter, Claude Code plugin packager) — base + v0.0.2 dogfood addendum + v0.0.4 project bootstrap addendum + v0.0.5 skill builder addendum + v0.0.6 Prove & Publish addendum*
+*Researched: 2026-06-30 (base) · 2026-07-01 (v0.0.4 addendum) · 2026-07-02 (v0.0.5 addendum) · 2026-07-03 (v0.0.6 addendum)*
