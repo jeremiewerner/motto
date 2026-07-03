@@ -211,7 +211,7 @@ motto lint
 ```sh
 # 5 — Build the plugin
 motto build
-# → dist/public/ and dist/private/ are populated
+# → dist/public/ is populated (dist/private/ appears only once you add audience: private skills)
 ```
 
 **6 — Ship it:** commit `dist/public/` and push your repository to a public host — see [Ship your plugin](#ship-your-plugin).
