@@ -42,7 +42,7 @@ Input is a sequence of steps to follow?
 ## Step 5 — Guard, then write
 
 Before writing anything:
-1. Validate the proposed `name`: it must be kebab-case, starting with a lowercase letter, at most 64 characters long, and must not contain the word "anthropic" or the word "claude". On failure, stop and re-prompt for a valid name instead of silently sanitizing it — the name becomes a filesystem path segment.
+1. Validate the proposed `name`: it must be kebab-case, starting with a lowercase letter, at most 64 characters long, and must not contain "anthropic" or "claude" anywhere as a substring — not merely as a standalone word, so a name like `myclaudehelper` is rejected too. On failure, stop and re-prompt for a valid name instead of silently sanitizing it — the name becomes a filesystem path segment.
 2. Confirm the current directory is a real Motto project (a `motto.yaml` file exists at its root). If it is absent, stop and direct the user to run `motto init` first, or to move into an existing Motto project.
 3. Check whether `skills/<name>/` already exists. If it does, stop and refuse — surface a clear message rather than silently overwriting an existing skill.
 
