@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v0.0.6
 milestone_name: Prove & Publish
-current_phase: 20
-current_phase_name: ci-workflow
+current_phase: 21
+current_phase_name: Publish Automation & Release Rewrite
 status: verifying
 stopped_at: Completed 20-02-PLAN.md
-last_updated: "2026-07-03T21:40:56.372Z"
+last_updated: "2026-07-03T21:59:28.941Z"
 last_activity: 2026-07-03
-last_activity_desc: Phase 20 execution started
+last_activity_desc: Phase 20 complete, transitioned to Phase 21
 progress:
   total_phases: 4
   completed_phases: 2
@@ -28,10 +28,10 @@ See: .planning/PROJECT.md (updated 2026-07-02 after v0.0.4)
 
 ## Current Position
 
-Phase: 20 (ci-workflow) — EXECUTING
-Plan: 3 of 3
+Phase: 21 — Publish Automation & Release Rewrite
+Plan: Not started
 Status: Phase complete — ready for verification
-Last activity: 2026-07-03 — Phase 20 execution started
+Last activity: 2026-07-03 — Phase 20 complete, transitioned to Phase 21
 
 **Milestone shape (v0.0.6, coarse):**
 
@@ -46,7 +46,7 @@ Ordering (research-locked): CLI flags first (pack-E2E consumes them) → CI prov
 
 **Velocity:**
 
-- Total plans completed: 13
+- Total plans completed: 16
 - Average duration: -
 - Total execution time: 0 hours
 
@@ -64,6 +64,7 @@ Ordering (research-locked): CLI flags first (pack-E2E consumes them) → CI prov
 | 17 | 2 | - | - |
 | 18 | 2 | - | - |
 | 19 | 2 | - | - |
+| 20 | 3 | - | - |
 
 **Recent Trend:**
 
