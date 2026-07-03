@@ -1,20 +1,20 @@
 ---
 gsd_state_version: 1.0
-milestone: v0.0.4
-milestone_name: Project Bootstrap
-current_phase: 0.4
+milestone: v0.0.5
+milestone_name: Skill Builder
+current_phase: 0.5
 status: Awaiting next milestone
-stopped_at: Completed 13-01-PLAN.md
-last_updated: "2026-07-02T16:48:08.083Z"
-last_activity: 2026-07-02
-last_activity_desc: Milestone v0.0.4 completed and archived
+stopped_at: Completed 18-02-PLAN.md
+last_updated: "2026-07-03T15:39:20.371Z"
+last_activity: 2026-07-03
+last_activity_desc: Milestone v0.0.5 completed and archived
 progress:
-  total_phases: 4
-  completed_phases: 4
-  total_plans: 9
-  completed_plans: 9
+  total_phases: 5
+  completed_phases: 5
+  total_plans: 11
+  completed_plans: 11
   percent: 100
-current_phase_name: "Address tech debt: plugins.public reserved-word enforcement + init/CLI review items"
+current_phase_name: migrate-base-spine-role-to-role-section-tag
 ---
 
 # Project State
@@ -24,37 +24,36 @@ current_phase_name: "Address tech debt: plugins.public reserved-word enforcement
 See: .planning/PROJECT.md (updated 2026-07-02 after v0.0.4)
 
 **Core value:** A strict schema + linter that guarantees authored skills conform before they ship, then packages them into self-contained standard Agent Skill plugins.
-**Current focus:** Planning next milestone (`/gsd-new-milestone`)
+**Current focus:** Planning next milestone (run /gsd-new-milestone)
 
 ## Current Position
 
-Phase: Milestone v0.0.4 complete
+Phase: Milestone v0.0.5 complete
 Plan: —
 Status: Awaiting next milestone
-Last activity: 2026-07-02 — Milestone v0.0.4 completed and archived
+Last activity: 2026-07-03 — Milestone v0.0.5 completed and archived
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 12
+- Total plans completed: 11
 - Average duration: -
 - Total execution time: 0 hours
 
-**By Phase:**
+**By Phase (v0.0.5):**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 7. npm Packaging & Release Flow | 0 | - | - |
-| 8. Marketplace Distribution | 0 | - | - |
-| 9. Documentation | 0 | - | - |
-| 07 | 1 | - | - |
-| 09 | 1 | - | - |
-| 08 | 1 | - | - |
-| 10 | 3 | - | - |
-| 11 | 1 | - | - |
-| 12 | 3 | - | - |
-| 13 | 2 | - | - |
+| 14. Template Mechanism | 0 | - | - |
+| 15. Field Validation & Integrity Guards | 0 | - | - |
+| 16. build-skill & author-skill Retirement | 0 | - | - |
+| 17. Docs Audit | 0 | - | - |
+| 14 | 3 | - | - |
+| 15 | 2 | - | - |
+| 16 | 2 | - | - |
+| 17 | 2 | - | - |
+| 18 | 2 | - | - |
 
 **Recent Trend:**
 
@@ -62,18 +61,17 @@ Last activity: 2026-07-02 — Milestone v0.0.4 completed and archived
 - Trend: -
 
 *Updated after each plan completion*
-| Phase 07 P01 | 253 | 3 tasks | 4 files |
-| Phase 08 P01 | 64s | 3 tasks | 1 files |
-| Phase 09 P01 | 8 | 2 tasks | 1 files |
-| Phase 10 P01 | 8min | 2 tasks | 2 files |
-| Phase 10 P02 | 6min | 2 tasks | 2 files |
-| Phase 10 P03 | 1min 20s | 2 tasks | 2 files |
-| Phase 11 P01 | 6min | 3 tasks tasks | 2 files files |
-| Phase 12 P01 | 12min | 2 tasks | 1 files |
-| Phase 12 P02 | 5min | 2 tasks | 1 files |
-| Phase 12 P03 | 5min | 1 tasks | 1 files |
-| Phase 13 P01 | 2min | 4 tasks | 4 files |
-| Phase 13 P02 | 5min | 1 tasks | 1 files |
+| Phase 14 P01 | 24min | 3 tasks | 3 files |
+| Phase 14 P02 | 12min | 2 tasks | 2 files |
+| Phase 14 P03 | 9min | 2 tasks | 2 files |
+| Phase 15 P01 | 5min | 3 tasks | 2 files |
+| Phase 15 P02 | 4min | 3 tasks | 3 files |
+| Phase 16 P01 | 6min | 2 tasks | 3 files |
+| Phase 16 P02 | 8min | 2 tasks | 1 files |
+| Phase 17 P01 | 25min | 3 tasks | 3 files |
+| Phase 17 P02 | 6min | 2 tasks | 1 files |
+| Phase 18 P01 | 7min | 2 tasks | 3 files |
+| Phase 18 P02 | 20min | 3 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -82,34 +80,34 @@ Last activity: 2026-07-02 — Milestone v0.0.4 completed and archived
 Decisions are logged in PROJECT.md Key Decisions table.
 Recent decisions affecting current work:
 
-- [v0.0.3]: D-05 — npm pack --dry-run --json scripted assertion machine-checks NPM-04; process.exit(1) on any leak outside bin/src/dist/public/
-
-- [v0.0.3]: D-04 — version lifecycle script auto-syncs motto.yaml via npm_new_version (smoke-test confirmed for npm@11.11.0)
-
-- [v0.0.3]: D-01 — MIT LICENSE created; tarball is public so license is warranted
-
-- [v0.0.3]: Install mechanism RESOLVED — npm (CLI) + self-hosted marketplace (skills). No `.zip` build feature.
-- [v0.0.3]: CLI publishes as scoped public `@jeremiewerner/motto` (`motto` unscoped is taken); `bin` invokes as `motto`; `publishConfig.access: public`; `files` allowlist = `bin/`, `src/`, `dist/public/`.
-- [v0.0.3]: One `npm publish` ships both the CLI and the bundled `dist/public/` skills plugin; marketplace `source: npm` points at the published package with a `dist/public/` skills override and `strict: false`.
-- [v0.0.3]: `.claude-plugin/marketplace.json` lives inside the repo root (no separate marketplace repo).
-- [v0.0.3]: Claude Desktop's Code tab IS Claude Code → marketplace/`~/.claude/skills/` cover it; symlink + zip are documented shell one-liners, not features (`--zip` dropped, YAGNI).
-- [v0.0.3]: `release` skill fixes — real `npm publish` flow, `git push --follow-tags`, manual `motto.yaml` bump.
-- [v0.0.2]: Output = standard Agent Skills (verbatim SKILL.md copy, no content stripping)
-- [v0.0.2]: `audience` binary (public|private); private plugin emitted only when private skills exist and `plugins.private` is set
-- [Phase ?]: Templates stored as inline strings in src/init.js (not skills/ or src/templates/) — avoids Motto's own dogfood skill count and dist/public/
-- [Phase ?]: Scaffolded .gitignore/marketplace.json deliberately differ from this repo's own root files — dist/public/ stays trackable; marketplace.json uses bare relative-path source
-- [Phase 10]: mkdtemp random basename is not guaranteed NAME_KEBAB-valid (can include uppercase); tests needing a deterministic effective name nest a fixed kebab subdirectory or pass an explicit name
-- [Phase 10]: Pre-commit hook runs full suite against working tree (not staged files) — TDD RED commits are impossible in this repo; fix applied to disk before the RED test commit lands so both task commits see a green working tree while git diffs still separate test-add from fix
-- [Phase 11]: Help routing folded into the existing dispatch if/else chain (no early process.exit()) so no new no-arg process.exit() calls were introduced beyond the pre-existing parseArgs catch block — Plan explicitly forbade new no-arg process.exit() calls
-- [Phase 11]: sub === undefined single branch covers both D-01 (bare --help/-h) and D-03 (bare motto, no flags) since both render identical global help to stdout exit 0 — Simplifies dispatch chain, avoids duplicated help-printing branches
-- [Phase 11]: Task 2 plan verify script assumed motto init <path> scaffolds AT that path; current init CLI wiring only scaffolds into cwd (positional is the name field, out of CLIX-04 scope). Verified equivalent behavior via mkdir+cd and scaffoldProject(targetDir, name) API directly instead — init target-dir semantics unchanged this phase; CLIX-04 covers lint/build [path] only
-- [Phase ?]: E2E ship-flow ending uses generic <owner>/<repo>/<plugin> placeholders rather than jeremiewerner/motto (D-02 confines the real repo name to the pre-existing Add-the-marketplace/Install-Mottos-skills sections)
-- [Phase ?]: Task 1 salvage-check found README.md (Plan 01) already covers all 6 setup-project SKILL.md sections — no README edit needed in Plan 02
-- [Phase ?]: skills/setup-project/ deleted and test/dogfood.test.js count sync landed in single atomic commit b437c84 (SC3/D-09) after amending an initial split-staging mistake
-- [Phase ?]: Used code review WR-02/WR-04 exact replacement text verbatim for README install-placeholder and --force overwrite disclosure; left WR-01/WR-03 untouched (deferred, out of Phase 12 scope)
-- [Phase 13-01]: DEBT-01 fix stayed doc/comment-only — no RESERVED check added to src/config.js or src/init.js for plugins.public/plugins.private — 13-RESEARCH.md Pitfall 1: over-strictness would reject spec-conformant plugin names like claude-notes-sync
-- [Phase 13-01]: DEBT-05 verified already-resolved (Phase 11 commit d35aba7) with no code change — plan's literal grep count of 4 is a false positive from comment-text matches, confirmed via line-by-line inspection — bin/motto.js has zero process.exit() call sites in executable code; all 4 grep matches are inside comments documenting the never-process.exit() convention
-- [Phase ?]: [Phase 13-02]: Checkpoint result - /motto-private:release does not resolve in the maintainer's live Claude Code session (no .claude/skills/ symlink, no motto-private marketplace entry); README.md line 173 now references skills/release/SKILL.md by file path instead of a slash command
+- [v0.0.5 design spec]: D-01..D-08 govern the template mechanism, field validators, and build-skill (see `.planning/superpowers/specs/2026-07-02-skill-builder-design.md`).
+- [v0.0.4]: Templates stored as inline strings in `src/init.js` — the v0.0.5 template *mechanism* (`src/templates.js`) is a distinct, data-driven schema-profile registry, not the init scaffold strings.
+- [v0.0.2]: Output = standard Agent Skills (verbatim SKILL.md copy, no content stripping); `audience` binary (public|private).
+- [Phase 14]: Template cascade resolves waivedSections before Title/Role checks so a template's waives can gate them (TMPL-01/04/05)
+- [Phase 14]: template-key presence gated with hasOwnProperty (not truthy) so template: "" or null errors instead of silently passing (D-07)
+- [Phase 14]: release (procedural maintainer checklist) is the locked dogfood target for template: procedure (14-CONTEXT.md)
+- [Phase 14]: success_criteria content authored net-new in release/SKILL.md; no existing content repurposed
+- [Phase 14]: hasClosedSection tracks opening fence character+length (not boolean toggle) and requires open-before-close match ordering (WR-01/WR-02 closure, Phase 14 gap closure)
+- [Phase 15]: Self-dependency check ordered strictly before skillNames.has() membership check in dependencies cascade (Pitfall 2)
+- [Phase 15]: allowed-tools locked to Option A: format-only, non-empty string or array, no shape regex, no tokenizing
+- [Phase 15]: checkOutputsFs called from inside processSkill's existing outer try (not a second backstop) — its own per-entry try/catch already converts every failure to an error entry
+- [Phase 15]: loadSkillAudiences pre-pass runs unconditionally for every discovered skill (build.js 'Option A — re-read' precedent), not gated on which skills declare dependencies
+- [Phase 15]: release's allowed-tools authored as a 3-entry array (Bash(node *), Bash(npm *), Bash(git *)) to exercise the array per-entry validator path live, not just the string form
+- [Phase 16]: build-skill description is WHEN-only, deliberately diverging from release/author-skill's what+when shape (locked BSKL-05 rule)
+- [Phase 16]: Skill-name collision on write: build-skill refuses and stops rather than silently overwriting an existing skills/<name>/
+- [Phase 16]: build-skill's allowed-tools declares only the honest lint-invocation fallback chain (local-bin, PATH, npx) — no contrived outputs/dependencies fields
+- [Phase 16]: skill-schema.md bundled as-is (stale re: template/outputs/dependencies/allowed-tools); build-skill's own prose carries the delta as behavioral guidance, never duplicated lint strings
+- [Phase 16]: Step 5 name guard mirrors full src/schema.js NAME cascade (kebab + lowercase-start + <=64 chars + no anthropic/claude); Step 6 authorizes delete-and-recover as the sole exception to the never-edit-outside-skills/<name>/ rule; Step 6 fallback falls through only on exec failure, never on a genuine lint failure
+- [Phase 17]: Header D-04: skill-schema.md carries a source citation, not a version number — the doc-sync test is the freshness guarantee going forward
+- [Phase 17]: D-01 surgical patch: kept existing skill-schema.md §1/§3/§5 skeleton verbatim; only §2/§4/§6 patched and §7-§9 added net-new; renumbered old §7 to §10
+- [Phase 17]: Doc-sync test uses Option 1 (source-text extraction) per RESEARCH.md recommendation — no fixture wiring, no re-invocation of validateSkill
+- [Phase 17]: D-06/D-07: README author-skill references replaced with build-skill (section body rewritten around real flow; 5 mechanical sample-name sites swapped); grep -c author-skill README.md returns 0
+- [Phase 18]: hasNonEmptyClosedSection coerces body via typeof check before delegating to hasClosedSection (which only guards falsy values via body||'', letting truthy non-strings like 123/{}/[] throw); fixed only in the new caller
+- [Phase 18]: role added to SECTIONS but not to TEMPLATES.procedure.requiredSections -- role is base-spine data (BASE_SPINE), not a per-template requirement (D-03)
+- [Phase 18]: hasNonEmptyClosedSection exported but unwired into validateSkill in Plan 18-01 -- legacy Role check stays live; wiring happens atomically in Plan 18-02
+- [Phase 18]: legacy **Role:** bold-line regex fully removed from src/schema.js (D-01 hard break) -- a leftover legacy line is now inert body text, producing the missing-role error, not a separate legacy-line-detected check (D-02)
+- [Phase 18]: validateSkill's top-level bodyStr coercion changed from body||'' to a typeof guard -- pre-existing latent never-throw gap (truthy non-string body like 123/{}/[] would throw on .split()), newly exercised by the plan-mandated adversarial test; same fix shape as Plan 18-01's hasNonEmptyClosedSection
+- [Phase quick-260703-occ]: Template cascade guards TPL[tpl] entry shape (null/string/number/array) before destructure, emitting a maintainer-integrity error (WR-04 closed, commits 9e36477/2f3e601)
 
 ### Pending Todos
 
@@ -117,16 +115,22 @@ None yet.
 
 ### Blockers/Concerns
 
-- Carried debt from v0.0.2: npm-publish stub in `release` skill (closed by REL-01 this milestone); no CI (husky-only, deferred).
-- **SHIP-GATED (Phase 8 SC2):** GitHub-form `/plugin marketplace add jeremiewerner/motto` fails until `.claude-plugin/marketplace.json` lands on the repo default branch (merge `gsd/v0.0.3-milestone` → main) AND the repo is public (T-08-04, Phase 9). Local-path add is verified; manifest is correct. Deployment step, not a defect.
-- **Phase 7 retro needed:** Phase 7 was marked "complete" but `@jeremiewerner/motto` was NOT actually on npm (404) until the maintainer manually ran `npm publish` on 2026-07-01, and `v0.0.3` was never git-tagged (only v0.0.1/v0.0.2 existed). The `release` flow's publish+tag steps did not execute during Phase 7. FIXED (partial): `v0.0.3` annotated tag now created locally at `1cf4ea8` (push deferred to ship). Still: retro why the release script never ran, so "complete" == "published+tagged" next milestone.
-- **Naming note:** public plugin renamed `motto-skills` → `motto` (namespace `/motto:*`) mid-Phase-8; motto.yaml `plugins.private` is still `motto-private` (asymmetric, acceptable — private bucket only emits when private skills exist).
+- **Phase 15 gate override (plan-phase 13a):** decision-coverage gate returned `could-not-parse` (15-CONTEXT.md decisions use bold-category bullets, not `- **D-NN:**` form; zero uncovered). Operator chose "Proceed anyway" after plan-checker Dimension 7 verified all context decisions honored in plans. Verify-phase should re-check decision compliance manually, not via the mechanical gate.
+- **Phase 16 gate override (plan-phase 13a):** decision-coverage gate returned `could-not-parse` (16-CONTEXT.md decisions use category bullets, not `- **D-NN:**` form; zero uncovered). Operator chose "Proceed anyway" after planner and plan-checker both verified all locked decisions honored in the plan. Verify-phase should re-check decision compliance manually, not via the mechanical gate.
+- **Cross-phase (per-phase check):** each phase must decide whether `motto init`'s scaffold needs updating (starter skill `template:`? example outputs file? marketplace/doc strings) — no speculative requirement; decide against real need.
+- Carried from prior milestones: no CI (husky-only, CI-01, deferred); repo still private.
+
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 260703-nya | Close IN-02: extract shared fence-tracking helper in src/schema.js | 2026-07-03 | fdede19 | [260703-nya-close-in-02-extract-shared-fence-trackin](./quick/260703-nya-close-in-02-extract-shared-fence-trackin/) |
+| 260703-occ | Close WR-04: guard TPL[tpl] entry shape before destructure in src/schema.js | 2026-07-03 | 9e36477, 2f3e601 | [260703-occ-close-wr-04-residual-shape-guard-tpl-ent](./quick/260703-occ-close-wr-04-residual-shape-guard-tpl-ent/) |
 
 ### Roadmap Evolution
 
-- v0.0.3 roadmap created: Phase 7 (npm Packaging & Release Flow), Phase 8 (Marketplace Distribution), Phase 9 (Documentation). Numbering continues from v0.0.2 (ended at Phase 6).
-- v0.0.4 roadmap created: Phase 10 (Project Scaffold `motto init` — INIT-01..06), Phase 11 (CLI Ergonomics `--help`/`[path]` — CLIX-03..04), Phase 12 (Docs & Cleanup — DOC-04..05). Numbering continues from v0.0.3 (ended at Phase 9). Coarse granularity: research's template/orchestrator risk split folded into Phase 10's plans rather than separate roadmap phases so each phase owns user-observable requirements. 10/10 requirements mapped.
-- Phase 13 added: Address tech debt: plugins.public reserved-word enforcement + init/CLI review items
+- v0.0.5 roadmap created: Phase 14 (Template Mechanism — TMPL-01..05), Phase 15 (Field Validation & Integrity Guards — VAL-01..06), Phase 16 (build-skill & author-skill Retirement — BSKL-01..06), Phase 17 (Docs Audit — DOC-06..07). Numbering continues from v0.0.4 (ended at Phase 13). Coarse granularity → 4 phases, matching research's locked ordering (mechanism → validators → build-skill dogfood → docs-last). 19/19 requirements mapped, no orphans.
+- Phase 18 added: Migrate base-spine **Role:** to <role> section tag
 
 ## Deferred Items
 
@@ -134,23 +138,14 @@ None yet.
 |----------|------|--------|-------------|
 | quick_task | 260630-vzh-review-fixes | missing SUMMARY.md (work verified complete: commits 7e740c8, 3fa2c6f, 1b3f4a2, ddcc45d; acknowledged at v0.0.4 close 2026-07-02) | v0.0.4 |
 | Build feature | `--zip` output | Dropped (documented one-liner instead) | v0.0.3 |
-| CLI | `--quiet`, `--format json`, `[path]` arg | Deferred | v0.0.3 |
+| CLI | `--quiet`, `--format json` | Deferred | v0.0.3 |
 | CI | GitHub Actions workflow | Deferred | v0.0.3 |
-| Templates | TMPL-01 concrete-template validation | Deferred | v0.0.3 |
-
-## Quick Tasks Completed
-
-| Date | Task ID | Description | Commits |
-|------|---------|-------------|---------|
-| 2026-06-30 | 260630-uxc-standardize-skill-names | Renamed skills to verb-first names (author-skill, setup-project, release); updated dogfood test | fc1f553, 3d7972d |
-| 2026-06-30 | 260630-vzh-review-fixes | Closed REVIEW-01..11: never-throw hardening (safeToJS + name-type guard), XML regex tightened, node-shape stray detection, B18 cascade-stop proof, NAME_KEBAB single-sourced from schema.js, skill-schema.md corrected (75 tests pass, lint clean) | 7e740c8, 3fa2c6f, 1b3f4a2, ddcc45d |
 
 ## Session Continuity
 
-Last session: 2026-07-02T13:42:53.279Z
-Stopped at: Completed 13-01-PLAN.md
-Resume file: 
-None
+Last session: 2026-07-03T15:37:44.924Z
+Stopped at: Completed 18-02-PLAN.md
+Resume file: None
 
 ## Operator Next Steps
 

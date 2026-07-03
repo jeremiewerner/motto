@@ -1,5 +1,29 @@
 # Motto — Milestones
 
+## v0.0.5 Skill Builder (Shipped: 2026-07-03)
+
+**Shipped:** 2026-07-03 · **Closeout:** override (5/5 phases verified passed, audit tech_debt accepted; 1 acknowledged carry-over artifact — `260630-vzh-review-fixes` missing SUMMARY, work verified complete at v0.0.4 close; see STATE.md Deferred Items)
+
+A user describes a procedure in any form and Motto structures it into a validated, conforming, distributable skill: the `template:` mechanism enforces real rules from pure data, three new frontmatter fields are validated with integrity guards, `build-skill` dogfoods the whole stack, the docs match the live validator with a drift-breaking test, and the base spine migrated from `**Role:**` bold-lines to a registry-driven `<role>` section tag.
+
+**Phases completed:** 5 (14–18) · **Plans:** 11 + 3 quick tasks · **Tasks:** 27 · **Commits:** ~120 · **Tests:** 213 (was 131)
+
+**Key accomplishments:**
+
+- Data-driven `template:` field enforcement in validateSkill() via a pure-data src/templates.js registry and a fence-aware hasClosedSection scanner — 152/152 tests green, up from 140.
+- The `release` skill adopts `template: procedure` on Motto's own live tree — `<process>`/`<success_criteria>` sections wrap the existing maintainer checklist, lint stays clean, and a new dogfood assertion proves the tags survive the verbatim build copy unchanged.
+- Rewrote `hasClosedSection`'s fence scanner to track opening-fence character+length (not a boolean toggle) and added an open-before-close ordering check, closing the last open verification gap for Phase 14 (Roadmap SC3 / TMPL-03).
+- Pure-validator extension of `validateSkill` adding lexical `outputs:` path-safety, `dependencies:` namespaced-format/self-dep/resolution/audience guards, and Option A format-only `allowed-tools` — all hasOwnProperty-gated, all proven never-throw.
+- Filesystem-dependent half of Phase 15's field validators landed in `src/lint.js` — `outputs:` existence/symlink-escape containment (via `stat`+`realpath`+`path.relative`) and a `loadSkillAudiences` cross-skill pre-pass feeding bare-dependency resolution and the public→private audience guard — with `skills/release/SKILL.md` gaining a live `allowed-tools` declaration proving the whole pipeline integrated and green.
+- Shipped `skills/build-skill/` — a public `template: procedure` Agent Skill that structures any freeform input into a lint-clean, conforming Motto skill and self-verifies against the real linter — retiring `author-skill` in the same atomic commit.
+- Extended build-skill's Step 5 name guard to the full NAME cascade (>64 chars, anthropic/claude substrings) and gave Step 6 an authorized name-recovery backstop plus exec-vs-lint fallback semantics, closing both structured verification gaps and all three carried code-review findings (WR-01, WR-02, WR-03, IN-01, IN-02).
+- Rewrote `shared/references/skill-schema.md` to match the live v0.0.5 validator (template/outputs/dependencies/allowed-tools, no stale version header), added a `node:test` doc-sync guard that fails the suite on drift, and trimmed build-skill's Step 2 supersede/delta prose to a single sentence now that the bundled reference tells the truth.
+- README.md now has zero `author-skill` references — the "Author a skill" section describes build-skill's real ingest → gap-fill → write → lint-loop → quality-gate → receipt flow, and every sample command names build-skill.
+- Base spine migrated to a registry-driven `<role>…</role>` section tag (hard break): `BASE_SPINE`/`SECTIONS.role` data drive the check, two distinct lint errors (missing/empty), both live skills + init scaffold + docs + ~30 fixtures moved in one atomic commit.
+- Post-verification hardening: code review caught a Critical never-throw registry-shape crash (CR-01) plus 3 warnings — all fixed pre-close; quick tasks extracted the shared fence-tracking helper (IN-02) and closed the twice-deferred WR-04 `TPL[tpl]` shape guard. Zero open review findings, zero known never-throw gaps at ship.
+
+---
+
 A historical record of shipped versions.
 
 ## v0.0.4 — Project Bootstrap

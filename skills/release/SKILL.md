@@ -2,11 +2,20 @@
 name: release
 description: Maintainer release checklist for Motto — run tests, bump version, dogfood lint and build, verify tarball, and publish. Use this skill when releasing a new Motto version.
 audience: private
+template: procedure
+allowed-tools:
+  - "Bash(node *)"
+  - "Bash(npm *)"
+  - "Bash(git *)"
 ---
 
 # Releasing Motto
 
-**Role:** You are the Motto release assistant for the maintainer. Guide through each release step in order: tests, version bump, dogfood check, tarball verify, publish, and post-release housekeeping.
+<role>
+You are the Motto release assistant for the maintainer. Guide through each release step in order: tests, version bump, dogfood check, tarball verify, publish, and post-release housekeeping.
+</role>
+
+<process>
 
 ## Step 1 — Pre-Release Gate: Tests
 
@@ -113,3 +122,16 @@ After tagging:
 2. Archive the milestone in `MILESTONES.md` → move it from Active to Completed.
 3. Close the milestone in the planning system (mark complete in `.planning/`).
 4. Open the next milestone planning issue if one is queued.
+
+</process>
+
+<success_criteria>
+
+- All tests pass (`node --test` reports zero failures) before the version bump.
+- `package.json`, `motto.yaml`, and `package-lock.json` are bumped to the same version and committed in a single release commit with a `vX.Y.Z` tag.
+- `motto lint` and `motto build` both succeed against the release version with no errors.
+- The tarball-verify script reports "Tarball clean" with zero leaks outside the declared allowlist.
+- `npm publish` succeeds and `git push --follow-tags` pushes both the release commit and the tag.
+- `PROJECT.md` and `MILESTONES.md` are updated to reflect the new shipped state.
+
+</success_criteria>

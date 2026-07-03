@@ -92,9 +92,9 @@ Two guards protect the scaffold:
 
 ## Author a skill
 
-Use the `/motto:author-skill` skill in Claude Code for a step-by-step guide to writing a conforming `SKILL.md`.
+Hand the `/motto:build-skill` skill in Claude Code any input — pasted text, a document, or a conversation transcript. It extracts what's already given and asks about genuinely-missing schema slots in one batched message, auto-detects whether the skill needs `template: procedure`, writes `skills/<name>/SKILL.md` (plus any declared output-template files), runs the real `motto lint` in a loop (up to 3 self-fixing attempts), self-reviews against a content-quality gate, then reports back with a compact receipt.
 
-Every `SKILL.md` requires three frontmatter fields and a two-line body spine:
+Every `SKILL.md` requires three frontmatter fields and a body spine — an H1 title line plus a non-empty `<role>…</role>` section:
 
 ```markdown
 ---
@@ -105,13 +105,15 @@ audience: public        # public → dist/public/; private → dist/private/
 
 # My Skill
 
-**Role:** You are a guide who walks the author through X step by step.
+<role>
+You are a guide who walks the author through X step by step.
+</role>
 ```
 
 - `name` — letter-start kebab-case; must equal the folder name exactly.
 - `description` — non-empty, under 1024 characters, no XML tags; tells the agent what to do and when.
 - `audience` — `public` or `private`; routes the skill to the correct plugin bucket.
-- Body spine: first non-blank line is an H1 title; body contains at least one `**Role:**` line.
+- Body spine: first non-blank line is an H1 title; body contains a non-empty `<role>...</role>` section.
 
 Run `motto lint` at any time to see all errors in one pass.
 
@@ -140,7 +142,7 @@ dist/
   public/
     .claude-plugin/
       plugin.json       ← { "name": "motto", "version": "...", "description": "..." }
-    author-skill/
+    build-skill/
       SKILL.md
       references/
         skill-schema.md
@@ -200,7 +202,7 @@ motto init my-project
 
 ```sh
 # 3 — Author your first skill (Claude Code slash command)
-/motto:author-skill
+/motto:build-skill
 ```
 
 ```sh
@@ -211,7 +213,7 @@ motto lint
 ```sh
 # 5 — Build the plugin
 motto build
-# → dist/public/ and dist/private/ are populated
+# → dist/public/ is populated (dist/private/ appears only once you add audience: private skills)
 ```
 
 **6 — Ship it:** commit `dist/public/` and push your repository to a public host — see [Ship your plugin](#ship-your-plugin).
@@ -251,7 +253,7 @@ This installs Motto's public skills into Claude Code, making the following slash
 
 | Skill | Slash command | What it does |
 |-------|--------------|-------------|
-| `author-skill` | `/motto:author-skill` | Step-by-step guide for writing a conforming `SKILL.md` |
+| `build-skill` | `/motto:build-skill` | Structures freeform input — pasted text, a document, or a transcript — into a conforming, lint-clean skill |
 
 ---
 
@@ -264,18 +266,18 @@ The symlink and zip one-liners below are for **Claude Desktop Chat** and other t
 **Symlink a built skill into the personal skills directory:**
 
 ```sh
-ln -s "$(pwd)/dist/public/author-skill" ~/.claude/skills/author-skill
+ln -s "$(pwd)/dist/public/build-skill" ~/.claude/skills/build-skill
 ```
 
-The absolute source path (`$(pwd)/dist/public/author-skill`) is required so the symlink resolves correctly from `~/.claude/skills/`.
+The absolute source path (`$(pwd)/dist/public/build-skill`) is required so the symlink resolves correctly from `~/.claude/skills/`.
 
 **Package a built skill as a zip for web upload:**
 
 ```sh
-cd dist/public && zip -r author-skill.zip author-skill/
+cd dist/public && zip -r build-skill.zip build-skill/
 ```
 
-Both commands operate on the built output under `dist/public/` (produced by `motto build`). Substitute `author-skill` with any other skill name from `dist/public/` as needed.
+Both commands operate on the built output under `dist/public/` (produced by `motto build`). Substitute `build-skill` with any other skill name from `dist/public/` as needed.
 
 ---
 

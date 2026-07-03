@@ -89,14 +89,14 @@ describe('dogfood build (DOG-03)', () => {
   });
 
   // ── Public bucket skill files ─────────────────────────────────────────────────
-  it('dist/public/author-skill/SKILL.md exists', async () => {
-    await stat(join(tempDir, 'dist', 'public', 'author-skill', 'SKILL.md'));
+  it('dist/public/build-skill/SKILL.md exists', async () => {
+    await stat(join(tempDir, 'dist', 'public', 'build-skill', 'SKILL.md'));
     // stat throws ENOENT if missing; test fails with a clear error code
   });
 
   // ── Shared reference bundling ─────────────────────────────────────────────────
-  it('author-skill has references/skill-schema.md bundled', async () => {
-    await stat(join(tempDir, 'dist', 'public', 'author-skill', 'references', 'skill-schema.md'));
+  it('build-skill has references/skill-schema.md bundled', async () => {
+    await stat(join(tempDir, 'dist', 'public', 'build-skill', 'references', 'skill-schema.md'));
   });
 
   // ── Private bucket ────────────────────────────────────────────────────────────
@@ -109,6 +109,32 @@ describe('dogfood build (DOG-03)', () => {
       () => stat(join(tempDir, 'dist', 'private', 'release', 'references')),
       { code: 'ENOENT' },
       'release must not have references/ — it declares no shared_references',
+    );
+  });
+
+  // ── Live template enforcement + verbatim tag survival (TMPL-01, TMPL-03) ─────
+  // release/SKILL.md declares template: procedure (enforced live by the
+  // lintProject(REPO_ROOT) assertion above — ok:true/count:2/errors:[] already
+  // proves the real tree, including release's template cascade, lints clean).
+  // This assertion proves the SKILL.md content itself — its <process>/
+  // <success_criteria> section tags — survives Motto's verbatim build copy
+  // unchanged, per the project's "no content stripping" invariant.
+  it('dist/private/release/SKILL.md retains <process>/<success_criteria> tags verbatim (TMPL-01/03)', async () => {
+    const content = await readFile(
+      join(tempDir, 'dist', 'private', 'release', 'SKILL.md'),
+      'utf8',
+    );
+    assert.match(content, /^<process>$/m, 'built SKILL.md must retain the <process> opening tag');
+    assert.match(content, /^<\/process>$/m, 'built SKILL.md must retain the </process> closing tag');
+    assert.match(
+      content,
+      /^<success_criteria>$/m,
+      'built SKILL.md must retain the <success_criteria> opening tag',
+    );
+    assert.match(
+      content,
+      /^<\/success_criteria>$/m,
+      'built SKILL.md must retain the </success_criteria> closing tag',
     );
   });
 

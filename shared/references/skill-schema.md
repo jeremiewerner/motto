@@ -1,6 +1,6 @@
 # Motto Skill Schema Reference
 
-This file is the canonical rule source for the Motto skill schema (v0.0.2).
+This file is the canonical rule source for the Motto skill schema.
 It is bundled verbatim by `motto build` into each public skill's `references/` directory.
 All claims are derived from `src/schema.js`, `src/config.js`, `src/frontmatter.js`, and `src/lint.js`.
 
@@ -52,8 +52,13 @@ description: A concise description of what this skill does and when to use it.
 
 **Lint errors:**
 - `description is required`
+- `description must be a string (got <typeof>)`
 - `description must not exceed 1024 characters (got N)`
 - `description must not contain XML tags (e.g. <example>)`
+
+Array values are the one special case in this message: an Array `description` renders as the
+literal word `"array"` rather than `typeof` (which would otherwise print `"object"`). Every
+other non-string type (`number`, `boolean`, a non-array `object`) renders via plain `typeof`.
 
 ---
 
@@ -87,21 +92,36 @@ The skill body (the Markdown after the closing `---` delimiter) must satisfy two
 
 **Lint error if missing:** `body must begin with an H1 title line (# Title) as its first non-blank line`
 
-**Check 2 — Role line:** The body must contain at least one line that starts with `**Role:` (multiline match).
+**Check 2 — `<role>` section:** The body must contain a matched, closed `<role>...</role>` section, using the same `hasClosedSection` semantics documented in §6 (line-start-anchored open/close tags, fenced code excluded, the open tag must precede the close tag). The section must additionally be non-empty — the unfenced section content must contain at least one non-whitespace character. Section content is the open tag's own same-line trailing text (per the §6 trailing-content rule, `<role> You are a helper.` counts) plus the unfenced text on the lines between the tags; trailing text after `</role>` is outside the section.
 
 ```markdown
-**Role:** You are a hands-on guide who walks the author through...
+<role>
+You are a hands-on guide who walks the author through...
+</role>
 ```
 
-The Role line content after `:` is not validated. An empty `**Role:**` passes the regex but produces unusable agent instruction content. Write Role lines as complete, behavioral sentences.
+**Lint errors:**
+- Missing (no matched, closed `<role>` section): `body must contain <role>…</role> — Behavioral instruction that tells the agent who it is and how to act.`
+- Empty (section closed but whitespace-only/empty between the tags): `<role>…</role> section must not be empty — Behavioral instruction that tells the agent who it is and how to act.`
 
-**Lint error if missing:** `body must contain a **Role:** line`
+Both checks are individually skippable when the resolved `template` (see §6) declares a
+`waives` set containing `"title"` and/or `"role"` respectively — the template cascade resolves
+this before either check above runs. No shipped template uses `waives` today, so both checks
+are unconditional in practice.
 
 ---
 
 ## 5. `shared_references` Field
 
-**Rule:** Optional. When present, must be a YAML array of strings. Each entry must be a safe basename.
+**Rule:** Optional. Always write it as a YAML array of strings; each entry must be a safe basename.
+
+**Enforcement caveat:** only a YAML array is inspected. A non-array value (scalar string, map,
+number) is currently IGNORED silently — no lint error is emitted, and at build time no reference
+is bundled, so a mis-shaped field ships a green-lint but incomplete skill. (A validator shape
+error mirroring `dependencies must be an array` would close this gap; that is a code change
+outside this reference's scope.) A non-string entry inside a valid array (e.g. `- 123`) falls
+through to the "not found" error with its coerced rendering
+(`shared_references entry "123" not found in shared/references/`).
 
 ```yaml
 shared_references:
@@ -123,19 +143,158 @@ shared_references:
 
 ---
 
-## 6. `template` and `dependencies` Fields
+## 6. `template` Field
 
-These fields are accepted and passed through verbatim. They are NOT validated in Motto v0.0.2.
+**Rule:** Optional. Absent `template` key skips all template checks entirely — no template means no
+additional body-section requirements. An explicitly-present but falsy value is NOT silently
+skipped: `template: ""` is treated as an unknown template name and errors at step 2, while
+`template: null` (e.g. a bare `template:` key, which YAML parses to null) is a non-string —
+`typeof null === "object"` — and errors at step 1 (`template must be a string (got object)`).
 
 ```yaml
-template: some-template
-dependencies:
-  - another-skill
+template: procedure
 ```
+
+**Template validation cascades — it stops at the first failure, except step 3 which checks every required section independently:**
+
+| Step | Check | Lint error emitted |
+|------|-------|--------------------|
+| 1 | `template` key present, value is not a string | `template must be a string (got <typeof>)` |
+| 2 | value is a string but not a key in the template registry (includes `""` — empty string is "unknown", never silently skipped) | `unknown template "X" (available: procedure)` |
+| 3 (per missing required section) | template is known, but the body lacks a matched `<section>...</section>` pair | `template "X" requires <section>…</section> section — <description>` |
+
+**Current registry** (`src/templates.js` — pure data; adding a template is a data-only edit, no linter code change needed):
+
+```javascript
+export const SECTIONS = {
+  role: "Behavioral instruction that tells the agent who it is and how to act.",
+  process: "Numbered steps the agent executes, in order.",
+  success_criteria: "Checkable conditions that define done.",
+};
+
+export const BASE_SPINE = ["role"];
+
+export const TEMPLATES = {
+  procedure: {
+    requiredSections: ["process", "success_criteria"],
+  },
+};
+```
+
+Today the registry ships exactly one template, `procedure`, requiring `<process>` and
+`<success_criteria>` sections — so `unknown template "X" (available: procedure)` is the only
+possible "available" list.
+
+**`hasClosedSection` semantics** (how a required section is detected as present):
+- Section tags must be line-start anchored: `^<process>` / `^</process>` (multiline regex) — a tag mentioned mid-sentence never counts.
+- Fenced code blocks are excluded from scanning entirely — both fence detection and any tag-like text inside an open fence are ignored. Fence detection matches CommonMark-style fences: 3+ backticks or 3+ tildes, up to 3 leading spaces; a fence only closes on a later line with the same character and length greater than or equal to the opener's.
+- There is no end-of-line anchor on EITHER tag — the open and close regexes are symmetric (`^<process>` / `^</process>`, multiline). `<process> some trailing text` still counts as opening the section, and `</process> some trailing text` still counts as closing it. Only the line-start anchor is enforced, on both tags.
+- A section is "closed" only if both an open and a matching close tag exist, in that order (open index before close index) — not merely both present anywhere in the body.
+- Bare tags only — no attributes (`<process foo="bar">` does not count).
 
 ---
 
-## 7. Frontmatter Envelope
+## 7. `outputs` Field
+
+**Rule:** Optional. Absent key skips validation entirely. An empty map `{}` is a valid no-op — a coherent "no outputs" declaration.
+
+```yaml
+outputs:
+  report-template: templates/report.md
+```
+
+Validation is split across two layers — this distinction matters because the two layers run
+at different times: Layer 1 always runs inside `validateSkill()`, while Layer 2 runs only
+during `motto lint`/`lintProject` (which has filesystem access), never inside a bare
+`validateSkill()` call.
+
+**Layer 1 — `src/schema.js` (lexical, pure, no filesystem access):**
+
+| Check | Lint error emitted |
+|-------|--------------------|
+| `outputs` present but not a map (`null`, non-object, or array) | `outputs must be a map of name -> file (got <typeof>)` (Array values render as the literal word `"array"`, matching the `description` field's special case in §2) |
+| per-entry: value is not a non-empty string | `outputs.<key> must be a non-empty string path (got <typeof>)` |
+| per-entry: value is not lexically path-safe (absolute, or normalizes to `..` or a path starting with a `..` segment) | `outputs.<key> path "X" is unsafe (must not be absolute or contain ".." traversal)` |
+
+The lexical-safety check (`isOutputPathLexicallySafe`) is root-independent by construction — it
+never calls `resolve()` and takes no base-directory argument, so its verdict cannot depend on
+`process.cwd()`. `normalize()` also collapses interior traversal, so a path like `a/../../x`
+(which normalizes to `../x`) is caught even though it doesn't literally start with `..` in its
+original written form.
+
+**Layer 2 — `src/lint.js`'s `checkOutputsFs` (filesystem-dependent, runs only inside `motto lint`/`lintProject`, never a bare `validateSkill()`):**
+
+| Check | Lint error emitted |
+|-------|--------------------|
+| target does not exist | `outputs.<key> file "X" does not exist` |
+| target exists but is not a regular file (e.g. a directory) | `outputs.<key> "X" is not a file` |
+| target's real path escapes the skill directory via symlink | `outputs.<key> file "X" escapes the skill directory via symlink` |
+| the target's real path could not be resolved (e.g. race condition, permission error) | `outputs.<key> file "X" could not be resolved: <message>` |
+
+**`{var}` note:** the existence check is literal — there is no `{var}` special-casing anywhere
+in this cascade. A path value containing `{var}` fails the existence check naturally, because no
+file literally named that way exists. `{var}`-style placeholders are an authoring convention that
+belongs inside a declared output file's own CONTENT, never inside the `outputs:` path string itself.
+
+---
+
+## 8. `dependencies` Field
+
+**Rule:** Optional. Absent key skips validation entirely. An empty array `[]` is a valid no-op.
+
+```yaml
+dependencies:
+  - another-skill
+  - some-plugin:their-skill
+```
+
+**Per-entry validation cascade (each entry is checked independently):**
+
+| Check | Lint error emitted |
+|-------|--------------------|
+| `dependencies` present but not an array | `dependencies must be an array (got <typeof>)` |
+| per-entry: not a non-empty string | `dependencies entry must be a non-empty string (got <typeof>)` |
+| namespaced entry (contains `:`) is malformed — not exactly two colon-separated parts, or either half fails the `name` kebab-case regex | `dependencies entry "X" is not valid "plugin:skill" format` |
+| bare entry equals this skill's own folder name (self-dependency) | `dependencies entry "X" is a self-dependency` |
+| bare entry is not found among the project's discovered skill names | `dependency "X" not found (available: ...)` |
+| bare entry resolves to a skill, this skill's `audience` is `public`, and the target's `audience` is `private` | `dependencies entry "X" is private but this skill is public (audience-direction guard)` |
+
+**Three ordering rules that must hold exactly:**
+1. The self-dependency check runs BEFORE the not-found membership check. A skill's own folder name is always technically a member of the project's skill-name set, so checking membership first would silently misclassify a self-dependency as "resolved" and the self-dependency error would never fire.
+2. Namespaced (`plugin:skill`) entries are format-checked ONLY — they are exempt from the self-dependency check, the not-found check, and the audience-direction guard. The target lives outside this project's tree, so its audience is unknowable from here.
+3. The audience-direction guard fails in exactly one direction: `public` depending on `private` is the only failing combination. `private→private`, `private→public`, and `public→public` all pass silently.
+
+Note the deliberate wording asymmetry between two of these messages, preserved verbatim from the
+source: the self-dependency error reads `"dependencies entry ... is a self-dependency"` (plural
+field name, includes the word "entry"), while the not-found error reads `` dependency "X" not
+found `` (singular, no "entry" word). This is real, intentional source behavior — not a typo.
+
+---
+
+## 9. `allowed-tools` Field
+
+**Rule:** Optional. Absent key skips validation entirely. Accepts BOTH a string and an array. An
+empty array `[]` passes (a coherent "zero tools" declaration); an empty or whitespace-only string
+errors.
+
+```yaml
+allowed-tools:
+  - "Bash(git add *)"
+  - "Bash(npm install)"
+```
+
+This field is format-only (no shape regex, no tokenizing, no parenthesized-pattern parsing) — a
+value like `"Bash(git add *)"` passes trivially as one non-empty permission rule. The linter never
+inspects or validates the internal shape of a tool-permission rule.
+
+**Lint errors:**
+- `allowed-tools must be a non-empty string or array (got an empty string)`
+- `allowed-tools[<i>] must be a non-empty string (got <typeof>)`
+- `allowed-tools must be a string or array (got <typeof>)`
+
+---
+
+## 10. Frontmatter Envelope
 
 Every SKILL.md must open with a bare `---` on line 1 and close with a matching bare `---`.
 
@@ -148,7 +307,9 @@ audience: public
 
 # My Skill Title
 
-**Role:** You are...
+<role>
+You are...
+</role>
 ```
 
 **Rules:**

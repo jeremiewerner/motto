@@ -1,8 +1,193 @@
 # Stack Research
 
 **Domain:** Node.js CLI tool — YAML/Markdown linter and plugin packager
-**Researched:** 2026-06-30 (base) · 2026-07-01 (v0.0.4 addendum)
-**Confidence:** HIGH (v0.0.4 additions verified directly against official Node.js docs and the existing codebase; base stack MEDIUM per original research)
+**Researched:** 2026-06-30 (base) · 2026-07-01 (v0.0.4 addendum) · 2026-07-02 (v0.0.5 addendum)
+**Confidence:** HIGH (v0.0.5 and v0.0.4 additions verified directly against official Anthropic/Claude Code docs, the open agentskills.io spec, official Node.js docs, and the existing codebase; base stack MEDIUM per original research)
+
+---
+
+## v0.0.5 Skill Builder Addendum
+
+**Verdict: Zero new dependencies. Every new capability (template mechanism, `<process>`/`<success_criteria>` section presence checks, `outputs:`/`dependencies:`/`allowed-tools` validation, `build-skill` Agent Skill) is stdlib + plain data + the existing `validateSkill`/`lintProject` split. This section answers the four stack questions for the v0.0.5 milestone; the base and v0.0.4 stack below are unchanged.**
+
+### Q1 — XML-section presence checks: regex, not a parser
+
+**Verdict: No new dependency. A markdown/XML parser is unwarranted — verified.**
+
+The `procedure` template only needs to answer a boolean question per required section: "does the body contain `<process>` and `<success_criteria>`?" The design spec is explicit that this is **presence-checked, content free** — nothing is extracted, nothing is validated as well-formed XML, no attributes, no nesting rules. That is exactly the shape of check `src/schema.js` already performs for the body spine today:
+
+```js
+// Existing precedent — src/schema.js, Role-line check:
+if (!/^\*\*Role:/m.test(bodyStr)) {
+  err("body must contain a **Role:** line");
+}
+```
+
+The same anchored-regex, linear-time, never-throw style extends directly to section tags, driven by the `SECTIONS`/`TEMPLATES` data registry (D-07) rather than hardcoded per-tag checks:
+
+```js
+// src/schema.js — new template-section check, same style as the Role check above
+for (const section of template.requiredSections) {
+  const openTag = `<${section}>`;
+  const closeTag = `</${section}>`;
+  if (!bodyStr.includes(openTag) || !bodyStr.includes(closeTag)) {
+    err(`body must contain a <${section}> section (required by template: ${data.template})`);
+  }
+}
+```
+
+`String.prototype.includes()` is sufficient (no regex needed at all for a fixed literal substring); a regex only becomes useful if case-insensitivity or whitespace-tolerant matching is wanted later. Constructing `` `<${section}>` `` dynamically is safe here because `section` always comes from the trusted, Motto-authored `SECTIONS` registry (`src/templates.js`), never from the skill body or user input — there is no injection surface, unlike building a regex from untrusted text.
+
+**Why not a parser (verified, not assumed):**
+
+| Candidate | Why rejected |
+|-----------|--------------|
+| Markdown parser (`remark`/`unified`, `marked`, `markdown-it`) | `<process>`/`<success_criteria>` are not Markdown syntax — they are raw inline HTML/XML-like tags embedded in a Markdown body. A Markdown parser would hand these back as opaque "html" nodes, requiring the same string/regex check afterward. Adds a dependency to do the same work with an extra step. |
+| XML parser (`fast-xml-parser`, `sax`, `xmldom`) | The body is not well-formed XML (it's Markdown with a few bare tags scattered in it) — an XML parser would either reject it or need a lenient/HTML mode, and the design explicitly does not need to parse *content*, only detect *presence* of two literal substrings. |
+| HTML parser (`htmlparser2`, `cheerio`) | Same objection — full DOM/SAX parsing to answer a yes/no substring-presence question is solving a harder problem than the one that exists. |
+
+Precedent: gsd-core (cited in the design spec as prior art for the XML section spine) achieves the same presence-checking at scale with plain text matching, not a parser dependency — validating that this is standard practice at this problem size, not a shortcut unique to Motto.
+
+**One design nuance worth flagging for planning:** presence-only checking (open tag exists AND close tag exists, anywhere in the body, in any order) will not catch a section opened but never closed, or a close tag pasted before its open tag. If stricter ordering matters later, `bodyStr.indexOf(openTag) < bodyStr.indexOf(closeTag)` is one extra stdlib comparison — still zero dependencies, still no parser.
+
+### Q2 — `allowed-tools`: verified spec, format, and a real-world validation risk
+
+**Verdict: Field name and general shape confirmed against both the open Agent Skills spec and Claude Code's own docs. One important gap found: the design's "whitespace-free string" constraint (D-05) will reject real, valid Claude Code `allowed-tools` entries that use parenthesized permission-rule syntax.**
+
+**Confirmed facts (HIGH confidence, official sources):**
+
+1. **Field name is `allowed-tools`** (kebab-case), matching D-06's decision to keep the real Agent Skills frontmatter field name (not `tools`, which is the *subagent* field — see below). Confirmed identically in both:
+   - `agentskills.io/specification` (the open, cross-vendor Agent Skills standard) — `allowed-tools`, "space-separated string of tools that are pre-approved to run. (Experimental)."
+   - `code.claude.com/docs/en/skills` (Claude Code's own frontmatter reference table) — `allowed-tools`, "Tools Claude can use without asking permission when this skill is active. Accepts a space- or comma-separated string, or a YAML list."
+
+2. **Format is more permissive in Claude Code than in the open spec.** The open spec only documents a single space-separated string. Claude Code's implementation accepts **three** shapes for the same field: a space-separated string, a comma-separated string, or a native YAML list. All three are valid input a real skill author might write.
+
+3. **Real-world entries are NOT always bare tool names — they can contain internal spaces.** Both sources show the parenthesized Claude Code permission-rule syntax as normal, expected usage:
+   ```yaml
+   allowed-tools: Bash(git:*) Bash(jq:*) Read                    # agentskills.io example
+   allowed-tools: Bash(git add *) Bash(git commit *) Bash(git status *)   # code.claude.com example
+   allowed-tools: Bash(gh *)                                      # code.claude.com example
+   ```
+   Each `Bash(...)` entry has an internal space between the command and its glob pattern (`git add *`, not `git-add*`). These are legitimate, working Claude Code tool-permission rules, not malformed input.
+
+4. **Wildcard semantics are MCP-tool-specific, not part of `allowed-tools` syntax itself.** Verified from `code.claude.com/docs/en/sub-agents` (documented for the sibling `tools`/`disallowedTools` fields, and the same tool-name wildcard grammar applies wherever Claude Code matches tool names): `mcp__<server>` or `mcp__<server>__*` grants/removes every tool from one named MCP server; `mcp__*` (in a denylist) removes every MCP tool from every server. This is a Claude-Code-wide tool-name convention, not a format Motto needs to special-case beyond "don't reject strings containing `*` or `__`".
+
+5. **Subagent `tools:`/`disallowedTools:` is a distinct, sibling field — confirms D-06.** Subagent Markdown frontmatter uses `tools` (camelCase pairing `disallowedTools`), consistently shown as a comma-separated string (`tools: Read, Grep, Glob, Bash`), and lives in `.claude/agents/*.md`, not `SKILL.md`. This is exactly the field D-06 reserves for the not-yet-built `agent` template — confirmed correct to defer, confirmed correct to not reuse the name `tools` for skills today.
+
+**Gap to flag for the `outputs`/`dependencies`/`allowed-tools` implementation task:** D-05 currently specifies `allowed-tools` as "array of non-empty whitespace-free strings." Taken literally, `Bash(git add *)` — a real, documented, working example straight from Claude Code's own docs — would fail a whitespace-free check. Two ways to reconcile this, for whoever plans the implementation:
+- **Option A (recommended):** validate array-of-strings shape and non-emptiness only; drop the whitespace-free constraint. Each YAML list item is already a discrete token by construction (YAML doesn't require whitespace-splitting once it's a list), so there's no ambiguity to guard against — a list item is one tool-permission-rule, spaces and all.
+- **Option B:** keep whitespace-free but scope it to bare tool names only (`Bash`, `Read`, `mcp__github__*`) and explicitly accept the `Name(...)` parenthesized form as a second allowed shape (`/^[A-Za-z_][\w-]*(\([^)]*\))?$/`-style check) — closer to "format-checked" in spirit but more code for marginal benefit given D-05 already says lint what's verifiable, not what's semantically correct.
+
+Either way, format-only validation (per D-05: "tool existence is runtime-dependent") remains correct — Motto cannot know whether `Bash(git commit *)` or `mcp__github__create_issue` refers to a real, installed tool; it can only check the frontmatter is shaped like a real Claude Code `allowed-tools` value.
+
+### Q3 — `outputs:`/`dependencies:`: confirmed as Motto-original fields, no existing spec to align with
+
+**Verdict: Neither `outputs:` nor `dependencies:` exists anywhere in the Agent Skills ecosystem's own vocabulary. D-04/D-05 are safe, non-colliding extensions — verified by checking every documented frontmatter field across both the open standard and Claude Code's superset.**
+
+Full accounting of every documented SKILL.md frontmatter field, cross-checked against two independent sources:
+
+| Field | agentskills.io (open spec) | code.claude.com (Claude Code superset) |
+|-------|:---:|:---:|
+| `name` | Yes (required) | Yes |
+| `description` | Yes (required) | Yes (recommended) |
+| `license` | Yes | — |
+| `compatibility` | Yes | — |
+| `metadata` (arbitrary string→string map) | Yes | — |
+| `allowed-tools` | Yes (experimental) | Yes |
+| `disallowed-tools` | — | Yes |
+| `when_to_use`, `argument-hint`, `arguments`, `disable-model-invocation`, `user-invocable`, `model`, `effort`, `context`, `agent`, `hooks`, `paths`, `shell` | — | Yes (Claude Code-specific extensions) |
+
+**No `outputs`, no `dependencies`, no `requires`, no `produces` field exists in either source.** The closest thing in the open spec is `metadata` — a free-form string-to-string map explicitly reserved for "additional properties not defined by the Agent Skills spec" — which is a namespace for *arbitrary* client extensions, not a structured outputs/dependencies mechanism; using it for Motto's typed `outputs:`/`dependencies:` would just be moving the same two fields one level deeper for no benefit, and would break the direct top-level ergonomics already designed (D-04/D-05).
+
+This confirms the project's own constraint holds: "unknown frontmatter keys are harmless" (no content stripping) plus the base spec's own stance that unrecognized keys are ignored, not rejected, by every conformant client. `outputs:` and `dependencies:` are free to invent because nothing in the ecosystem claims that vocabulary. No alignment work needed — D-04/D-05 stand as designed.
+
+**One adjacent spec worth knowing exists but is NOT applicable:** the Model Context Protocol (MCP) — a completely different protocol, for a completely different object (a *tool call*, not a *skill file*) — defines `inputSchema`/`outputSchema` on tool definitions using full JSON Schema 2020-12. This is not a frontmatter field and has no naming or structural relationship to a `SKILL.md`'s `outputs:` map; do not reach for JSON Schema here — D-05's "path-safety + existence" check is a completely different, much simpler validation problem (a filename, not a data shape).
+
+### Q4 — Path-safety for `outputs:` file checks: stdlib `node:path`, verified pattern
+
+**Verdict: No new dependency. `path.resolve()` + a `path.sep`-aware containment check is the industry-standard, zero-dependency defense — confirmed against multiple independent Node.js security write-ups, consistent with OWASP guidance for path-traversal prevention.**
+
+**Confirmed, do NOT rely on `path.normalize()` or `path.join()` alone for safety** — both are string-cleanup utilities, not security boundaries. `path.join('/skills/foo', '../../etc/passwd')` normalizes the `..` segments but still produces a path outside the intended root; it does not throw or refuse. Rejecting strings containing literal `..` is also fragile on its own (masks the real check needed).
+
+**The verified pattern — resolve, then verify containment:**
+
+```js
+import { resolve, sep } from 'node:path';
+
+/**
+ * Never throws. Returns true only if `entry` resolves to a path inside
+ * `skillDir` (no `..` escape, no absolute-path override).
+ */
+function isPathSafe(skillDir, entry) {
+  if (typeof entry !== 'string' || entry === '') return false;
+  const resolvedRoot = resolve(skillDir) + sep;
+  const resolvedTarget = resolve(skillDir, entry);
+  return (resolvedTarget + sep).startsWith(resolvedRoot) || resolvedTarget === resolve(skillDir);
+}
+```
+
+Why `+ sep` on the containment check specifically (not just `startsWith(resolvedRoot)`): without the trailing separator, a sibling directory that happens to share a prefix — e.g. root `/project/skills/build-skill` and target `/project/skills/build-skill-evil/secret.md` — would incorrectly pass. Appending `path.sep` to both sides before the `startsWith` check is the documented fix for that specific false-positive class. This is pure `node:path` — `resolve` and `sep` are both long-stable stdlib, no version floor concern at Node ≥ 20.
+
+**Alignment with the existing codebase's I/O-vs-pure-validation split (important for planning, not just stack choice):** `src/schema.js`'s `validateSkill` is documented as "pure — no filesystem" and today receives its one existence-checkable field (`shared_references`) as a pre-resolved `Set<string>` built by `lintProject` in `src/lint.js` (via `loadSharedRefs`, a `readdir` call). `outputs:` needs the same shape of split, not a filesystem call embedded in `validateSkill` itself:
+- **Path-safety check** (`isPathSafe` above) is pure string/path math — belongs in `src/schema.js`, alongside the existing shared_references safe-basename check (D-10), same never-throw style.
+- **Existence check** requires `fs.stat`/`fs.access` — belongs in the orchestrator (`src/lint.js`), which already does exactly this for the `shared_references`↔`references/*.md` collision check in `src/build.js` (`await stat(join(skillsDir, skill.name, 'references', ref + '.md'))`, wrapped in try/catch, `ENOENT` → not-found, anything else rethrown). `dependencies:`'s in-tree resolution (bare kebab name → must exist in `skills/` tree) is the same shape of check again, one level up (against the already-discovered `skillNames` list from `discoverSkillNames`, not a fresh `readdir`).
+
+No new stdlib surface beyond what `src/build.js` already imports (`stat`, `join`) plus `resolve`/`sep` from `node:path`, both of which are also already-imported-elsewhere primitives in this codebase's family of modules.
+
+### New Capabilities → Stdlib Mapping (v0.0.5)
+
+| Needed for | How to get it | New dep? |
+|------------|----------------|----------|
+| `template:` mechanism data (`SECTIONS`, `TEMPLATES` registries) | Plain exported object literals in a new `src/templates.js` | No |
+| `<process>`/`<success_criteria>` presence checks | `String.prototype.includes()` on the body string, driven by `template.requiredSections` | No |
+| `allowed-tools` format check | `Array.isArray` + per-item `typeof === 'string'` + non-empty check (see Q2 gap above for exact predicate) | No |
+| `outputs:` path-safety check | `node:path` `resolve`/`sep` containment check (see Q4) | No |
+| `outputs:` file-existence check | `node:fs/promises` `stat` in the `lintProject` orchestrator, same try/catch idiom already used for `shared_references` | No |
+| `dependencies:` in-tree resolution | Membership check against the already-discovered skill-name list (`discoverSkillNames` result), reused not re-fetched | No |
+| `dependencies:` namespaced (`plugin:skill`) format check | A single anchored regex (`/^[a-z][a-z0-9-]*:[a-z][a-z0-9-]*$/`-shape, reusing `NAME_KEBAB` per half) — format only, no resolution | No |
+| `build-skill` Agent Skill itself | Plain `SKILL.md` + `references/skill-schema.md`, authored content — no runtime code | No |
+
+**Do not add:** any XML/HTML/Markdown parsing library (`fast-xml-parser`, `htmlparser2`, `remark`), any JSON-Schema validation library (`ajv`, `zod` — already rejected in the base stack for the same reason: hand-written checks with specific messages beat generic validator output for a two-to-five-field schema), any path-safety helper package (`path-is-inside`, `is-path-inside`, `sanitize-filename`) — all are a few lines of `node:path` this project already imports elsewhere.
+
+### Alternatives Considered (v0.0.5-specific)
+
+| Recommended | Alternative | Why Not |
+|-------------|-------------|---------|
+| `String.prototype.includes()` / anchored regex for section presence | `remark`/`unified` Markdown AST parser | Tags are raw inline HTML in Markdown, not Markdown syntax; content between tags is explicitly unparsed by design; a parser answers a harder question than the one being asked. |
+| `String.prototype.includes()` / anchored regex for section presence | XML parser (`fast-xml-parser`, `sax`) | Body is not well-formed XML; only presence, not structure, needs checking. |
+| Array-of-strings + non-empty check for `allowed-tools` | Full permission-rule grammar parser (`Bash(cmd *)` syntax validation) | Out of scope per D-05 ("format-checked only... tool existence is runtime-dependent"); Motto doesn't need to validate that the parenthesized pattern is itself well-formed, only that the field is shaped like a tools list. |
+| `node:path` `resolve`+`sep` containment check for `outputs:` | `path-is-inside` / `is-path-inside` (npm) | Both packages are themselves ~10-line wrappers around the exact `resolve`+`startsWith` pattern documented above; adding a dependency to avoid four lines of stdlib contradicts the zero-dep constraint for zero functional gain. |
+| `node:path` `resolve`+`sep` containment check for `outputs:` | Reject-on-`..`-substring only | Fragile in isolation (doesn't catch absolute-path overrides like a leading `/`, doesn't catch the sibling-directory-prefix false-negative) — the resolve+containment check subsumes it correctly. |
+| Existence check split (pure `validateSkill` + I/O orchestrator) | Filesystem calls inside `validateSkill` | Breaks the documented "pure, no filesystem" contract of `src/schema.js` (see file docblock) and its synchronous, fully-mockable unit-test story — the same reason `shared_references` was already split this way. |
+
+### What NOT to Use (v0.0.5-specific)
+
+| Avoid | Why | Use Instead |
+|-------|-----|--------------|
+| `fast-xml-parser` / `xmldom` / `sax` | Body is Markdown with bare tags, not well-formed XML; only presence-checking two literal substrings is needed | `bodyStr.includes('<process>')` style checks, per `template.requiredSections` |
+| `remark` / `unified` / `markdown-it` | Overkill for boolean tag-presence detection; would hand back the tags as opaque raw-HTML nodes requiring the same string check anyway | Plain string/regex, same style as the existing Role-line check |
+| `path-is-inside` / `is-path-inside` | Both are thin wrappers around `path.resolve` + `startsWith` — a dependency for four lines of stdlib | `node:path` `resolve`/`sep` containment check |
+| `sanitize-filename` | Solves a different problem (stripping illegal chars for filesystem writes); `outputs:` entries are checked for *escape*, not sanitized/rewritten | Same `resolve`+containment check |
+| `ajv` / `zod` for `outputs`/`dependencies`/`allowed-tools` shape checks | Same rationale as the base stack's rejection of schema-validator frameworks — 2-5 fields, specific error messages, no dependency payoff | Hand-written predicate functions, same style as existing `validateSkill` checks |
+| Literal `allowed-tools` "whitespace-free" enforcement without exception | Rejects real, documented Claude Code syntax (`Bash(git add *)`) — see Q2 gap | Validate array-of-non-empty-strings shape; drop or scope the whitespace constraint (Q2, Option A/B) |
+
+### Version Compatibility (v0.0.5 additions)
+
+| API | Node.js | Notes |
+|-----|---------|-------|
+| `node:path` `resolve()`, `sep` | Long-stable (pre-v10) | No floor concern at Node ≥ 20; both already indirectly available via existing `path` imports in `src/build.js`/`src/lint.js`. |
+| `String.prototype.includes()` | ES2015+ | No Node floor concern whatsoever. |
+| `Array.isArray()` | ES5+ | No Node floor concern whatsoever. |
+
+### Sources (v0.0.5 addendum)
+
+- `agentskills.io/specification` — the open, cross-vendor Agent Skills format spec: complete frontmatter field table (`name`, `description`, `license`, `compatibility`, `metadata`, `allowed-tools`), confirms `allowed-tools` is a space-separated string and experimental, confirms no `outputs`/`dependencies` field exists in the base standard. Verified 2026-07-02 (WebFetch, official open-standard docs endorsed by Anthropic, Claude Code, and 40+ other agent products per the site's client showcase). Confidence: HIGH.
+- `code.claude.com/docs/en/skills` — Claude Code's own SKILL.md frontmatter reference table (complete: `name`, `description`, `when_to_use`, `argument-hint`, `arguments`, `disable-model-invocation`, `user-invocable`, `allowed-tools`, `disallowed-tools`, `model`, `effort`, `context`, `agent`, `hooks`, `paths`, `shell`); confirms `allowed-tools` accepts space-separated, comma-separated, or YAML-list forms; confirms real-world parenthesized syntax (`Bash(git add *)`, `Bash(gh *)`) as documented examples. Verified 2026-07-02 (WebFetch, official Claude Code docs). Confidence: HIGH.
+- `code.claude.com/docs/en/sub-agents` — subagent Markdown frontmatter spec: confirms `tools`/`disallowedTools` (not `allowed-tools`) as the distinct subagent field, comma-separated-string examples, and the `mcp__<server>`/`mcp__<server>__*`/`mcp__*` wildcard grammar for MCP tool-name matching. Verified 2026-07-02 (WebFetch, official Claude Code docs). Confidence: HIGH.
+- `platform.claude.com/docs/en/agents-and-tools/agent-skills/overview` — re-verified for v0.0.5: required-field spec (`name`, `description`) unchanged since v0.0.1 research; this page does not document `allowed-tools` at all (only the Claude-Code-specific `code.claude.com/docs/en/skills` page does) — confirms `allowed-tools` is a Claude-Code-surface feature layered on top of the base Anthropic API skill spec, not a universal Claude-platform field. Verified 2026-07-02 (WebFetch). Confidence: HIGH.
+- Path-traversal prevention pattern (`path.resolve()` + `path.sep`-aware `startsWith` containment check; why `path.normalize()`/`path.join()` alone are insufficient; the specific sibling-directory-prefix false-positive that motivates appending `path.sep`) — cross-checked across independent Node.js security write-ups (openreplay.com, nodejsdesignpatterns.com, stackhawk.com, nodejs-security.com). Verified 2026-07-02 (WebSearch synthesis across multiple independent sources, consistent with OWASP path-traversal guidance). Confidence: MEDIUM (community security write-ups, not a single official Node.js doc page — but the underlying `node:path` API behavior itself, `resolve`/`sep`, is HIGH confidence per Node.js's own stable API docs).
+- Model Context Protocol `inputSchema`/`outputSchema` — `modelcontextprotocol.io/specification` — confirmed this is a tool-call schema mechanism (JSON Schema 2020-12) on a completely different object (MCP tool definitions) with no structural or naming relationship to SKILL.md's `outputs:`/`dependencies:` fields; included only to rule out a false-alignment temptation. Verified 2026-07-02 (WebSearch synthesis). Confidence: MEDIUM.
+- Direct codebase inspection — `src/schema.js`, `src/lint.js`, `src/build.js`, `.planning/superpowers/specs/2026-07-02-skill-builder-design.md` — confirms existing regex/string-check style (Role-line check), the pure-validator/I/O-orchestrator split already established for `shared_references`, and the existing `stat`/`join` import patterns to extend rather than duplicate. Verified 2026-07-02. Confidence: HIGH (primary source).
 
 ---
 
@@ -255,7 +440,7 @@ These are content authoring tasks, not stack changes. No new tooling needed.
 
 ## Verdict on Chosen Stack
 
-The project's chosen stack (Node ≥ 20, plain ESM, `node --test`, single dep `yaml`) is correct and defensible. No changes recommended for v0.0.2 or v0.0.4. Three gaps discovered in v0.0.1 research are documented below.
+The project's chosen stack (Node ≥ 20, plain ESM, `node --test`, single dep `yaml`) is correct and defensible. No changes recommended for v0.0.2, v0.0.4, or v0.0.5. Three gaps discovered in v0.0.1 research are documented below, plus one implementation-risk gap discovered in v0.0.5 research (see Q2 above: `allowed-tools` whitespace-free constraint vs. real-world parenthesized syntax).
 
 ---
 
@@ -275,13 +460,13 @@ The project's chosen stack (Node ≥ 20, plain ESM, `node --test`, single dep `y
 
 | Module | Purpose | Notes |
 |--------|---------|-------|
-| `node:fs/promises` | Async file I/O | `readFile`, `readdir`, `mkdir`, `cp`, `rm`, `writeFile`, `stat` — covers all lint, build, and (new in v0.0.4) init I/O |
-| `node:path` | Path manipulation | `join`, `resolve`, `relative`, `basename`, `extname` |
+| `node:fs/promises` | Async file I/O | `readFile`, `readdir`, `mkdir`, `cp`, `rm`, `writeFile`, `stat` — covers all lint, build, init, and (new in v0.0.5) `outputs:`/`dependencies:` existence-check I/O |
+| `node:path` | Path manipulation | `join`, `resolve`, `relative`, `basename`, `extname`, and (new in v0.0.5) `sep` for path-safety containment checks |
 | `node:process` | Exit codes, argv | `process.exit(1)` on lint failure; `process.argv` fed to `parseArgs` |
 | `node:assert` | Assertions in tests | `assert.strictEqual`, `assert.deepStrictEqual`, `assert.throws` — enough for all unit assertions |
 | `node:url` | `fileURLToPath` | Needed for `__dirname` equivalent in ESM: `path.dirname(fileURLToPath(import.meta.url))` |
 | `node:os` | `tmpdir()` | Used in unit tests for `mkdtemp`-based temp fixture directories |
-| `node:child_process` | `execFileSync` | New in v0.0.4 — reads `git config user.name`/`user.email` for `motto init`'s marketplace `owner` field, without spawning a shell |
+| `node:child_process` | `execFileSync` | v0.0.4 — reads `git config user.name`/`user.email` for `motto init`'s marketplace `owner` field, without spawning a shell |
 
 ### Development Tools
 
@@ -303,8 +488,10 @@ npm install yaml
 # One dev dependency (pre-commit hook runner)
 npm install -D husky
 
-# No other dependencies needed — v0.0.4's init/--help/[path] additions are
-# built entirely on Node stdlib (fs/promises, util.parseArgs, child_process).
+# No other dependencies needed — v0.0.4's init/--help/[path] and v0.0.5's
+# template mechanism / outputs / dependencies / allowed-tools additions are
+# built entirely on Node stdlib (fs/promises, node:path, util.parseArgs,
+# child_process) plus plain data modules.
 ```
 
 ---
@@ -351,7 +538,7 @@ dist/<plugin-name>/                  ← plugin root
 
 ### SKILL.md frontmatter — exact specification
 
-Verified from `platform.claude.com/docs/en/agents-and-tools/agent-skills/overview` (2026-06-30).
+Verified from `platform.claude.com/docs/en/agents-and-tools/agent-skills/overview` (2026-06-30, re-verified 2026-07-02) and cross-checked against the open standard at `agentskills.io/specification` (2026-07-02) and Claude Code's extended field table at `code.claude.com/docs/en/skills` (2026-07-02).
 
 **Required frontmatter fields:**
 
@@ -360,10 +547,11 @@ Verified from `platform.claude.com/docs/en/agents-and-tools/agent-skills/overvie
 | `name` | Max 64 chars. Pattern: `[a-z][a-z0-9-]*` (lowercase letters, numbers, hyphens only). No XML tags. Cannot contain reserved words `"anthropic"` or `"claude"` as substrings. Must match parent folder name. |
 | `description` | Non-empty. Max 1024 chars. No XML tags. Should state both what the skill does and when Claude should trigger it. |
 
-**Optional frontmatter fields:**
-All other fields are optional and harmless — Claude Code ignores unknown frontmatter keys. Motto's linter should validate only `name` and `description`, and copy SKILL.md verbatim to dist (which is the correct stated approach).
+**Optional frontmatter fields (full accounting as of v0.0.5 research):**
 
-**Gap 2 — `shared_references` is a Motto-specific field, not a Claude Code field.** It is linted by Motto but ignored by Claude Code at runtime. That is correct and intentional.
+`license`, `compatibility`, `metadata` (open standard, `agentskills.io`); `when_to_use`, `argument-hint`, `arguments`, `disable-model-invocation`, `user-invocable`, `allowed-tools`, `disallowed-tools`, `model`, `effort`, `context`, `agent`, `hooks`, `paths`, `shell` (Claude Code superset, `code.claude.com/docs/en/skills`). Motto's linter validates only `name`, `description` (base spec) plus, as of v0.0.5, format-checks on `template`, `outputs`, `dependencies`, `allowed-tools` (Motto-specific rigor layer) — every other unknown key is copied verbatim and ignored by Claude Code at runtime, per the "no content stripping" project constraint.
+
+**Gap 2 — `shared_references` is a Motto-specific field, not a Claude Code field.** It is linted by Motto but ignored by Claude Code at runtime. That is correct and intentional. The same is true, by design, of v0.0.5's `outputs`/`dependencies`/`template` — none of these exist in the Agent Skills ecosystem's own vocabulary (confirmed by the v0.0.5 addendum's Q3 cross-check above); they are pure Motto rigor-layer additions, harmless to any other client per the ecosystem-wide "unknown frontmatter keys are ignored" convention.
 
 ---
 
@@ -434,16 +622,18 @@ const [subcommand] = positionals;
 | `node:util parseArgs` | `commander` | `commander` is 50 kB and designed for complex CLI trees. Motto has a handful of subcommands (`lint`, `build`, `init`) and a handful of flags. `parseArgs` handles this without a dependency. The only real loss is auto-generated help text — write it as a constant string. |
 | `node:fs/promises` | `glob` / `fast-glob` | Motto's directory structure is shallow and well-defined (`skills/<name>/`, `shared/references/`). A `readdir` + filter loop is 5 lines. `glob` adds a dependency for zero benefit on a known-shape tree. |
 | Plain JS (ESM) | TypeScript | TypeScript requires a build step, contradicting the project's "no build step" constraint. For a ~500-line CLI, JSDoc types on exported functions are sufficient for IDE support. |
-| Manual validation | `zod` / `ajv` | A YAML schema validator with custom error messages for two required fields is 20 lines. `zod`/`ajv` add a dependency and return generic error messages that would need custom formatting anyway. |
+| Manual validation | `zod` / `ajv` | A YAML schema validator with custom error messages for two required fields (now a handful more, v0.0.5) is well under 100 lines total. `zod`/`ajv` add a dependency and return generic error messages that would need custom formatting anyway. |
 | In-place dogfood test | Copy tree to `tmpdir` | Copying adds complexity, adds nothing (buildProject is already idempotent), and defeats the dogfood premise. Run against the real tree. |
 | `node:child_process execFileSync` (v0.0.4) | `simple-git` / `execa` | A single synchronous read of two git config values doesn't warrant a git wrapper library. |
+| `node:path` `resolve`+`sep` containment check (v0.0.5) | `path-is-inside` / `is-path-inside` | Both are thin wrappers around the same 4-line stdlib pattern; a dependency for four lines contradicts the zero-dep constraint. |
+| Plain string/regex tag-presence check (v0.0.5) | Markdown/XML/HTML parser | Only boolean presence of two literal substrings needs checking; content between tags is explicitly unparsed by design. |
 
 ---
 
 ## What NOT to Use
 
 | Avoid | Why | Use Instead |
-|-------|-----|-------------|
+|-------|-----|--------------|
 | `chalk` / `kleur` / `picocolors` | Terminal color adds a dependency for cosmetic output. Lint errors must be machine-parseable anyway; color is a nice-to-have. | Plain string formatting; add color only if a user requests it post-MVP |
 | `js-yaml` | YAML 1.1 schema by default — treats `yes`/`no`/`on`/`off`/`true`/`false` inconsistently; no position-aware error objects | `yaml` v2 |
 | `gray-matter` | Wraps `js-yaml` (inheriting its schema issues); adds a dep for 10 lines of work; last major release 2019 | Inline frontmatter extraction with `yaml` |
@@ -457,6 +647,8 @@ const [subcommand] = positionals;
 | `child_process.exec` / `execSync` (v0.0.4) | Both spawn a shell by default — shell-injection surface, even for hardcoded args | `child_process.execFileSync(file, args, opts)` — argv array, no shell |
 | `inquirer` / `prompts` / `enquirer` (v0.0.4) | No interactive-wizard requirement in scope | `[name]` positional with a cwd-basename default |
 | `degit` / `giget` / `tiged` (v0.0.4) | Starter skill content is local and known at build time — nothing to fetch remotely | Inline string templates in `src/init.js` |
+| `fast-xml-parser` / `htmlparser2` / `remark` (v0.0.5) | Overkill for boolean tag-presence detection; content between tags is explicitly unparsed | `String.prototype.includes()` per `template.requiredSections` |
+| `path-is-inside` / `sanitize-filename` (v0.0.5) | Both are thin wrappers around `node:path` primitives already imported elsewhere in this codebase | `resolve()`/`sep` containment check |
 
 ---
 
@@ -467,6 +659,8 @@ const [subcommand] = positionals;
 **Gap 2 — `name` validation has a reserved-word rule.** SKILL.md `name` cannot contain `"anthropic"` or `"claude"` as substrings (case-sensitive per docs). Motto's linter must check this. It is not obvious from the field description alone.
 
 **Gap 3 — `audience` field (`public`|`private`) is a Motto-specific concept, not a Claude Code field.** The output plugin directory name (your project name) is what separates public from private plugins — they are two separately-packaged plugin directories in `dist/`. Claude Code itself has no concept of audience; both are standard plugins. Motto's `build` command routes skills into `dist/public/<name>/` vs `dist/private/<name>/` based on the `audience` frontmatter key. Lint rule: `audience` must be `"public"` or `"private"` (no `"both"`).
+
+**Gap 4 (v0.0.5) — `allowed-tools` "whitespace-free string" (D-05) conflicts with real, documented Claude Code syntax.** Parenthesized permission-rule entries like `Bash(git add *)` are normal, working `allowed-tools` values shown in Claude Code's own docs, and they contain internal spaces. A strict per-item whitespace-free check would reject valid input. See the v0.0.5 addendum's Q2 section above for the two reconciliation options (recommended: validate array-of-non-empty-strings shape only, drop the whitespace-free constraint).
 
 ---
 
@@ -480,21 +674,27 @@ const [subcommand] = positionals;
 | `fs.readdir({recursive:true})` | ≥ 18.17 | Required for recursive directory scan without `glob` |
 | `fs.cp()` | ≥ 16.7 | Available and stable in Node 20 |
 | `child_process.execFileSync` (`encoding` option) | Long-stable (pre-v10) | No floor concern at Node ≥ 20; does not spawn a shell by default (v0.0.4) |
+| `path.resolve()`, `path.sep` | Long-stable (pre-v10) | No floor concern at Node ≥ 20 (v0.0.5) |
 
 ---
 
 ## Sources
 
-- `platform.claude.com/docs/en/agents-and-tools/agent-skills/overview` — SKILL.md frontmatter spec (required fields, name/description constraints, folder layout). Verified 2026-06-30. Confidence: MEDIUM (official Anthropic docs).
+- `platform.claude.com/docs/en/agents-and-tools/agent-skills/overview` — SKILL.md frontmatter spec (required fields, name/description constraints, folder layout). Verified 2026-06-30, re-verified 2026-07-02. Confidence: HIGH (official Anthropic docs).
 - `code.claude.com/docs/en/plugins-reference` — plugin.json manifest complete schema, plugin directory layout, version management behavior. Verified 2026-06-30. Confidence: MEDIUM (official Claude Code docs).
+- `code.claude.com/docs/en/skills` — full SKILL.md frontmatter reference table including `allowed-tools`/`disallowed-tools` exact formats and real-world examples. Verified 2026-07-02. Confidence: HIGH (official Claude Code docs).
+- `code.claude.com/docs/en/sub-agents` — subagent `tools`/`disallowedTools` field spec and MCP wildcard grammar. Verified 2026-07-02. Confidence: HIGH (official Claude Code docs).
+- `agentskills.io/specification` — the open, cross-vendor Agent Skills format standard; complete frontmatter field table cross-checked against Claude Code's superset. Verified 2026-07-02. Confidence: HIGH (open-standard docs, endorsed/adopted by Anthropic and 40+ other agent products).
 - `eemeli.org/yaml/` — yaml v2 API: parse, parseDocument, error handling, schema options. Verified 2026-06-30. Confidence: MEDIUM.
 - `registry.npmjs.org/yaml/latest` — confirmed yaml@2.9.0 as current latest. Verified 2026-06-30. Confidence: HIGH.
 - `nodejs.org/api/util.html#utilparseargsconfig` — parseArgs stable since Node v20.0.0, full option schema. Verified 2026-06-30 (re-verified 2026-07-01 for v0.0.4). Confidence: HIGH (official Node.js docs).
 - `nodejs.org/learn/test-runner/using-test-runner` — node:test stable in Node 20, ESM support, describe/it/mock/coverage. Confidence: HIGH (official Node.js docs).
 - `nodejs.org/api/child_process.html#child_processexecfilesyncfile-args-options` — execFileSync does not spawn a shell by default, encoding option, error shapes. Verified 2026-07-01. Confidence: HIGH (official Node.js docs).
-- Direct codebase inspection — `bin/motto.js`, `src/build.js`, `src/lint.js`, `src/config.js`, `src/schema.js`, `test/build.test.js`, `package.json`, `.gitignore`, `motto.yaml`, `.claude-plugin/marketplace.json`. Verified 2026-06-30 (re-verified 2026-07-01). Confidence: HIGH.
+- Node.js path-traversal prevention pattern (`resolve()`+`sep` containment check) — cross-checked across multiple independent Node.js security write-ups. Verified 2026-07-02 (WebSearch synthesis). Confidence: MEDIUM (community write-ups; underlying `node:path` API itself is HIGH confidence, official stdlib docs).
+- Model Context Protocol `inputSchema`/`outputSchema` — `modelcontextprotocol.io/specification` — confirmed as a different protocol/object with no relationship to SKILL.md `outputs:`/`dependencies:`. Verified 2026-07-02 (WebSearch synthesis). Confidence: MEDIUM.
+- Direct codebase inspection — `bin/motto.js`, `src/build.js`, `src/lint.js`, `src/config.js`, `src/schema.js`, `test/build.test.js`, `package.json`, `.gitignore`, `motto.yaml`, `.claude-plugin/marketplace.json`, `.planning/superpowers/specs/2026-07-02-skill-builder-design.md`. Verified 2026-06-30 (re-verified 2026-07-01, 2026-07-02). Confidence: HIGH.
 
 ---
 
-*Stack research for: Motto CLI (Node ESM, YAML linter, Claude Code plugin packager) — base + v0.0.2 dogfood addendum + v0.0.4 project bootstrap addendum*
-*Researched: 2026-06-30 (base) · 2026-07-01 (v0.0.4 addendum)*
+*Stack research for: Motto CLI (Node ESM, YAML linter, Claude Code plugin packager) — base + v0.0.2 dogfood addendum + v0.0.4 project bootstrap addendum + v0.0.5 skill builder addendum*
+*Researched: 2026-06-30 (base) · 2026-07-01 (v0.0.4 addendum) · 2026-07-02 (v0.0.5 addendum)*
