@@ -111,7 +111,15 @@ are unconditional in practice.
 
 ## 5. `shared_references` Field
 
-**Rule:** Optional. When present, must be a YAML array of strings. Each entry must be a safe basename.
+**Rule:** Optional. Always write it as a YAML array of strings; each entry must be a safe basename.
+
+**Enforcement caveat:** only a YAML array is inspected. A non-array value (scalar string, map,
+number) is currently IGNORED silently — no lint error is emitted, and at build time no reference
+is bundled, so a mis-shaped field ships a green-lint but incomplete skill. (A validator shape
+error mirroring `dependencies must be an array` would close this gap; that is a code change
+outside this reference's scope.) A non-string entry inside a valid array (e.g. `- 123`) falls
+through to the "not found" error with its coerced rendering
+(`shared_references entry "123" not found in shared/references/`).
 
 ```yaml
 shared_references:
