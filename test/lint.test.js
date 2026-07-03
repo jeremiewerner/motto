@@ -1,7 +1,7 @@
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtemp, mkdir, rm, writeFile, symlink } from 'node:fs/promises';
-import { join } from 'node:path';
+import { join, basename } from 'node:path';
 import { tmpdir } from 'node:os';
 
 import { lintProject } from '../src/lint.js';
@@ -460,6 +460,58 @@ describe('lintProject — outputs fs-layer (VAL-01)', () => {
         /escapes the skill directory via symlink/i.test(e.message),
     );
     assert.ok(entry, `expected a symlink-escape error, got: ${JSON.stringify(result.errors)}`);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 9b. outputs: cwd-independence regression (phase-15 review CR-01)
+// ---------------------------------------------------------------------------
+// Before the fix, the schema layer resolved the entry against process.cwd()
+// while the fs layer resolved it against the real skill directory. A
+// `..`-re-entry entry crafted to be "contained" under the cwd-relative root
+// was reported by NEITHER layer: lintProject returned ok:true with zero
+// errors for a path pointing outside the skill directory. The predicate is
+// now root-independent, so exactly one "unsafe" error must be emitted no
+// matter what process.cwd() is.
+
+describe('lintProject — outputs cwd-independence (phase-15 review CR-01)', () => {
+  let root;
+
+  before(async () => {
+    root = await mkdtemp(join(tmpdir(), 'motto-lint-'));
+    await writeFile(join(root, 'motto.yaml'), VALID_CONFIG);
+    await mkdir(join(root, 'skills', 'my-skill'), { recursive: true });
+    // The historical bypass shape: "../../<cwdDirName>/my-skill/notes.txt".
+    // With cwd = <anything>/motto this was lexically "contained" under
+    // resolve("my-skill") at the schema layer, yet escapes the real skill
+    // directory at the fs layer — both checks silently skipped it.
+    const cwdDirName = basename(process.cwd());
+    await writeFile(
+      join(root, 'skills', 'my-skill', 'SKILL.md'),
+      makeSkillWithExtra('my-skill', 'public', [
+        'outputs:',
+        `  doc: ../../${cwdDirName}/my-skill/notes.txt`,
+      ]),
+    );
+  });
+
+  after(async () => {
+    await rm(root, { recursive: true, force: true });
+  });
+
+  it("a '..'-re-entry outputs entry is reported unsafe exactly once (no cwd-dependent bypass, no double report)", async () => {
+    const result = await lintProject(root);
+    assert.strictEqual(result.ok, false);
+    const entryErrors = result.errors.filter((e) => e.skill === 'my-skill');
+    assert.strictEqual(
+      entryErrors.length,
+      1,
+      `expected exactly 1 error (schema layer only), got: ${JSON.stringify(entryErrors)}`,
+    );
+    assert.ok(
+      /unsafe/.test(entryErrors[0].message),
+      `expected an "unsafe" error, got: "${entryErrors[0].message}"`,
+    );
   });
 });
 

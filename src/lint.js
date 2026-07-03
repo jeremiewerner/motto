@@ -183,7 +183,9 @@ async function checkOutputsFs(skillsDir, dirName, data, errors) {
   }
   const skillDirAbs = resolve(skillsDir, dirName);
   for (const [key, value] of Object.entries(outputs)) {
-    if (!isOutputPathLexicallySafe(skillDirAbs, value)) continue; // schema.js already reported it
+    // Root-independent predicate (CR-01): same verdict here as in
+    // validateSkill by construction, so "already reported" is guaranteed.
+    if (!isOutputPathLexicallySafe(value)) continue; // schema.js already reported it
     const targetAbs = resolve(skillDirAbs, value);
     try {
       await stat(targetAbs);

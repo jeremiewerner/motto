@@ -10,11 +10,11 @@
  * Exports:
  *   - NAME_KEBAB {RegExp}  — canonical letter-start kebab regex (D-08, D-16)
  *   - hasClosedSection(body, tagName) -> boolean
- *   - isOutputPathLexicallySafe(skillDirAbs, entry) -> boolean
+ *   - isOutputPathLexicallySafe(entry) -> boolean
  *   - validateSkill(skill, sharedRefs?, templatesRegistry?, skillNames?, audienceMap?) -> Array<{ skill, message }>
  */
 
-import { resolve, sep, isAbsolute } from "node:path";
+import { normalize, sep, isAbsolute } from "node:path";
 
 import { SECTIONS, TEMPLATES } from "./templates.js";
 
@@ -110,22 +110,28 @@ export function hasClosedSection(body, tagName) {
  * cascade lives in exactly one place — Pitfall/anti-pattern: do not
  * reimplement this logic in lint.js).
  *
- * Both the root and the target are resolved and given a trailing `sep`
- * before the containment `startsWith` comparison — this is the documented
- * fix for the sibling-directory-prefix false positive (e.g. a `build-skill`
- * root must not treat `build-skill-evil/x` as contained just because the
- * string "build-skill" is a prefix of "build-skill-evil").
+ * ROOT-INDEPENDENT by construction (phase-15 review CR-01): the predicate
+ * takes no base-directory argument and never calls resolve(), so its verdict
+ * cannot depend on process.cwd() — the earlier two-argument shape resolved
+ * the entry against whatever root each caller happened to pass, and the two
+ * layers (validateSkill's cwd-relative root vs checkOutputsFs's real skill
+ * directory) could disagree, silently bypassing BOTH checks for `..`-re-entry
+ * paths. An entry is safe iff it is a non-empty relative string whose
+ * normalize()d form is not `..` and does not start with a `..` segment.
+ * Deliberately strict: a `..`-re-entry path like "../my-skill/x" that would
+ * lexically land back inside the skill directory is still rejected — outputs
+ * must be declared without leaving the skill directory even transiently.
+ * (normalize() also collapses interior traversal, so "a/../../x" → "../x"
+ * is caught.)
  *
- * @param {string} skillDirAbs — absolute (or resolvable) path to the skill's own directory
  * @param {string} entry — the raw `outputs:` value to check
  * @returns {boolean}
  */
-export function isOutputPathLexicallySafe(skillDirAbs, entry) {
+export function isOutputPathLexicallySafe(entry) {
   if (typeof entry !== "string" || entry === "") return false;
   if (isAbsolute(entry)) return false;
-  const root = resolve(skillDirAbs) + sep;
-  const target = resolve(skillDirAbs, entry) + sep;
-  return target.startsWith(root);
+  const norm = normalize(entry);
+  return norm !== ".." && !norm.startsWith(".." + sep);
 }
 
 /**
@@ -337,8 +343,9 @@ export function validateSkill(
   // Existence + symlink-escape checks are fs-dependent and deferred to the
   // lint.js orchestration layer (Plan 02), which reuses the exported
   // isOutputPathLexicallySafe predicate above so the cascade lives in one
-  // place only. `skillDirAbs` is resolved from `dirName` against the process
-  // cwd purely for the lexical containment math — no fs access occurs.
+  // place only. The predicate is root-independent (CR-01): no path is ever
+  // resolved against process.cwd(), so this validator stays pure and both
+  // layers agree by construction.
   if (Object.prototype.hasOwnProperty.call(data, "outputs")) {
     const outputs = data.outputs;
     if (outputs === null || typeof outputs !== "object" || Array.isArray(outputs)) {
@@ -348,13 +355,12 @@ export function validateSkill(
         `outputs must be a map of name -> file (got ${Array.isArray(outputs) ? "array" : typeof outputs})`
       );
     } else {
-      const skillDirAbs = resolve(dirName);
       for (const [key, value] of Object.entries(outputs)) {
         if (typeof value !== "string" || value === "") {
           err(`outputs.${key} must be a non-empty string path (got ${typeof value})`);
           continue;
         }
-        if (!isOutputPathLexicallySafe(skillDirAbs, value)) {
+        if (!isOutputPathLexicallySafe(value)) {
           err(
             `outputs.${key} path "${value}" is unsafe (must not be absolute or contain ".." traversal)`
           );

@@ -1,7 +1,12 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 
-import { validateSkill, NAME_KEBAB, hasClosedSection } from "../src/schema.js";
+import {
+  validateSkill,
+  NAME_KEBAB,
+  hasClosedSection,
+  isOutputPathLexicallySafe,
+} from "../src/schema.js";
 
 // validateSkill(skill, sharedRefs?) -> Array<{ skill: string, message: string }>
 // - Never throws (D-01).
@@ -872,6 +877,41 @@ describe("validateSkill — outputs (VAL-01, lexical)", () => {
     assert.ok(
       /must be a non-empty string path/.test(errors[0].message),
       `expected non-empty-string-path error, got: "${errors[0].message}"`
+    );
+  });
+
+  // Phase-15 review CR-01 regression: the predicate is root-independent —
+  // it takes no base-directory argument, so its verdict cannot depend on
+  // process.cwd(). A `..`-re-entry path that would lexically land back inside
+  // a directory of the same name MUST still be rejected.
+  it("CR-01: '..'-re-entry paths are rejected regardless of cwd (root-independent predicate)", () => {
+    // These used to flip verdict depending on which root they were resolved
+    // against — now they are always unsafe.
+    assert.equal(isOutputPathLexicallySafe("../my-skill/notes.txt"), false);
+    assert.equal(isOutputPathLexicallySafe("../../motto/my-skill/notes.txt"), false);
+    assert.equal(isOutputPathLexicallySafe(".."), false);
+    assert.equal(isOutputPathLexicallySafe("a/../../x"), false); // interior traversal collapses to ../x
+    // Plain relative paths (including ./-prefixed and interior-normalizing) stay safe.
+    assert.equal(isOutputPathLexicallySafe("notes.txt"), true);
+    assert.equal(isOutputPathLexicallySafe("./sub/notes.txt"), true);
+    assert.equal(isOutputPathLexicallySafe("sub/../notes.txt"), true); // normalizes to notes.txt
+    // Guards unchanged: non-string / empty / absolute are unsafe.
+    assert.equal(isOutputPathLexicallySafe(""), false);
+    assert.equal(isOutputPathLexicallySafe(42), false);
+    assert.equal(isOutputPathLexicallySafe("/etc/passwd"), false);
+  });
+
+  it("CR-01: validateSkill reports '..'-re-entry outputs as unsafe (was a cwd-dependent bypass)", () => {
+    const skill = {
+      dirName: "my-skill",
+      data: { ...baseData, outputs: { doc: "../my-skill/notes.txt" } },
+      body: VALID_BODY,
+    };
+    const errors = validateSkill(skill);
+    assert.equal(errors.length, 1, `expected 1 error, got: ${JSON.stringify(errors)}`);
+    assert.ok(
+      /unsafe/.test(errors[0].message),
+      `expected unsafe error, got: "${errors[0].message}"`
     );
   });
 });
