@@ -8,18 +8,26 @@
  * `::warning::` annotation (D-09 — the only signal carrier; the job itself
  * always stays green).
  *
- * D-10: warn-and-pass, never red. The entire network+parse body is wrapped
- * in one try/catch (Anti-Pattern: an unhandled fetch rejection outside a
- * try/catch would fail the job) — a registry 404/unreachable/malformed
- * response prints an "inconclusive" `::warning::` instead of throwing. No
- * branch anywhere sets a non-zero exit code and there is no retry/backoff
- * logic (Don't-Hand-Roll: failure is just another inconclusive branch).
+ * D-10: warn-and-pass, never red. Every fallible step — reading
+ * package.json, the registry fetch, and JSON parsing — is inside a
+ * try/catch (Anti-Pattern: an unhandled rejection or throw outside a
+ * try/catch would fail the job), and the top-level `main()` call carries a
+ * final `.catch` so even an internal bug prints an "inconclusive"
+ * `::warning::` instead of exiting non-zero. No branch anywhere sets a
+ * non-zero exit code and there is no retry/backoff logic (Don't-Hand-Roll:
+ * failure is just another inconclusive branch).
  */
 
 import { readFileSync } from 'node:fs';
 
 async function main() {
-  const { version: localVersion } = JSON.parse(readFileSync('package.json', 'utf8'));
+  let localVersion;
+  try {
+    ({ version: localVersion } = JSON.parse(readFileSync('package.json', 'utf8')));
+  } catch (err) {
+    console.log(`::warning::npm-drift check inconclusive (could not read package.json: ${err.message})`);
+    return;
+  }
 
   try {
     const res = await fetch('https://registry.npmjs.org/@jeremiewerner%2Fmotto');
@@ -45,6 +53,9 @@ async function main() {
   }
 }
 
-await main();
-// No branch above sets process.exitCode or calls process.exit() — the
-// script is structurally incapable of exiting non-zero (D-10).
+await main().catch((err) => {
+  console.log(`::warning::npm-drift check inconclusive (${err.message})`);
+});
+// No branch above sets process.exitCode or calls process.exit(), and the
+// final .catch swallows any unexpected throw — the script is structurally
+// incapable of exiting non-zero (D-10).
