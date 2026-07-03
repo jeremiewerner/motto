@@ -14,12 +14,12 @@
 
 ### Field Validation (VAL)
 
-- [ ] **VAL-01**: `outputs:` named map validated — each file exists inside the skill dir, path-safe (no traversal, no absolute, no symlink escape)
-- [ ] **VAL-02**: `dependencies:` bare kebab entries resolve to existing skills in the tree; namespaced (`plugin:skill`) entries format-checked only
-- [ ] **VAL-03**: Public skill cannot depend on a private skill (audience-direction guard — no private-name leak in dist)
-- [ ] **VAL-04**: Self-dependency rejected
-- [ ] **VAL-05**: `allowed-tools` format-checked accepting real spec forms incl. parenthesized patterns like `Bash(git add *)` (Option A/B from STACK.md decided at phase discuss)
-- [ ] **VAL-06**: All new validators never-throw, with adversarial malformed-input tests
+- [x] **VAL-01**: `outputs:` named map validated — each file exists inside the skill dir, path-safe (no traversal, no absolute, no symlink escape)
+- [x] **VAL-02**: `dependencies:` bare kebab entries resolve to existing skills in the tree; namespaced (`plugin:skill`) entries format-checked only
+- [x] **VAL-03**: Public skill cannot depend on a private skill (audience-direction guard — no private-name leak in dist)
+- [x] **VAL-04**: Self-dependency rejected
+- [x] **VAL-05**: `allowed-tools` format-checked accepting real spec forms incl. parenthesized patterns like `Bash(git add *)` (Option A/B from STACK.md decided at phase discuss)
+- [x] **VAL-06**: All new validators never-throw, with adversarial malformed-input tests
 
 ### build-skill (BSKL)
 
@@ -67,12 +67,12 @@
 | TMPL-03 | Phase 14 | Complete |
 | TMPL-04 | Phase 14 | Complete |
 | TMPL-05 | Phase 14 | Complete |
-| VAL-01 | Phase 15 | Pending |
-| VAL-02 | Phase 15 | Pending |
-| VAL-03 | Phase 15 | Pending |
-| VAL-04 | Phase 15 | Pending |
-| VAL-05 | Phase 15 | Pending |
-| VAL-06 | Phase 15 | Pending |
+| VAL-01 | Phase 15 | Complete |
+| VAL-02 | Phase 15 | Complete |
+| VAL-03 | Phase 15 | Complete |
+| VAL-04 | Phase 15 | Complete |
+| VAL-05 | Phase 15 | Complete |
+| VAL-06 | Phase 15 | Complete |
 | BSKL-01 | Phase 16 | Pending |
 | BSKL-02 | Phase 16 | Pending |
 | BSKL-03 | Phase 16 | Pending |

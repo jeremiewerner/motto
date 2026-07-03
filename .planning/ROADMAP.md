@@ -85,12 +85,12 @@ Full phase details: [milestones/v0.0.4-ROADMAP.md](milestones/v0.0.4-ROADMAP.md)
   4. `allowed-tools` entries in real spec forms — including parenthesized patterns like `Bash(git add *)` — pass, while malformed forms fail.
   5. Every new validator returns accumulated errors without throwing, proven by adversarial malformed-input tests.
 
-**Plans**: 2 plans
+**Plans**: 1/2 plans executed
 **Research flag**: RESOLVED — Option A locked (each `allowed-tools` entry is a non-empty string, no shape regex; `Bash(git add *)` passes trivially) in 15-CONTEXT.md.
 
 **Wave 1**
 
-- [ ] 15-01-PLAN.md — Pure validator (`src/schema.js`): outputs lexical path-safety + exported `isOutputPathLexicallySafe`, dependencies (namespaced format / self-dep / in-tree resolution / audience guard), allowed-tools Option A format, adversarial never-throw tests (VAL-01..06)
+- [x] 15-01-PLAN.md — Pure validator (`src/schema.js`): outputs lexical path-safety + exported `isOutputPathLexicallySafe`, dependencies (namespaced format / self-dep / in-tree resolution / audience guard), allowed-tools Option A format, adversarial never-throw tests (VAL-01..06)
 
 **Wave 2** *(depends on 15-01)*
 
@@ -137,7 +137,7 @@ Phases execute in numeric order: 14 → 15 → 16 → 17
 | 12. Docs & Cleanup | v0.0.4 | 3/3 | Complete | 2026-07-02 |
 | 13. Tech-Debt Closure | v0.0.4 | 2/2 | Complete | 2026-07-02 |
 | 14. Template Mechanism | v0.0.5 | 3/3 | Complete    | 2026-07-02 |
-| 15. Field Validation & Integrity Guards | v0.0.5 | 0/2 | Not started | - |
+| 15. Field Validation & Integrity Guards | v0.0.5 | 1/2 | In Progress|  |
 | 16. build-skill & author-skill Retirement | v0.0.5 | 0/TBD | Not started | - |
 | 17. Docs Audit | v0.0.5 | 0/TBD | Not started | - |
 

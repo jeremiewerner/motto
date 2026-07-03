@@ -6,15 +6,15 @@ current_phase: 15
 current_phase_name: Field Validation & Integrity Guards
 status: executing
 stopped_at: Phase 15 context gathered
-last_updated: "2026-07-03T05:40:25.426Z"
-last_activity: 2026-07-02
-last_activity_desc: Phase 14 complete, transitioned to Phase 15
+last_updated: "2026-07-03T06:23:25.056Z"
+last_activity: 2026-07-03
+last_activity_desc: Phase 15 execution started
 progress:
   total_phases: 4
   completed_phases: 1
-  total_plans: 3
-  completed_plans: 3
-  percent: 25
+  total_plans: 5
+  completed_plans: 4
+  percent: 80
 ---
 
 # Project State
@@ -24,23 +24,23 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-02 after v0.0.4)
 
 **Core value:** A strict schema + linter that guarantees authored skills conform before they ship, then packages them into self-contained standard Agent Skill plugins.
-**Current focus:** Phase 14 — template-mechanism
+**Current focus:** Phase 15 — Field Validation & Integrity Guards
 
 ## Current Position
 
-Phase: 15 — Field Validation & Integrity Guards
-Plan: Not started
+Phase: 15 (Field Validation & Integrity Guards) — EXECUTING
+Plan: 2 of 2
 Status: Ready to execute
-Last activity: 2026-07-02 — Phase 14 complete, transitioned to Phase 15
+Last activity: 2026-07-03 — Phase 15 execution started
 Note: decision-coverage-plan gate overridden (could-not-parse: CONTEXT.md decisions are category bullets without D-NN IDs; checker Dimension 7 manually verified all locked decisions covered) — verify-phase may re-surface
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [████████░░] 80%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 3
+- Total plans completed: 4
 - Average duration: -
 - Total execution time: 0 hours
 
@@ -63,6 +63,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 14 P01 | 24min | 3 tasks | 3 files |
 | Phase 14 P02 | 12min | 2 tasks | 2 files |
 | Phase 14 P03 | 9min | 2 tasks | 2 files |
+| Phase 15 P01 | 5min | 3 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -79,6 +80,8 @@ Recent decisions affecting current work:
 - [Phase 14]: release (procedural maintainer checklist) is the locked dogfood target for template: procedure (14-CONTEXT.md)
 - [Phase 14]: success_criteria content authored net-new in release/SKILL.md; no existing content repurposed
 - [Phase 14]: hasClosedSection tracks opening fence character+length (not boolean toggle) and requires open-before-close match ordering (WR-01/WR-02 closure, Phase 14 gap closure)
+- [Phase 15]: Self-dependency check ordered strictly before skillNames.has() membership check in dependencies cascade (Pitfall 2)
+- [Phase 15]: allowed-tools locked to Option A: format-only, non-empty string or array, no shape regex, no tokenizing
 
 ### Pending Todos
 
@@ -106,7 +109,7 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-03T05:40:25.422Z
+Last session: 2026-07-03T06:22:39.483Z
 Stopped at: Phase 15 context gathered
 Resume file: .planning/phases/15-field-validation-integrity-guards/15-CONTEXT.md
 
