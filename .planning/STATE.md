@@ -5,9 +5,9 @@ milestone_name: Skill Builder
 current_phase: 18
 status: verifying
 stopped_at: Completed 18-02-PLAN.md
-last_updated: "2026-07-03T15:12:18.792Z"
+last_updated: "2026-07-03T15:38:04.930Z"
 last_activity: 2026-07-03
-last_activity_desc: Phase 18 complete
+last_activity_desc: "Completed quick task 260703-occ: WR-04 shape guard on TPL[tpl] entry"
 progress:
   total_phases: 5
   completed_phases: 5
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-07-02 after v0.0.4)
 Phase: 18
 Plan: Not started
 Status: Phase complete — ready for verification
-Last activity: 2026-07-03 — Completed quick task 260703-nya: IN-02 shared fence-tracking helper
+Last activity: 2026-07-03 — Completed quick task 260703-occ: WR-04 shape guard on TPL[tpl] entry
 Note: decision-coverage-plan gate overridden (could-not-parse: CONTEXT.md decisions are category bullets without D-NN IDs; checker Dimension 7 manually verified all locked decisions covered) — verify-phase may re-surface
 
 Progress: [████████░░] 80%
@@ -110,6 +110,7 @@ Recent decisions affecting current work:
 - [Phase 18]: hasNonEmptyClosedSection exported but unwired into validateSkill in Plan 18-01 -- legacy Role check stays live; wiring happens atomically in Plan 18-02
 - [Phase 18]: legacy **Role:** bold-line regex fully removed from src/schema.js (D-01 hard break) -- a leftover legacy line is now inert body text, producing the missing-role error, not a separate legacy-line-detected check (D-02)
 - [Phase 18]: validateSkill's top-level bodyStr coercion changed from body||'' to a typeof guard -- pre-existing latent never-throw gap (truthy non-string body like 123/{}/[] would throw on .split()), newly exercised by the plan-mandated adversarial test; same fix shape as Plan 18-01's hasNonEmptyClosedSection
+- [Phase quick-260703-occ]: Template cascade guards TPL[tpl] entry shape (null/string/number/array) before destructure, emitting a maintainer-integrity error (WR-04 closed, commits 9e36477/2f3e601)
 
 ### Pending Todos
 
@@ -127,6 +128,7 @@ None yet.
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 260703-nya | Close IN-02: extract shared fence-tracking helper in src/schema.js | 2026-07-03 | fdede19 | [260703-nya-close-in-02-extract-shared-fence-trackin](./quick/260703-nya-close-in-02-extract-shared-fence-trackin/) |
+| 260703-occ | Close WR-04: guard TPL[tpl] entry shape before destructure in src/schema.js | 2026-07-03 | 9e36477, 2f3e601 | [260703-occ-close-wr-04-residual-shape-guard-tpl-ent](./quick/260703-occ-close-wr-04-residual-shape-guard-tpl-ent/) |
 
 ### Roadmap Evolution
 
@@ -144,7 +146,7 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-03T14:54:06.500Z
+Last session: 2026-07-03T15:37:44.924Z
 Stopped at: Completed 18-02-PLAN.md
 Resume file: None
 
