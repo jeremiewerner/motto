@@ -140,7 +140,7 @@ dist/
   public/
     .claude-plugin/
       plugin.json       ← { "name": "motto", "version": "...", "description": "..." }
-    author-skill/
+    build-skill/
       SKILL.md
       references/
         skill-schema.md
@@ -264,18 +264,18 @@ The symlink and zip one-liners below are for **Claude Desktop Chat** and other t
 **Symlink a built skill into the personal skills directory:**
 
 ```sh
-ln -s "$(pwd)/dist/public/author-skill" ~/.claude/skills/author-skill
+ln -s "$(pwd)/dist/public/build-skill" ~/.claude/skills/build-skill
 ```
 
-The absolute source path (`$(pwd)/dist/public/author-skill`) is required so the symlink resolves correctly from `~/.claude/skills/`.
+The absolute source path (`$(pwd)/dist/public/build-skill`) is required so the symlink resolves correctly from `~/.claude/skills/`.
 
 **Package a built skill as a zip for web upload:**
 
 ```sh
-cd dist/public && zip -r author-skill.zip author-skill/
+cd dist/public && zip -r build-skill.zip build-skill/
 ```
 
-Both commands operate on the built output under `dist/public/` (produced by `motto build`). Substitute `author-skill` with any other skill name from `dist/public/` as needed.
+Both commands operate on the built output under `dist/public/` (produced by `motto build`). Substitute `build-skill` with any other skill name from `dist/public/` as needed.
 
 ---
 
