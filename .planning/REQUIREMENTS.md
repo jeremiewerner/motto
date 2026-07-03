@@ -23,12 +23,12 @@
 
 ### build-skill (BSKL)
 
-- [ ] **BSKL-01**: User can hand build-skill any input (freeform text, doc, conversation); it asks gap-filling questions only
-- [ ] **BSKL-02**: build-skill generates a complete conforming `skills/<name>/` (SKILL.md + output template files) in one pass
-- [ ] **BSKL-03**: build-skill self-verifies via `motto lint` and iterates until clean
-- [ ] **BSKL-04**: build-skill itself declares `template: procedure` and passes the dogfood test (live E2E proof of the whole milestone)
-- [ ] **BSKL-05**: build-skill instructions include a content-quality self-review gate (anti-hollow: no empty Role, no vacuous criteria; description states WHEN to trigger, not what the skill does)
-- [ ] **BSKL-06**: `author-skill` retired atomically with build-skill's arrival (dogfood count synced, main never red)
+- [x] **BSKL-01**: User can hand build-skill any input (freeform text, doc, conversation); it asks gap-filling questions only
+- [x] **BSKL-02**: build-skill generates a complete conforming `skills/<name>/` (SKILL.md + output template files) in one pass
+- [x] **BSKL-03**: build-skill self-verifies via `motto lint` and iterates until clean
+- [x] **BSKL-04**: build-skill itself declares `template: procedure` and passes the dogfood test (live E2E proof of the whole milestone)
+- [x] **BSKL-05**: build-skill instructions include a content-quality self-review gate (anti-hollow: no empty Role, no vacuous criteria; description states WHEN to trigger, not what the skill does)
+- [x] **BSKL-06**: `author-skill` retired atomically with build-skill's arrival (dogfood count synced, main never red)
 
 ### Docs (DOC)
 
@@ -73,12 +73,12 @@
 | VAL-04 | Phase 15 | Complete |
 | VAL-05 | Phase 15 | Complete |
 | VAL-06 | Phase 15 | Complete |
-| BSKL-01 | Phase 16 | Pending |
-| BSKL-02 | Phase 16 | Pending |
-| BSKL-03 | Phase 16 | Pending |
-| BSKL-04 | Phase 16 | Pending |
-| BSKL-05 | Phase 16 | Pending |
-| BSKL-06 | Phase 16 | Pending |
+| BSKL-01 | Phase 16 | Complete |
+| BSKL-02 | Phase 16 | Complete |
+| BSKL-03 | Phase 16 | Complete |
+| BSKL-04 | Phase 16 | Complete |
+| BSKL-05 | Phase 16 | Complete |
+| BSKL-06 | Phase 16 | Complete |
 | DOC-06 | Phase 17 | Pending |
 | DOC-07 | Phase 17 | Pending |
 

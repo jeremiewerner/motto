@@ -3,18 +3,18 @@ gsd_state_version: 1.0
 milestone: v0.0.5
 milestone_name: Skill Builder
 current_phase: 16
-current_phase_name: build-skill & author-skill Retirement
-status: executing
-stopped_at: Phase 16 context gathered
-last_updated: "2026-07-03T10:25:49.536Z"
+current_phase_name: build-skill-author-skill-retirement
+status: verifying
+stopped_at: Completed 16-01-PLAN.md
+last_updated: "2026-07-03T10:33:58.554Z"
 last_activity: 2026-07-03
-last_activity_desc: Phase 16 planning complete
+last_activity_desc: Phase 16 execution started
 progress:
   total_phases: 4
-  completed_phases: 2
-  total_plans: 5
-  completed_plans: 5
-  percent: 50
+  completed_phases: 3
+  total_plans: 6
+  completed_plans: 6
+  percent: 75
 ---
 
 # Project State
@@ -24,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-02 after v0.0.4)
 
 **Core value:** A strict schema + linter that guarantees authored skills conform before they ship, then packages them into self-contained standard Agent Skill plugins.
-**Current focus:** Phase 15 — Field Validation & Integrity Guards
+**Current focus:** Phase 16 — build-skill-author-skill-retirement
 
 ## Current Position
 
-Phase: 16 — build-skill & author-skill Retirement
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-07-03 — Phase 16 planning complete
+Phase: 16 (build-skill-author-skill-retirement) — EXECUTING
+Plan: 1 of 1
+Status: Phase complete — ready for verification
+Last activity: 2026-07-03 — Phase 16 execution started
 Note: decision-coverage-plan gate overridden (could-not-parse: CONTEXT.md decisions are category bullets without D-NN IDs; checker Dimension 7 manually verified all locked decisions covered) — verify-phase may re-surface
 
 Progress: [████████░░] 80%
@@ -66,6 +66,7 @@ Progress: [████████░░] 80%
 | Phase 14 P03 | 9min | 2 tasks | 2 files |
 | Phase 15 P01 | 5min | 3 tasks | 2 files |
 | Phase 15 P02 | 4min | 3 tasks | 3 files |
+| Phase 16 P01 | 6min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -87,6 +88,10 @@ Recent decisions affecting current work:
 - [Phase 15]: checkOutputsFs called from inside processSkill's existing outer try (not a second backstop) — its own per-entry try/catch already converts every failure to an error entry
 - [Phase 15]: loadSkillAudiences pre-pass runs unconditionally for every discovered skill (build.js 'Option A — re-read' precedent), not gated on which skills declare dependencies
 - [Phase 15]: release's allowed-tools authored as a 3-entry array (Bash(node *), Bash(npm *), Bash(git *)) to exercise the array per-entry validator path live, not just the string form
+- [Phase 16]: build-skill description is WHEN-only, deliberately diverging from release/author-skill's what+when shape (locked BSKL-05 rule)
+- [Phase 16]: Skill-name collision on write: build-skill refuses and stops rather than silently overwriting an existing skills/<name>/
+- [Phase 16]: build-skill's allowed-tools declares only the honest lint-invocation fallback chain (local-bin, PATH, npx) — no contrived outputs/dependencies fields
+- [Phase 16]: skill-schema.md bundled as-is (stale re: template/outputs/dependencies/allowed-tools); build-skill's own prose carries the delta as behavioral guidance, never duplicated lint strings
 
 ### Pending Todos
 
@@ -114,9 +119,9 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-03T09:57:06.628Z
-Stopped at: Phase 16 context gathered
-Resume file: .planning/phases/16-build-skill-author-skill-retirement/16-CONTEXT.md
+Last session: 2026-07-03T10:33:58.550Z
+Stopped at: Completed 16-01-PLAN.md
+Resume file: None
 
 ## Operator Next Steps
 

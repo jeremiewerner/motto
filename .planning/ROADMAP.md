@@ -41,7 +41,7 @@ Full phase details: [milestones/v0.0.4-ROADMAP.md](milestones/v0.0.4-ROADMAP.md)
 
 - [x] **Phase 14: Template Mechanism** - Data-driven `template:` field that lint enforces (`procedure` ships) (completed 2026-07-02)
 - [x] **Phase 15: Field Validation & Integrity Guards** - Validate `outputs:`/`dependencies:`/`allowed-tools` with audience-direction, self-reference, and path-safety guards (completed 2026-07-03)
-- [ ] **Phase 16: build-skill & author-skill Retirement** - `build-skill` Agent Skill structures any input into a conforming skill; `author-skill` retired atomically
+- [x] **Phase 16: build-skill & author-skill Retirement** - `build-skill` Agent Skill structures any input into a conforming skill; `author-skill` retired atomically (completed 2026-07-03)
 - [ ] **Phase 17: Docs Audit** - Rewrite `skill-schema.md` current and update README for build-skill
 
 ## Phase Details
@@ -109,12 +109,12 @@ Full phase details: [milestones/v0.0.4-ROADMAP.md](milestones/v0.0.4-ROADMAP.md)
   4. `build-skill`'s instructions enforce a content-quality self-review gate — no empty Role, no vacuous criteria, and the description states WHEN to trigger, not what the skill does.
   5. `author-skill` is removed atomically with `build-skill`'s arrival — dogfood skill count synced, main never red.
 
-**Plans**: 1 plan
+**Plans**: 1/1 plans complete
 **Research flag**: RESOLVED — 16-RESEARCH.md gathered the prompt-engineering guidance (WHEN-only descriptions, feedback-loop pattern, untrusted-input boundary, no lint-string duplication) from Anthropic skill docs + superpowers writing-skills.
 
 **Wave 1**
 
-- [ ] 16-01-PLAN.md — Author `skills/build-skill/` (public, template: procedure; ingest → gap-fill → guarded write → filtered ≤3-attempt lint loop → anti-hollow quality gate → receipt) and retire `skills/author-skill/` atomically (delete + dogfood test swap) in one green commit (BSKL-01..06)
+- [x] 16-01-PLAN.md — Author `skills/build-skill/` (public, template: procedure; ingest → gap-fill → guarded write → filtered ≤3-attempt lint loop → anti-hollow quality gate → receipt) and retire `skills/author-skill/` atomically (delete + dogfood test swap) in one green commit (BSKL-01..06)
 
 ### Phase 17: Docs Audit
 
@@ -142,7 +142,7 @@ Phases execute in numeric order: 14 → 15 → 16 → 17
 | 13. Tech-Debt Closure | v0.0.4 | 2/2 | Complete | 2026-07-02 |
 | 14. Template Mechanism | v0.0.5 | 3/3 | Complete    | 2026-07-02 |
 | 15. Field Validation & Integrity Guards | v0.0.5 | 2/2 | Complete    | 2026-07-03 |
-| 16. build-skill & author-skill Retirement | v0.0.5 | 0/1 | Not started | - |
+| 16. build-skill & author-skill Retirement | v0.0.5 | 1/1 | Complete   | 2026-07-03 |
 | 17. Docs Audit | v0.0.5 | 0/TBD | Not started | - |
 
 ## Backlog
