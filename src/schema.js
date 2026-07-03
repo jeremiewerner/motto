@@ -42,39 +42,30 @@ import { SECTIONS, TEMPLATES, BASE_SPINE } from "./templates.js";
 export const NAME_KEBAB = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/;
 
 /**
- * Determine whether `body` contains a matched, line-anchored pair of
- * `<tagName>` / `</tagName>` markers OUTSIDE any fenced code block (TMPL-03).
+ * Internal helper (not exported): tracks fence state across `bodyStr` and
+ * returns the array of unfenced, non-marker lines (TMPL-03).
  *
- * Two-phase implementation (PATTERNS.md Pattern 2) to avoid a hot-loop regex
- * pitfall: (1) a single pass over the lines tracks the currently-open fence's
- * character and length (3+ backticks or 3+ tildes, up to 3 leading spaces,
- * matching CommonMark fence semantics) — a fence opens on any marker line
- * when none is open, and closes only on a later marker line with the SAME
- * character and length >= the opener's; any other marker line encountered
- * while a fence is open (e.g. a mismatched-character line) is literal fenced
- * content, not a boundary — and collects only unfenced, non-marker lines;
- * (2) the collected text is matched once with two anchored multiline
- * regexes, requiring the open-tag match to precede the close-tag match
- * (a genuinely ordered, matched pair — WR-01).
+ * Assumes a string argument — both callers (`hasClosedSection` and
+ * `hasNonEmptyClosedSection`) coerce non-string `body` to `""` at their own
+ * exported boundary before calling this, per the module's never-throw
+ * guarantee (D-01). This helper itself is not a boundary and does not guard.
  *
- * `tagName` is always sourced from the trusted internal registry
- * (`TEMPLATES[...].requiredSections`), never from raw `data.template` — safe
- * to interpolate into `new RegExp(...)` with no injection risk (T-Q-01
- * precedent).
+ * Single pass over the lines tracks the currently-open fence's character and
+ * length (3+ backticks or 3+ tildes, up to 3 leading spaces, matching
+ * CommonMark fence semantics) — a fence opens on any marker line when none is
+ * open, and closes only on a later marker line with the SAME character and
+ * length >= the opener's; any other marker line encountered while a fence is
+ * open (e.g. a mismatched-character line) is literal fenced content, not a
+ * boundary — and collects only unfenced, non-marker lines.
  *
- * No end-of-line anchor on the open matcher: per Assumption A2, a tag that
- * "starts the line" still counts even with trailing same-line content
- * (e.g. `<process> notes`).
+ * Extracted (IN-02) so `hasClosedSection` and `hasNonEmptyClosedSection`
+ * compute their unfenced-line set from one shared code path — a future
+ * fence-semantics fix cannot desynchronize the two functions' verdicts.
  *
- * @param {string} body
- * @param {string} tagName
- * @returns {boolean}
+ * @param {string} bodyStr
+ * @returns {string[]}
  */
-export function hasClosedSection(body, tagName) {
-  // typeof guard, not `body || ""` (review WR-02): `||` only replaces FALSY
-  // values, so a truthy non-string (123, {}, []) would reach `.split()`
-  // below and throw — violating the module's never-throw guarantee (D-01).
-  const bodyStr = typeof body === "string" ? body : "";
+function collectUnfencedLines(bodyStr) {
   const lines = bodyStr.split("\n");
   const fenceRe = /^ {0,3}(`{3,}|~{3,})/;
   const unfencedLines = [];
@@ -96,6 +87,38 @@ export function hasClosedSection(body, tagName) {
     }
     if (!fence) unfencedLines.push(line);
   }
+  return unfencedLines;
+}
+
+/**
+ * Determine whether `body` contains a matched, line-anchored pair of
+ * `<tagName>` / `</tagName>` markers OUTSIDE any fenced code block (TMPL-03).
+ *
+ * Two-phase implementation (PATTERNS.md Pattern 2) to avoid a hot-loop regex
+ * pitfall: (1) `collectUnfencedLines` collects only unfenced, non-marker
+ * lines; (2) the collected text is matched once with two anchored multiline
+ * regexes, requiring the open-tag match to precede the close-tag match
+ * (a genuinely ordered, matched pair — WR-01).
+ *
+ * `tagName` is always sourced from the trusted internal registry
+ * (`TEMPLATES[...].requiredSections`), never from raw `data.template` — safe
+ * to interpolate into `new RegExp(...)` with no injection risk (T-Q-01
+ * precedent).
+ *
+ * No end-of-line anchor on the open matcher: per Assumption A2, a tag that
+ * "starts the line" still counts even with trailing same-line content
+ * (e.g. `<process> notes`).
+ *
+ * @param {string} body
+ * @param {string} tagName
+ * @returns {boolean}
+ */
+export function hasClosedSection(body, tagName) {
+  // typeof guard, not `body || ""` (review WR-02): `||` only replaces FALSY
+  // values, so a truthy non-string (123, {}, []) would reach `.split()`
+  // below and throw — violating the module's never-throw guarantee (D-01).
+  const bodyStr = typeof body === "string" ? body : "";
+  const unfencedLines = collectUnfencedLines(bodyStr);
   const text = unfencedLines.join("\n");
   const openRe = new RegExp(`^<${tagName}>`, "m");
   const closeRe = new RegExp(`^</${tagName}>`, "m");
@@ -118,11 +141,12 @@ export function hasClosedSection(body, tagName) {
  * Delegates to `hasClosedSection` first: if the section is not matched and
  * closed at all, this returns false immediately (D-05 only tightens the
  * ALREADY-closed case; "missing" and "empty" stay two distinct checks/errors
- * — D-08). Otherwise this reuses the exact same fence-aware unfenced-line
- * collection strategy as `hasClosedSection` (same fence-tracking loop) to
- * find the first unfenced open-tag line and the first following unfenced
- * close-tag line, and tests the unfenced text strictly between them for
- * non-whitespace content.
+ * — D-08). Otherwise this shares the single `collectUnfencedLines` helper
+ * with `hasClosedSection` (IN-02 — the divergence risk of two independently
+ * maintained fence loops is now structurally impossible) to find the first
+ * unfenced open-tag line and the first following unfenced close-tag line,
+ * and tests the unfenced text strictly between them for non-whitespace
+ * content.
  *
  * `body` is coerced to a string (any non-string input — null, undefined, a
  * number, an object, an array — becomes `""`) BEFORE it is ever passed to
@@ -139,24 +163,7 @@ export function hasNonEmptyClosedSection(body, tagName) {
   const bodyStr = typeof body === "string" ? body : "";
   if (!hasClosedSection(bodyStr, tagName)) return false;
 
-  const lines = bodyStr.split("\n");
-  const fenceRe = /^ {0,3}(`{3,}|~{3,})/;
-  const unfencedLines = [];
-  let fence = null;
-  for (const line of lines) {
-    const m = fenceRe.exec(line);
-    if (m) {
-      const ch = m[1][0];
-      const len = m[1].length;
-      if (!fence) {
-        fence = { ch, len };
-      } else if (ch === fence.ch && len >= fence.len) {
-        fence = null;
-      }
-      continue;
-    }
-    if (!fence) unfencedLines.push(line);
-  }
+  const unfencedLines = collectUnfencedLines(bodyStr);
 
   const openRe = new RegExp(`^<${tagName}>`);
   const closeRe = new RegExp(`^</${tagName}>`);
