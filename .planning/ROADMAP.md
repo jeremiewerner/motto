@@ -43,7 +43,7 @@ Full phase details: [milestones/v0.0.5-ROADMAP.md](milestones/v0.0.5-ROADMAP.md)
 **Pre-milestone operator action (not a phase):** catch-up publish of `0.0.5` to npm via the existing `release` skill — npm is stuck at 0.0.3 (v0.0.4/v0.0.5 never shipped). This happens manually before Phase 21's CI publish job lands.
 
 - [x] **Phase 19: CLI Ergonomics & Build-Skill Verification** - Machine-readable, pipe-safe CLI output that CI can assert against, plus one real skill proven through build-skill (completed 2026-07-03)
-- [ ] **Phase 20: CI Workflow** - Every push/PR gated by a Node 20/22/24 matrix, dogfood, and pack-install E2E — proven while the repo is still private
+- [x] **Phase 20: CI Workflow** - Every push/PR gated by a Node 20/22/24 matrix, dogfood, and pack-install E2E — proven while the repo is still private (completed 2026-07-03)
 - [ ] **Phase 21: Publish Automation & Release Rewrite** - Tags publish themselves to npm idempotently; local release flow shrinks to bump-tag-push
 - [ ] **Phase 22: Public Flip & Token Hardening** - The repo crosses the one-way door to public, verified clean and stranger-usable, ending with zero long-lived publish tokens
 
@@ -79,7 +79,7 @@ Full phase details: [milestones/v0.0.5-ROADMAP.md](milestones/v0.0.5-ROADMAP.md)
   4. CI surfaces a non-blocking warning when the npm registry's latest version lags `package.json` — the v0.0.4/v0.0.5 silent-drift failure mode becomes visible.
   5. The husky `prepare` script no-ops outside a git checkout (tarball installs, `npm ci`) without failing CI.
 
-**Plans**: 2/3 plans executed
+**Plans**: 3/3 plans complete
 
 Plans:
 **Wave 1**
@@ -89,7 +89,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 20-03-PLAN.md — `.github/workflows/ci.yml` with 4 parallel jobs + live green-run verification (CIW-01, CIW-02)
+- [x] 20-03-PLAN.md — `.github/workflows/ci.yml` with 4 parallel jobs + live green-run verification (CIW-01, CIW-02)
 
 ### Phase 21: Publish Automation & Release Rewrite
 
@@ -132,7 +132,7 @@ Phases execute in numeric order: 19 → 20 → 21 → 22
 | 17. Docs Audit | v0.0.5 | 2/2 | Complete | 2026-07-03 |
 | 18. Role Section Tag Migration | v0.0.5 | 2/2 | Complete | 2026-07-03 |
 | 19. CLI Ergonomics & Build-Skill Verification | v0.0.6 | 2/2 | Complete    | 2026-07-03 |
-| 20. CI Workflow | v0.0.6 | 2/3 | In Progress|  |
+| 20. CI Workflow | v0.0.6 | 3/3 | Complete   | 2026-07-03 |
 | 21. Publish Automation & Release Rewrite | v0.0.6 | 0/TBD | Not started | - |
 | 22. Public Flip & Token Hardening | v0.0.6 | 0/TBD | Not started | - |
 
