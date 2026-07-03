@@ -62,9 +62,25 @@ Run the real linter, trying each of the following in order until one resolves:
 
 Read its output. Filter the reported errors down to the ones for the new skill's own directory name; report — once, read-only — any pre-existing errors in other skills, and never edit files outside `skills/<name>/`. Self-fix and re-lint, up to 3 attempts. If it is still dirty after 3 attempts, stop and hand back the remaining errors plus what you tried.
 
-## Step 7 — Report
+## Step 7 — Content-quality gate
 
-Emit a compact receipt: the files written, the lint status (attempts used), and one next-step line (`motto build`, or try the skill). Do not dump the full `SKILL.md` content.
+Before reporting, self-review the skill you just wrote against these fixed, objective checks — not a scored rubric:
+
+Required:
+1. The `**Role:**` line is a real, behavioral sentence describing what it does, not a bare label.
+2. `<success_criteria>` (or equivalent) holds checkable conditions, not restated step or heading titles.
+3. `description` states WHEN to trigger, not a summary of the skill's internal workflow. Apply this rule even though the bundled `skill-schema` reference still teaches the softer "what + when" guidance — that guidance is superseded for descriptions you author, including your own.
+
+Structural:
+4. Every process step is verb-led and actionable, not a restated heading.
+5. No leftover placeholder text (TODO, lorem ipsum, an unfilled stub) remains in the `SKILL.md`'s own prose — Role, description, process steps. Do not flag a `{var}`-style token that legitimately appears inside a declared `outputs:` template file; that convention is intentional there.
+6. `description` stays within the length limit.
+
+If any check fails, rewrite the failing part yourself using the input context you already hold. Ask the user only when the fix genuinely needs information you cannot infer — for example, real trigger conditions. If fixing a check meant editing the file, re-run Step 6's lint loop before continuing.
+
+## Step 8 — Report
+
+Emit a compact receipt: the files written, the lint status (attempts used), which quality-gate checks passed, and one next-step line (`motto build`, or try the skill). Do not dump the full `SKILL.md` content.
 
 </process>
 
@@ -73,6 +89,9 @@ Emit a compact receipt: the files written, the lint status (attempts used), and 
 - The generated skill lints clean.
 - Only genuinely-missing schema slots were asked about, in one batched message.
 - Nothing outside `skills/<name>/` was modified.
+- The generated skill's `**Role:**` line is behavioral, not a bare label.
+- The generated skill's `description` states WHEN to trigger, not what it does.
+- No placeholder text remains in the generated skill's own prose.
 - A compact receipt was produced, with no full `SKILL.md` dump.
 
 </success_criteria>
