@@ -79,12 +79,12 @@ Full phase details: [milestones/v0.0.5-ROADMAP.md](milestones/v0.0.5-ROADMAP.md)
   4. CI surfaces a non-blocking warning when the npm registry's latest version lags `package.json` — the v0.0.4/v0.0.5 silent-drift failure mode becomes visible.
   5. The husky `prepare` script no-ops outside a git checkout (tarball installs, `npm ci`) without failing CI.
 
-**Plans**: 3 plans
+**Plans**: 1/3 plans executed
 
 Plans:
 **Wave 1**
 
-- [ ] 20-01-PLAN.md — Husky prepare guard (`scripts/prepare.mjs`) + explicit `.git`-less proof script (CIW-05, closes the D-15 gap)
+- [x] 20-01-PLAN.md — Husky prepare guard (`scripts/prepare.mjs`) + explicit `.git`-less proof script (CIW-05, closes the D-15 gap)
 - [ ] 20-02-PLAN.md — Pack-install E2E script + never-red npm-drift check script (CIW-03, CIW-04)
 
 **Wave 2** *(blocked on Wave 1 completion)*
@@ -132,7 +132,7 @@ Phases execute in numeric order: 19 → 20 → 21 → 22
 | 17. Docs Audit | v0.0.5 | 2/2 | Complete | 2026-07-03 |
 | 18. Role Section Tag Migration | v0.0.5 | 2/2 | Complete | 2026-07-03 |
 | 19. CLI Ergonomics & Build-Skill Verification | v0.0.6 | 2/2 | Complete    | 2026-07-03 |
-| 20. CI Workflow | v0.0.6 | 0/TBD | Not started | - |
+| 20. CI Workflow | v0.0.6 | 1/3 | In Progress|  |
 | 21. Publish Automation & Release Rewrite | v0.0.6 | 0/TBD | Not started | - |
 | 22. Public Flip & Token Hardening | v0.0.6 | 0/TBD | Not started | - |
 
