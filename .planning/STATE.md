@@ -5,15 +5,15 @@ milestone_name: Skill Builder
 current_phase: 16
 current_phase_name: build-skill-author-skill-retirement
 status: executing
-stopped_at: Completed 16-01-PLAN.md
-last_updated: "2026-07-03T11:08:48.294Z"
+stopped_at: Completed 16-02-PLAN.md
+last_updated: "2026-07-03T11:14:00.096Z"
 last_activity: 2026-07-03
 last_activity_desc: Phase 16 execution started
 progress:
   total_phases: 4
   completed_phases: 3
-  total_plans: 6
-  completed_plans: 6
+  total_plans: 7
+  completed_plans: 7
   percent: 75
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-02 after v0.0.4)
 ## Current Position
 
 Phase: 16 (build-skill-author-skill-retirement) — EXECUTING
-Plan: 1 of 1
+Plan: 2 of 2
 Status: Ready to execute
 Last activity: 2026-07-03 — Phase 16 execution started
 Note: decision-coverage-plan gate overridden (could-not-parse: CONTEXT.md decisions are category bullets without D-NN IDs; checker Dimension 7 manually verified all locked decisions covered) — verify-phase may re-surface
@@ -67,6 +67,7 @@ Progress: [████████░░] 80%
 | Phase 15 P01 | 5min | 3 tasks | 2 files |
 | Phase 15 P02 | 4min | 3 tasks | 3 files |
 | Phase 16 P01 | 6min | 2 tasks | 3 files |
+| Phase 16 P02 | 8min | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -92,6 +93,7 @@ Recent decisions affecting current work:
 - [Phase 16]: Skill-name collision on write: build-skill refuses and stops rather than silently overwriting an existing skills/<name>/
 - [Phase 16]: build-skill's allowed-tools declares only the honest lint-invocation fallback chain (local-bin, PATH, npx) — no contrived outputs/dependencies fields
 - [Phase 16]: skill-schema.md bundled as-is (stale re: template/outputs/dependencies/allowed-tools); build-skill's own prose carries the delta as behavioral guidance, never duplicated lint strings
+- [Phase 16]: Step 5 name guard mirrors full src/schema.js NAME cascade (kebab + lowercase-start + <=64 chars + no anthropic/claude); Step 6 authorizes delete-and-recover as the sole exception to the never-edit-outside-skills/<name>/ rule; Step 6 fallback falls through only on exec failure, never on a genuine lint failure
 
 ### Pending Todos
 
@@ -119,8 +121,8 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-03T10:33:58.550Z
-Stopped at: Completed 16-01-PLAN.md
+Last session: 2026-07-03T11:14:00.092Z
+Stopped at: Completed 16-02-PLAN.md
 Resume file: None
 
 ## Operator Next Steps

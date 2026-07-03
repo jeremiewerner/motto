@@ -109,7 +109,7 @@ Full phase details: [milestones/v0.0.4-ROADMAP.md](milestones/v0.0.4-ROADMAP.md)
   4. `build-skill`'s instructions enforce a content-quality self-review gate — no empty Role, no vacuous criteria, and the description states WHEN to trigger, not what the skill does.
   5. `author-skill` is removed atomically with `build-skill`'s arrival — dogfood skill count synced, main never red.
 
-**Plans**: 1/2 plans complete
+**Plans**: 2/2 plans complete
 **Research flag**: RESOLVED — 16-RESEARCH.md gathered the prompt-engineering guidance (WHEN-only descriptions, feedback-loop pattern, untrusted-input boundary, no lint-string duplication) from Anthropic skill docs + superpowers writing-skills.
 
 **Wave 1**
@@ -118,7 +118,7 @@ Full phase details: [milestones/v0.0.4-ROADMAP.md](milestones/v0.0.4-ROADMAP.md)
 
 **Wave 2 (gap closure — verification found 5/7 must-haves)**
 
-- [ ] 16-02-PLAN.md — Close the 2 verification gaps + 3 carried review findings in `skills/build-skill/SKILL.md`: full NAME-cascade guard (kebab + ≤64 + no anthropic/claude) with name-recovery clause (WR-01), exec-vs-lint-failure fallback semantics (WR-02), Step 2 supersede (WR-03), Step 7 check-2 scoping (IN-01), attempt-budget clause (IN-02) (BSKL-02, BSKL-03, BSKL-05)
+- [x] 16-02-PLAN.md — Close the 2 verification gaps + 3 carried review findings in `skills/build-skill/SKILL.md`: full NAME-cascade guard (kebab + ≤64 + no anthropic/claude) with name-recovery clause (WR-01), exec-vs-lint-failure fallback semantics (WR-02), Step 2 supersede (WR-03), Step 7 check-2 scoping (IN-01), attempt-budget clause (IN-02) (BSKL-02, BSKL-03, BSKL-05)
 
 ### Phase 17: Docs Audit
 
@@ -146,7 +146,7 @@ Phases execute in numeric order: 14 → 15 → 16 → 17
 | 13. Tech-Debt Closure | v0.0.4 | 2/2 | Complete | 2026-07-02 |
 | 14. Template Mechanism | v0.0.5 | 3/3 | Complete    | 2026-07-02 |
 | 15. Field Validation & Integrity Guards | v0.0.5 | 2/2 | Complete    | 2026-07-03 |
-| 16. build-skill & author-skill Retirement | v0.0.5 | 1/1 | Complete   | 2026-07-03 |
+| 16. build-skill & author-skill Retirement | v0.0.5 | 2/2 | Complete   | 2026-07-03 |
 | 17. Docs Audit | v0.0.5 | 0/TBD | Not started | - |
 
 ## Backlog
