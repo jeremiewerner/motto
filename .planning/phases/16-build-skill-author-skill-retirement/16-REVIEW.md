@@ -1,95 +1,79 @@
 ---
 phase: 16-build-skill-author-skill-retirement
-reviewed: 2026-07-03T10:38:30Z
+reviewed: 2026-07-03T11:17:14Z
 depth: standard
-files_reviewed: 2
+files_reviewed: 1
 files_reviewed_list:
   - skills/build-skill/SKILL.md
-  - test/dogfood.test.js
 findings:
   critical: 0
-  warning: 3
+  warning: 0
   info: 2
-  total: 5
+  total: 2
 status: issues_found
 ---
 
-# Phase 16: Code Review Report
+# Phase 16: Code Review Report (re-review after 16-02 gap closure)
 
-**Reviewed:** 2026-07-03T10:38:30Z
+**Reviewed:** 2026-07-03T11:17:14Z
 **Depth:** standard
-**Files Reviewed:** 2
+**Files Reviewed:** 1
 **Status:** issues_found
 
 ## Summary
 
-Reviewed the Phase 16 deliverables: `skills/build-skill/SKILL.md` (new agent skill, `template: procedure`) and `test/dogfood.test.js` (retargeted from author-skill to build-skill). Verified against `src/schema.js` validation rules, the bundled `shared/references/skill-schema.md`, `skills/release/SKILL.md` (private-bucket counterpart), phase artifacts (16-01-PLAN.md, 16-RESEARCH.md, 16-CONTEXT.md), and a live run of the full suite (194 pass / 0 fail).
+Re-reviewed `skills/build-skill/SKILL.md` after gap-closure plan 16-02 (commits `4cbb97d`, `a5609aa`) remediated the five findings from the prior review at this path. Every prior finding was verified against the current file text AND against the ground truth it referenced (`src/schema.js` validation cascade, `motto.yaml` as project-root marker, the bundled `shared/references/skill-schema.md`). The file lints clean via the repo's own linter (`✓ 2 skills OK`).
 
-**What checks out (verified, not assumed):**
+**Prior-finding resolution (all five verified resolved):**
 
-- Frontmatter is fully valid against `src/schema.js`: kebab name matches folder, no reserved substrings, description is a 117-char WHEN-only trigger clause (BSKL-05) with no XML-tag shapes, `audience: public`, `template: procedure` with both `<process>`/`<success_criteria>` pairs line-anchored outside fences, `shared_references: [skill-schema]` resolves to an existing safe basename, `allowed-tools` is an array of non-empty strings.
-- DOC-06 honored: `grep -F 'letter-start kebab-case'` and `grep -F 'Common Lint Errors'` both return zero matches; the name-rule prose is a behavioral paraphrase, not a lint-string copy.
-- `allowed-tools` is honest: the three declared `Bash(... lint*)` patterns exactly cover the three Step 6 invocations. The "pre-approval-only, not a restriction" semantics concern (Write/Read not listed) is resolved by a dated official-doc quote in 16-RESEARCH.md (code.claude.com/docs/en/skills, verified 2026-07-03) — not re-flagged here.
-- Prompt-injection guidance present and well-placed: Step 1 explicitly quarantines freeform input as data, including command-shaped text.
-- `test/dogfood.test.js`: no stale `author-skill` references anywhere in `test/` or `skills/`; count assertions (2 skills, 2 buckets) match the real tree (`build-skill` public + `release` private); the `dist/public/build-skill/` and bundled `references/skill-schema.md` assertions match build-skill's actual frontmatter; the TMPL-01/03 verbatim-tag assertions match `release/SKILL.md`'s actual tag placement; `after()` cleanup is guarded for a throwing `before()`; all imports are used; `REPO_ROOT` is `import.meta.url`-anchored (no cwd dependence, per the Phase 15 lesson).
+| Prior | Claimed fix | Verified in current file |
+|-------|-------------|--------------------------|
+| WR-01 | Extend name guard + add lint-name recovery path | RESOLVED. Line 49 now includes the 64-char limit and reserved words; line 65 adds the delete-and-recreate recovery clause with explicit scoping ("the one permitted whole-directory operation"). One residual imprecision remains — see IN-01 below. |
+| WR-02 | Separate "binary not found" from "lint reported errors" | RESOLVED. Line 57: "falling through only when the command itself cannot be found or executed — a run that executes and reports lint errors IS the resolved linter; use its output and do not fall through to the next one." Unambiguous; the `npx` version-skew hazard is closed. |
+| WR-03 | Supersede statement covering skill-schema.md §6 | RESOLVED. Line 26 now states the delta "supersedes the bundled reference wherever they disagree, including its claim that `template` and `dependencies` are 'not validated' (they are, as of the current linter)." Verified factually accurate: `src/schema.js` validates both (`template` cascade ~line 159/277; `dependencies` per-entry cascade ~line 384). |
+| IN-01 | Scope check 2 to `template: procedure` | RESOLVED. Line 73: "When the skill declares `template: procedure`, `<success_criteria>` holds checkable conditions, not restated step or heading titles." The undefined "(or equivalent)" is gone; the check is now evaluable for base-schema skills (vacuously passes). |
+| IN-02 | Specify attempt budget after Step 7 → Step 6 loop-back | RESOLVED. Line 81: "using a fresh 3-attempt budget, with at most one quality-gate rewrite cycle total." Both the reset semantics and the total bound are stated. |
 
-The three warnings below are all internal-consistency defects in `build-skill/SKILL.md`'s process prose — reachable failure paths for the agent executing the skill, not schema violations. No blocker-level defects found.
+**Fresh-prose verification (checked, not assumed):**
+
+- DOC-06 honored: exact-string grep for `letter-start kebab-case`, the canonical regex `^[a-z][a-z0-9]*(-[a-z0-9]+)*$`, `reserved substrings`, `must not exceed 64 characters`, `must equal its folder name`, `unsafe basename`, `name is required`, and `name must be a string` against the file returns zero matches. All name-rule prose is behavioral paraphrase.
+- Guard 2's project marker is correct: `motto.yaml` is the real root config (`src/build.js:98`, `src/config.js`, created by `src/init.js:146`).
+- `allowed-tools` remains honest: the three declared `Bash(... lint*)` patterns exactly cover the three Step 6 invocations, in the same order.
+- No new step-to-step contradictions introduced by the 16-02 edits: the Step 6 recovery clause explicitly re-affirms the never-edit-outside rule ("which otherwise still holds"); `<success_criteria>` "Nothing outside `skills/<name>/` was modified" stays consistent with it (the permitted delete operates ON `skills/<name>/`, not outside it); Step 5 guard 3's refuse-if-exists does not conflict with the recovery path (the directory is deleted before returning to Step 5).
+- The Step 6 → Step 5 name-recovery loop is bounded in practice: with guard 1 now covering pattern, length, and reserved words, the only linter name rejection reachable past the guard is the word/substring gap documented in IN-01, and `name ≠ folder` is unreachable (the agent derives the folder from the name).
+
+Two residual Info-level items remain, both instruction-precision gaps with recoverable failure modes. No blockers, no warnings.
 
 ## Narrative Findings (AI reviewer)
 
-### Warnings
-
-#### WR-01: Step 5 name guard is incomplete vs the real validator, and the resulting failure has no authorized recovery path
-
-**File:** `skills/build-skill/SKILL.md:49`
-**Issue:** Guard 1 validates only "kebab-case, starting with a lowercase letter" before the name becomes a directory. The real validator (`src/schema.js` NAME cascade) additionally rejects names over 64 characters and names containing the reserved substrings `anthropic`/`claude`. A name like `claude-pr-helper` passes guard 1, `skills/claude-pr-helper/` gets created in Step 5, and lint then fails in Step 6 with a name error whose only fix is renaming the directory (name must equal folder name). But Step 6 explicitly instructs "never edit files outside `skills/<name>/`" and nowhere authorizes deleting or renaming the just-created directory — so the agent is boxed into an unfixable lint error and burns all 3 attempts. The guard's own rationale ("the name becomes a filesystem path segment") shows it was meant to catch name errors *pre-write*; two reachable name-error classes slip past it.
-**Fix:** Extend guard 1 behaviorally (no lint-string duplication needed):
-```markdown
-1. Validate the proposed `name`: it must be kebab-case, starting with a
-   lowercase letter, at most 64 characters, and must not contain the words
-   "anthropic" or "claude". On failure, stop and re-prompt for a valid name...
-```
-Alternatively (or additionally), give Step 6 an explicit recovery clause: "If lint rejects the `name` itself, delete `skills/<name>/`, return to Step 5 with a corrected name — this is the one permitted operation on the directory as a whole."
-
-#### WR-02: Step 6 fallback chain — "until one resolves" does not distinguish "binary not found" from "lint reported errors"
-
-**File:** `skills/build-skill/SKILL.md:57-63`
-**Issue:** A linter's *expected* outcome on a dirty skill is a nonzero exit with findings — which is a successful invocation, not a failed one. "Trying each of the following in order until one resolves" gives the agent no basis to stop the fallback cascade when `node_modules/.bin/motto lint` runs fine but exits nonzero with errors. An agent that treats the nonzero exit as "did not resolve" falls through to `npx @jeremiewerner/motto lint`, which fetches the *published registry version* of Motto — a potentially older schema than the local one — producing a version-skewed lint verdict (spurious errors, or worse, a false clean on fields the local linter validates). This is exactly the tests-green-but-broken class the project's never-throw history warns about, transplanted into prompt logic.
-**Fix:** Reword to separate execution failure from lint failure:
-```markdown
-Run the real linter. Try each of the following in order, falling through
-only when the command itself cannot be found or executed — a run that
-executes and reports lint errors IS the resolved linter; use its output
-and do not fall through:
-```
-
-#### WR-03: Step 2 misdescribes the bundled reference's staleness — skill-schema.md §6 affirmatively contradicts the delta, and no supersede statement covers it
-
-**File:** `skills/build-skill/SKILL.md:26` (interacts with `shared/references/skill-schema.md:126-134`)
-**Issue:** Step 2 frames `template`/`outputs`/`dependencies`/`allowed-tools` as "the newer fields it does not yet cover." That is factually wrong about the bundled reference: skill-schema.md §6 *does* cover `template` and `dependencies`, and states "These fields are accepted and passed through verbatim. They are NOT validated in Motto v0.0.2" — false since Phases 14/15. An agent consulting the bundled ref (as Step 2 instructs) reads an authoritative-sounding claim that `template: procedure` carries no section requirements, directly contradicting Step 2's delta. The skill already knows how to handle exactly this situation — Step 7 check 3 explicitly supersedes the ref's softer description guidance ("Apply this rule even though the bundled skill-schema reference still teaches...") — but no equivalent supersede sentence protects the far more consequential §6 conflict. The ref rewrite is correctly deferred to Phase 17; the missing supersede sentence in *this phase's shipped prose* is not deferred work.
-**Fix:** In Step 2, replace "For the newer fields it does not yet cover, apply this delta yourself:" with wording that mirrors the Step 7 pattern:
-```markdown
-For the newer fields, apply this delta yourself — it supersedes the bundled
-reference wherever they disagree, including its claim that `template` and
-`dependencies` are "not validated" (they are, as of the current linter):
-```
-
 ### Info
 
-#### IN-01: Step 7 check 2 — "(or equivalent)" is undefined for base-schema skills
+#### IN-01: Guard 1 says "word" where the validator checks substring — a class of names still slips past the pre-write guard
 
-**File:** `skills/build-skill/SKILL.md:71`
-**Issue:** Check 2 audits "`<success_criteria>` (or equivalent)". For a base-schema skill (Step 4 "no" branch) there is no required `<success_criteria>` section and the skill never defines what counts as "equivalent" — the check is unevaluable for roughly half the skills build-skill produces.
-**Fix:** Scope it: "2. When the skill declares `template: procedure`, `<success_criteria>` holds checkable conditions, not restated step or heading titles." (or define the equivalent explicitly).
+**File:** `skills/build-skill/SKILL.md:49`
+**Severity:** INFO (WARNING-class gap downgraded because the Step 6 recovery path now bounds it)
+**Issue:** Guard 1 reads "must not contain the word 'anthropic' or the word 'claude'". The real validator is substring-based: `RESERVED.some((r) => name.includes(r))` (`src/schema.js:226`). A name like `myclaude-tools` or `anthropical-helper` contains no hyphen-delimited *word* "claude"/"anthropic", so a literal-minded agent passes guard 1, writes `skills/myclaude-tools/`, and only then gets the name rejected by lint — triggering the Step 6 delete-and-recreate recovery, which the guard's own rationale ("the name becomes a filesystem path segment") was written to make unnecessary. The prior review's WR-01 fix suggestion itself used the imprecise "words" phrasing; the implementation faithfully reproduced the imprecision. Because the line-65 recovery clause now handles this deterministically, the failure is a wasted write/lint/delete cycle, not a dead end — hence Info, not Warning.
+**Fix:** One word change, still a paraphrase (no DOC-06 risk):
 
-#### IN-02: Attempt budget after the Step 7 → Step 6 loop-back is unspecified
+```markdown
+... and must not contain "anthropic" or "claude" anywhere in the name,
+even inside a longer word.
+```
 
-**File:** `skills/build-skill/SKILL.md:79` (interacts with line 63)
-**Issue:** Step 7 says "re-run Step 6's lint loop" after a quality-gate edit, but never states whether the 3-attempt budget resets or continues. Combined with Step 8's receipt reporting "attempts used", two agents can legitimately report different numbers for identical runs, and a pathological edit/lint ping-pong has no total bound.
-**Fix:** One clause suffices, e.g. "re-run Step 6's lint loop (a fresh 3-attempt budget; at most one quality-gate rewrite cycle total)."
+#### IN-02: Step 7 has no terminal instruction when a quality-gate check still fails after the one permitted rewrite cycle
+
+**File:** `skills/build-skill/SKILL.md:81` (interacts with line 85)
+**Severity:** INFO
+**Issue:** The 16-02 fix correctly bounds the loop ("at most one quality-gate rewrite cycle total") but does not say what to do when the budget is exhausted and a check still fails. Step 6 sets the precedent with an explicit terminal ("stop and hand back the remaining errors plus what you tried"); Step 7 lacks the equivalent. The behavior is *inferable* — Step 8's receipt reports "which quality-gate checks passed", implying the agent proceeds to Step 8 and reports the failure — but it is inferred, not instructed. An over-eager agent could read the missing terminal as license to ask the user for another rewrite round, or stall.
+**Fix:** One clause at the end of line 81, mirroring Step 6's pattern:
+
+```markdown
+If a check still fails after that one rewrite cycle, stop rewriting and
+report the failing check in the Step 8 receipt.
+```
 
 ---
 
-_Reviewed: 2026-07-03T10:38:30Z_
+_Reviewed: 2026-07-03T11:17:14Z_
 _Reviewer: Claude (gsd-code-reviewer)_
 _Depth: standard_
