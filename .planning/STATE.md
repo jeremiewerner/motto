@@ -86,7 +86,7 @@ None yet.
 
 ### Blockers/Concerns
 
-- **Phase 15 open decision:** `allowed-tools` format (STACK.md Q2 — Option A drop-whitespace-constraint vs Option B accept-parenthesized-pattern) must be resolved at Phase 15 discuss/plan. Research recommends Option A.
+- **Phase 15 gate override (plan-phase 13a):** decision-coverage gate returned `could-not-parse` (15-CONTEXT.md decisions use bold-category bullets, not `- **D-NN:**` form; zero uncovered). Operator chose "Proceed anyway" after plan-checker Dimension 7 verified all context decisions honored in plans. Verify-phase should re-check decision compliance manually, not via the mechanical gate.
 - **Phase 16 research needed:** build-skill prompt engineering — inherit from skill-creator / writing-skills (token budget <500 words, flowcharts only for non-obvious decisions, no narrative stories).
 - **Cross-phase (per-phase check):** each phase must decide whether `motto init`'s scaffold needs updating (starter skill `template:`? example outputs file? marketplace/doc strings) — no speculative requirement; decide against real need.
 - Carried from prior milestones: no CI (husky-only, CI-01, deferred); repo still private.
