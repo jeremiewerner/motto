@@ -94,7 +94,7 @@ Two guards protect the scaffold:
 
 Hand the `/motto:build-skill` skill in Claude Code any input — pasted text, a document, or a conversation transcript. It extracts what's already given and asks about genuinely-missing schema slots in one batched message, auto-detects whether the skill needs `template: procedure`, writes `skills/<name>/SKILL.md` (plus any declared output-template files), runs the real `motto lint` in a loop (up to 3 self-fixing attempts), self-reviews against a content-quality gate, then reports back with a compact receipt.
 
-Every `SKILL.md` requires three frontmatter fields and a two-line body spine:
+Every `SKILL.md` requires three frontmatter fields and a body spine — an H1 title line plus a non-empty `<role>…</role>` section:
 
 ```markdown
 ---
