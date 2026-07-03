@@ -366,5 +366,78 @@ export function validateSkill(
     }
   }
 
+  // ── DEPENDENCIES (VAL-02/03/04, hasOwnProperty-gated) ─────────────────────
+  // Per-entry independent cascade (D-10 shape): namespaced (plugin:skill)
+  // entries are format-checked only and exempt from resolution/audience
+  // guard (D-05 — external, audience unknowable). Bare entries: self-
+  // dependency check MUST run BEFORE the skillNames.has(entry) membership
+  // check — dirName is always a member of skillNames, so checking membership
+  // first would silently misclassify a self-dep as resolved (Pitfall 2).
+  if (Object.prototype.hasOwnProperty.call(data, "dependencies")) {
+    const deps = data.dependencies;
+    if (!Array.isArray(deps)) {
+      err(`dependencies must be an array (got ${typeof deps})`);
+    } else {
+      for (const entry of deps) {
+        if (typeof entry !== "string" || entry === "") {
+          err(`dependencies entry must be a non-empty string (got ${typeof entry})`);
+          continue;
+        }
+        if (entry.includes(":")) {
+          // Namespaced plugin:skill entry — format-checked only.
+          const parts = entry.split(":");
+          if (
+            parts.length !== 2 ||
+            !NAME_KEBAB.test(parts[0]) ||
+            !NAME_KEBAB.test(parts[1])
+          ) {
+            err(`dependencies entry "${entry}" is not valid "plugin:skill" format`);
+          }
+          continue;
+        }
+        // Bare entry — self-dependency check FIRST (Pitfall 2 / VAL-04-before-VAL-02).
+        if (entry === dirName) {
+          err(`dependencies entry "${entry}" is a self-dependency`);
+          continue;
+        }
+        if (!skillNames.has(entry)) {
+          const available = [...skillNames].sort().join(", ");
+          err(`dependency "${entry}" not found (available: ${available})`);
+          continue;
+        }
+        // Resolved — audience-direction guard: ONLY public->private fails (VAL-03).
+        if (data.audience === "public" && audienceMap.get(entry) === "private") {
+          err(
+            `dependencies entry "${entry}" is private but this skill is public (audience-direction guard)`
+          );
+        }
+      }
+    }
+  }
+
+  // ── ALLOWED-TOOLS (VAL-05, hasOwnProperty-gated, bracket access) ──────────
+  // Option A locked (format-only, no shape regex, no tokenizing). String or
+  // array of non-empty strings. Empty array passes ("zero tools"); empty
+  // string errors (Empty-field policy).
+  if (Object.prototype.hasOwnProperty.call(data, "allowed-tools")) {
+    const val = data["allowed-tools"];
+    if (typeof val === "string") {
+      if (val.trim() === "") {
+        err(`allowed-tools must be a non-empty string or array (got an empty string)`);
+      }
+      // Non-empty string passes trivially — a parenthesized rule like
+      // "Bash(git add *)" is one valid permission rule by construction.
+    } else if (Array.isArray(val)) {
+      val.forEach((entry, i) => {
+        if (typeof entry !== "string" || entry === "") {
+          err(`allowed-tools[${i}] must be a non-empty string (got ${typeof entry})`);
+        }
+      });
+      // Empty array [] passes — coherent "zero tools" declaration.
+    } else {
+      err(`allowed-tools must be a string or array (got ${typeof val})`);
+    }
+  }
+
   return errors;
 }

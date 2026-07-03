@@ -255,8 +255,11 @@ describe("validateSkill", () => {
     );
   });
 
-  // B13a: dependencies key alone is IGNORED (D-14 still applies to that field)
-  it("B13a: dependencies key in data causes no errors (D-14)", () => {
+  // B13a (superseded, Phase 15 VAL-02..04): `dependencies` is no longer a
+  // passthrough key (D-14 retired — see schema.js docblock, Pitfall 6).
+  // A bare entry not present in the (default empty) skillNames Set now
+  // reports a "not found" error instead of being silently ignored.
+  it("B13a: dependencies bare entry not resolvable against the (default empty) skillNames now errors (VAL-02, supersedes D-14)", () => {
     const skill = {
       dirName: "my-skill",
       data: {
@@ -268,7 +271,11 @@ describe("validateSkill", () => {
       body: VALID_BODY,
     };
     const errors = validateSkill(skill);
-    assert.deepEqual(errors, []);
+    assert.equal(errors.length, 1, `expected 1 error, got: ${JSON.stringify(errors)}`);
+    assert.ok(
+      /dependency "some-dep" not found/.test(errors[0].message),
+      `expected not-found error, got: "${errors[0].message}"`
+    );
   });
 
   // B13b: unknown template value now errors (TMPL-04) — template is no
