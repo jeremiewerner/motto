@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v0.0.6
 milestone_name: Prove & Publish
-current_phase: 19
-current_phase_name: cli-ergonomics-build-skill-verification
+current_phase: 20
+current_phase_name: CI Workflow
 status: verifying
 stopped_at: Completed 19-01-PLAN.md
-last_updated: "2026-07-03T20:22:50.426Z"
+last_updated: "2026-07-03T20:37:40.106Z"
 last_activity: 2026-07-03
-last_activity_desc: Phase 19 execution started
+last_activity_desc: Phase 19 complete, transitioned to Phase 20
 progress:
   total_phases: 4
   completed_phases: 1
@@ -28,10 +28,10 @@ See: .planning/PROJECT.md (updated 2026-07-02 after v0.0.4)
 
 ## Current Position
 
-Phase: 19 (cli-ergonomics-build-skill-verification) — EXECUTING
-Plan: 2 of 2
+Phase: 20 — CI Workflow
+Plan: Not started
 Status: Phase complete — ready for verification
-Last activity: 2026-07-03 — Phase 19 execution started
+Last activity: 2026-07-03 — Phase 19 complete, transitioned to Phase 20
 
 **Milestone shape (v0.0.6, coarse):**
 
@@ -46,7 +46,7 @@ Ordering (research-locked): CLI flags first (pack-E2E consumes them) → CI prov
 
 **Velocity:**
 
-- Total plans completed: 11
+- Total plans completed: 13
 - Average duration: -
 - Total execution time: 0 hours
 
@@ -63,6 +63,7 @@ Ordering (research-locked): CLI flags first (pack-E2E consumes them) → CI prov
 | 16 | 2 | - | - |
 | 17 | 2 | - | - |
 | 18 | 2 | - | - |
+| 19 | 2 | - | - |
 
 **Recent Trend:**
 

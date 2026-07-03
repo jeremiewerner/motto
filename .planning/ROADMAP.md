@@ -121,7 +121,7 @@ Phases execute in numeric order: 19 → 20 → 21 → 22
 | 16. build-skill & author-skill Retirement | v0.0.5 | 2/2 | Complete | 2026-07-03 |
 | 17. Docs Audit | v0.0.5 | 2/2 | Complete | 2026-07-03 |
 | 18. Role Section Tag Migration | v0.0.5 | 2/2 | Complete | 2026-07-03 |
-| 19. CLI Ergonomics & Build-Skill Verification | v0.0.6 | 2/2 | Complete   | 2026-07-03 |
+| 19. CLI Ergonomics & Build-Skill Verification | v0.0.6 | 2/2 | Complete    | 2026-07-03 |
 | 20. CI Workflow | v0.0.6 | 0/TBD | Not started | - |
 | 21. Publish Automation & Release Rewrite | v0.0.6 | 0/TBD | Not started | - |
 | 22. Public Flip & Token Hardening | v0.0.6 | 0/TBD | Not started | - |
