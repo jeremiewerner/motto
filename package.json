@@ -17,7 +17,7 @@
   "files": ["bin/", "src/", "dist/public/"],
   "publishConfig": { "access": "public" },
   "scripts": {
-    "prepare": "husky",
+    "prepare": "node scripts/prepare.mjs",
     "test": "node --test",
     "prepublishOnly": "node bin/motto.js build",
     "version": "node -e \"const fs=require('fs'); let c=fs.readFileSync('motto.yaml','utf8'); c=c.replace(/^version: .+$/m,'version: \\\"'+process.env.npm_new_version+'\\\"'); fs.writeFileSync('motto.yaml',c);\" && git add motto.yaml"
