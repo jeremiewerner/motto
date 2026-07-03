@@ -62,6 +62,11 @@ const UNKNOWN_HINT = "(run 'motto --help' for details)";
 // --format accepted values (CLIX-02, D-11) — 'text' is the explicit-default alias.
 const VALID_FORMATS = new Set(['text', 'json']);
 
+// String-valued options whose VALUE must be skipped when scanning raw argv
+// for the first positional (D-09 help routing, WR-01) — currently only
+// --format takes a value; every other registered option is boolean.
+const STRING_OPTS = new Set(['--format']);
+
 const GLOBAL_HELP = `${USAGE_LINE} [options]
 
 commands:
@@ -255,7 +260,23 @@ const sub = parsed === null ? null : parsed.positionals[0];
 // ---------------------------------------------------------------------------
 
 const rawArgs = process.argv.slice(2);
-const firstPositionalIndex = rawArgs.findIndex((a) => !a.startsWith('-'));
+// Skip string-option values (e.g. `--format text`'s `text`) so they are never
+// misidentified as the first positional/subcommand token (WR-01) — before
+// this phase's --format, every registered option was boolean, so a plain
+// non-dash scan was sound.
+let firstPositionalIndex = -1;
+for (let i = 0; i < rawArgs.length; i++) {
+  const a = rawArgs[i];
+  if (STRING_OPTS.has(a)) {
+    i++; // skip the option's value too
+    continue;
+  }
+  if (a.startsWith('--') && a.includes('=')) continue; // --format=json form
+  if (!a.startsWith('-')) {
+    firstPositionalIndex = i;
+    break;
+  }
+}
 const firstHelpIndex = rawArgs.findIndex((a) => a === '-h' || a === '--help');
 const helpBeforeSubcommand =
   firstHelpIndex !== -1 && (firstPositionalIndex === -1 || firstHelpIndex < firstPositionalIndex);

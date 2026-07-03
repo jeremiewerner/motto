@@ -126,6 +126,16 @@ describe('CLI help (CLIX-03, D-01..D-05, D-08, D-09)', () => {
     // shares the same one-line command description text in the global list.
     assert.doesNotMatch(r.stdout, /usage: motto lint/);
   });
+
+  it('--format text --help lint (string-flag value before --help before subcommand): stdout is GLOBAL help (WR-01 regression)', () => {
+    // --format's VALUE ("text") must not be misidentified as the first
+    // positional/subcommand token — before this phase's --format, every
+    // registered option was boolean, so a plain non-dash argv scan was sound.
+    const r = runCli(['--format', 'text', '--help', 'lint']);
+    assert.strictEqual(r.status, 0);
+    assert.match(r.stdout, /usage: motto <init\|lint\|build>/);
+    assert.doesNotMatch(r.stdout, /usage: motto lint/);
+  });
 });
 
 describe('CLI unknown command / unknown flag (D-04, D-05)', () => {
