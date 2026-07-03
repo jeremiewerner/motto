@@ -2,11 +2,11 @@
 gsd_state_version: 1.0
 milestone: v0.0.6
 milestone_name: Prove & Publish
-status: planning
-last_updated: "2026-07-03T15:56:56.462Z"
+status: roadmapped
+last_updated: "2026-07-03T18:30:00.000Z"
 last_activity: 2026-07-03
 progress:
-  total_phases: 0
+  total_phases: 4
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -20,14 +20,22 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-02 after v0.0.4)
 
 **Core value:** A strict schema + linter that guarantees authored skills conform before they ship, then packages them into self-contained standard Agent Skill plugins.
-**Current focus:** Planning next milestone (run /gsd-new-milestone)
+**Current focus:** v0.0.6 Prove & Publish — automate and harden the ship path (CI gate → tag-publish → public flip), plus prove build-skill on a real skill
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 19 — CLI Ergonomics & Build-Skill Verification (not started)
 Plan: —
-Status: Defining requirements
-Last activity: 2026-07-03 — Milestone v0.0.6 started
+Status: Roadmapped — ready to plan Phase 19
+Last activity: 2026-07-03 — v0.0.6 roadmap created (4 phases, 17/17 requirements mapped)
+
+**Milestone shape (v0.0.6, coarse):**
+- Phase 19: CLI Ergonomics & Build-Skill Verification (CLIX-01..03, BSKV-01)
+- Phase 20: CI Workflow (CIW-01..05)
+- Phase 21: Publish Automation & Release Rewrite (PUB-01..04)
+- Phase 22: Public Flip & Token Hardening (OPEN-01..03, PUB-05)
+
+Ordering (research-locked): CLI flags first (pack-E2E consumes them) → CI proven while private → publish job + release rewrite → pre-public gate + flip → OIDC last. BSKV-01 folded into Phase 19 (independent, do-early). Manual 0.0.5 catch-up publish is a pre-milestone operator action, not a phase.
 
 ## Performance Metrics
 

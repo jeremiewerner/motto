@@ -57,7 +57,24 @@ Maintainer-facing milestone: no end-user feature work. "User" below = maintainer
 
 ## Traceability
 
-(Filled by roadmap.)
+Every v0.0.6 requirement maps to exactly one phase. 17/17 mapped.
 
 | REQ-ID | Phase |
 |--------|-------|
+| CLIX-01 | Phase 19 |
+| CLIX-02 | Phase 19 |
+| CLIX-03 | Phase 19 |
+| BSKV-01 | Phase 19 |
+| CIW-01 | Phase 20 |
+| CIW-02 | Phase 20 |
+| CIW-03 | Phase 20 |
+| CIW-04 | Phase 20 |
+| CIW-05 | Phase 20 |
+| PUB-01 | Phase 21 |
+| PUB-02 | Phase 21 |
+| PUB-03 | Phase 21 |
+| PUB-04 | Phase 21 |
+| OPEN-01 | Phase 22 |
+| OPEN-02 | Phase 22 |
+| OPEN-03 | Phase 22 |
+| PUB-05 | Phase 22 |
