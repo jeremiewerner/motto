@@ -23,6 +23,24 @@
  *   Unknown flag (D-05): mirrors D-04 — names the offending flag, same
  *     usage line + hint, stderr, exit 1.
  *
+ * CLI ergonomics (Phase 19, CLIX-01/02/03): lint/build accept `--quiet` and
+ * `--format text|json`.
+ *   --quiet: suppresses the "✓ …" success/progress line — silent stdout +
+ *     exit 0 signals success (grep/make convention, D-06). Errors still
+ *     print (to stderr). Orthogonal to --format (D-08).
+ *   --format json: prints the verbatim core result object as one compact
+ *     JSON line on stdout (D-01/D-02) — always prints, even under --quiet
+ *     (D-08); no duplicate human "✗" echo on stderr for failures (D-09).
+ *   --format text: explicit-default alias, identical to omitting the flag
+ *     (D-11). Any other value is a D-05-shaped unknown-format error to
+ *     stderr, exit 1, command not run (D-10).
+ *   Pre-dispatch failures (e.g. a bad [path]) stay plain text on stderr
+ *     with empty stdout, never a synthesized JSON error shape (D-04).
+ *   `--quiet`/`--format` are lint/build-only; init rejects them as unknown
+ *     options in the D-05 shape (D-03, D-11).
+ *   ALL "✗" error lines (lint, build, init) write to stderr, never stdout
+ *     (D-05, D-07) — CLIX-03.
+ *
  * Exit codes: always set via process.exitCode — never process.exit(), which
  * can truncate buffered output on platforms where pipe writes are async
  * (e.g. Windows) — Pitfall 7. The parseArgs catch reports the error and
@@ -40,6 +58,9 @@ import { lintProject } from '../src/lint.js';
 
 const USAGE_LINE = 'usage: motto <init|lint|build>';
 const UNKNOWN_HINT = "(run 'motto --help' for details)";
+
+// --format accepted values (CLIX-02, D-11) — 'text' is the explicit-default alias.
+const VALID_FORMATS = new Set(['text', 'json']);
 
 const GLOBAL_HELP = `${USAGE_LINE} [options]
 
@@ -69,7 +90,9 @@ validate skills against the schema
 (defaults to current directory)
 
 options:
-  -h, --help    show help
+  -h, --help          show help
+  --quiet             suppress the success line; silent stdout on success
+  --format text|json  output format (default: text)
 `;
 
 const BUILD_HELP = `usage: motto build [path] [options]
@@ -78,7 +101,9 @@ package skills into dist/ plugins
 (defaults to current directory)
 
 options:
-  -h, --help    show help
+  -h, --help          show help
+  --quiet             suppress the success line; silent stdout on success
+  --format text|json  output format (default: text)
 `;
 
 // ---------------------------------------------------------------------------
@@ -121,6 +146,61 @@ async function checkTargetDir(targetPath) {
 }
 
 // ---------------------------------------------------------------------------
+// --format value guard (D-10) — CLIX-02, lint/build only
+// ---------------------------------------------------------------------------
+
+/**
+ * Validate an explicit `--format` value BEFORE any I/O (Pitfall 3 — cheap
+ * local check first). Undefined (flag omitted) is always valid — text mode
+ * is the default. Writes the D-05-shaped unknown-format error to stderr and
+ * sets exitCode 1 on an unsupported value.
+ *
+ * @param {string|undefined} formatValue - parsed.values.format
+ * @returns {boolean} true when the value is usable (undefined or a member of VALID_FORMATS)
+ */
+function checkFormatValue(formatValue) {
+  if (formatValue !== undefined && !VALID_FORMATS.has(formatValue)) {
+    process.stderr.write(`✗ unknown format '${formatValue}'\n`);
+    process.stderr.write(`${USAGE_LINE}\n`);
+    process.stderr.write(`${UNKNOWN_HINT}\n`);
+    process.exitCode = 1;
+    return false;
+  }
+  return true;
+}
+
+// ---------------------------------------------------------------------------
+// Result rendering — shared by lint/build dispatch (CLIX-01/02/03)
+// ---------------------------------------------------------------------------
+
+/**
+ * Render a lintProject/buildProject result object per the D-01..D-09
+ * contract. Never mutates `result` — `format: 'json'` serializes it
+ * verbatim (D-01, D-02) and always prints, even under `quiet` (D-08).
+ * Text mode: success prints `successLine` unless `quiet`; failure prints
+ * each error as a "✗ …" line to stderr (D-05) — never duplicated when in
+ * json mode (D-09). exitCode is set to 1 whenever `!result.ok`, in every
+ * mode; process.exit() is never called (Pitfall 7).
+ *
+ * @param {{ok: boolean, errors: Array<{skill:string, message:string}>}} result
+ * @param {{format?: string, quiet?: boolean, successLine: string}} opts
+ */
+function renderResult(result, { format, quiet, successLine }) {
+  if (format === 'json') {
+    process.stdout.write(JSON.stringify(result) + '\n');
+  } else if (result.ok) {
+    if (!quiet) {
+      process.stdout.write(`${successLine}\n`);
+    }
+  } else {
+    for (const e of result.errors) {
+      process.stderr.write(`✗ ${e.skill}: ${e.message}\n`);
+    }
+  }
+  if (!result.ok) process.exitCode = 1; // D2-11; process.exit() NOT used (Pitfall 7)
+}
+
+// ---------------------------------------------------------------------------
 // Parse argv — strict:true throws on any unknown flag (e.g. --bogus)
 // ---------------------------------------------------------------------------
 
@@ -139,6 +219,8 @@ function parseCliArgs() {
       options: {
         force: { type: 'boolean' },
         help: { type: 'boolean', short: 'h' },
+        quiet: { type: 'boolean' },
+        format: { type: 'string' },
       },
       allowPositionals: true,
       strict: true,
@@ -194,7 +276,17 @@ if (parsed === null) {
   // yields GLOBAL help, not lint's focused help.
   process.stdout.write(GLOBAL_HELP);
 } else if (sub === 'init') {
-  if (parsed.values.help) {
+  if (parsed.values.format !== undefined || parsed.values.quiet) {
+    // init does not accept --format/--quiet (D-03, D-11) — these flags are
+    // only meaningful for lint/build. parseArgs registers them globally
+    // (strict:true only rejects unknown flag NAMES), so init scopes them
+    // out itself, mirroring the D-05 unknown-option shape.
+    const badFlag = parsed.values.format !== undefined ? '--format' : '--quiet';
+    process.stderr.write(`✗ unknown option '${badFlag}'\n`);
+    process.stderr.write(`${USAGE_LINE}\n`);
+    process.stderr.write(`${UNKNOWN_HINT}\n`);
+    process.exitCode = 1;
+  } else if (parsed.values.help) {
     // `motto init --help` (D-02, D-09) — focused help, init not invoked.
     process.stdout.write(INIT_HELP);
   } else {
@@ -210,20 +302,21 @@ if (parsed === null) {
       }
       process.stdout.write('\nnext steps:\n  motto lint\n  motto build\n');
     } else if (result.reason === 'invalid-name') {
-      process.stdout.write(`✗ ${result.errors[0].message}\n`);
-      process.stdout.write(`  try: motto init ${result.suggestion}\n`);
+      // ✗ lines move to stderr (D-07) — CLIX-03
+      process.stderr.write(`✗ ${result.errors[0].message}\n`);
+      process.stderr.write(`  try: motto init ${result.suggestion}\n`);
       process.exitCode = 1;
     } else if (result.reason === 'not-empty') {
       const CAP = 5;
       const shown = result.offending.slice(0, CAP);
       const rest = result.offending.length - shown.length;
       const list = shown.join(', ') + (rest > 0 ? `, and ${rest} more` : '');
-      process.stdout.write(`✗ directory is not empty (${list})\n`);
-      process.stdout.write('  use --force to scaffold anyway\n');
+      process.stderr.write(`✗ directory is not empty (${list})\n`);
+      process.stderr.write('  use --force to scaffold anyway\n');
       process.exitCode = 1;
     } else {
       for (const e of result.errors) {
-        process.stdout.write(`✗ ${e.skill}: ${e.message}\n`);
+        process.stderr.write(`✗ ${e.skill}: ${e.message}\n`);
       }
       process.exitCode = 1;
     }
@@ -232,6 +325,9 @@ if (parsed === null) {
   if (parsed.values.help) {
     // `motto lint --help` (D-02, D-09) — focused help, lint not invoked.
     process.stdout.write(LINT_HELP);
+  } else if (!checkFormatValue(parsed.values.format)) {
+    // Unsupported --format value (D-10) — error already written to stderr;
+    // validated before checkTargetDir's I/O (Pitfall 3).
   } else {
     // [path] wiring (CLIX-04): explicit path given → guard it first (D-06);
     // omitted → default to cwd, no guard.
@@ -239,20 +335,20 @@ if (parsed === null) {
     const root = targetPath ?? process.cwd();
     if (targetPath === undefined || (await checkTargetDir(targetPath))) {
       const result = await lintProject(root);
-      if (result.ok) {
-        process.stdout.write(`✓ ${result.count} skills OK\n`);
-      } else {
-        for (const e of result.errors) {
-          process.stdout.write(`✗ ${e.skill}: ${e.message}\n`);
-        }
-        process.exitCode = 1; // D2-11; process.exit(1) NOT used (Pitfall 7)
-      }
+      renderResult(result, {
+        format: parsed.values.format,
+        quiet: parsed.values.quiet,
+        successLine: `✓ ${result.count} skills OK`,
+      });
     }
   }
 } else if (sub === 'build') {
   if (parsed.values.help) {
     // `motto build --help` (D-02, D-09) — focused help, build not invoked.
     process.stdout.write(BUILD_HELP);
+  } else if (!checkFormatValue(parsed.values.format)) {
+    // Unsupported --format value (D-10) — error already written to stderr;
+    // validated before checkTargetDir's I/O (Pitfall 3).
   } else {
     // [path] wiring (CLIX-04): explicit path given → guard it first (D-06);
     // omitted → default to cwd, no guard.
@@ -261,18 +357,13 @@ if (parsed === null) {
     if (targetPath === undefined || (await checkTargetDir(targetPath))) {
       const { buildProject } = await import('../src/build.js');
       const result = await buildProject(root);
-      if (result.ok) {
-        // D3-16: output dir + one-line summary (D-07: outDir derived from
-        // the as-typed root, never absolutized here)
-        process.stdout.write(
-          `✓ built ${result.outDir} — ${result.skillCount} skills, ${result.bucketCount} plugin(s)\n`,
-        );
-      } else {
-        for (const e of result.errors) {
-          process.stdout.write(`✗ ${e.skill}: ${e.message}\n`);
-        }
-        process.exitCode = 1; // never process.exit(1) — preserves stdout flush (Pitfall 7)
-      }
+      // D3-16: success line carries outDir (D-07: as-typed root, never
+      // absolutized here); renderResult handles format/quiet/error routing.
+      renderResult(result, {
+        format: parsed.values.format,
+        quiet: parsed.values.quiet,
+        successLine: `✓ built ${result.outDir} — ${result.skillCount} skills, ${result.bucketCount} plugin(s)`,
+      });
     }
   }
 } else {
