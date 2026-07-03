@@ -396,6 +396,23 @@ export function validateSkill(
     } else if (!Object.prototype.hasOwnProperty.call(TPL, tpl)) {
       const available = Object.keys(TPL).sort().join(", ");
       err(`unknown template "${tpl}" (available: ${available})`);
+    } else if (
+      TPL[tpl] === null ||
+      typeof TPL[tpl] !== "object" ||
+      Array.isArray(TPL[tpl])
+    ) {
+      // Maintainer-integrity guard (WR-04 residual, D-01 never-throw): the
+      // hasOwnProperty check above only proves the key exists — its value
+      // may be null, a string, a number, or an array if src/templates.js was
+      // hand-edited into a bad shape. Guard BEFORE the destructure below,
+      // which would otherwise throw on `TPL[tpl].requiredSections`. This is
+      // reachable only via a hand-edited registry or test DI — never via
+      // untrusted skill-author input — so it is a maintainer-integrity
+      // error, not an author-facing rule (stays out of skill-schema.md).
+      const entry = TPL[tpl];
+      const descriptor =
+        entry === null ? "null" : Array.isArray(entry) ? "array" : typeof entry;
+      err(`template "${tpl}" has an invalid registry entry (got ${descriptor})`);
     } else {
       const { requiredSections = [], waives = [] } = TPL[tpl];
       waivedSections = new Set(waives);

@@ -614,6 +614,72 @@ describe("validateSkill — role spine (D-01, D-02, D-05, D-08)", () => {
       "non-array BASE_SPINE must fall back to the real spine"
     );
   });
+
+  // WR-04 residual (D-01 never-throw): hasOwnProperty passing only proves the
+  // template *key* exists in TEMPLATES — its *value* may be null, a string, a
+  // number, or an array if src/templates.js is hand-edited into a bad shape.
+  // The shape guard must fire before the throwing `TPL[tpl].requiredSections`
+  // destructure. Reachable only via a hand-edited registry or test DI —
+  // never via untrusted skill-author input (maintainer-integrity, not an
+  // author-facing rule).
+  it("validateSkill never throws for a null/string/number/array template registry entry — accumulates one invalid-registry-entry error per shape (WR-04, D-01)", () => {
+    const cases = [
+      { value: null, descriptor: "null" },
+      { value: "role", descriptor: "string" },
+      { value: 123, descriptor: "number" },
+      { value: [], descriptor: "array" },
+    ];
+    for (const { value, descriptor } of cases) {
+      const skill = {
+        dirName: "my-skill",
+        data: {
+          name: "my-skill",
+          description: "use when X",
+          audience: "public",
+          template: "bad-tpl",
+        },
+        body: "# My Skill\n\n<role>\nYou are a helper.\n</role>\n",
+      };
+      const badRegistry = {
+        SECTIONS: {},
+        TEMPLATES: { "bad-tpl": value },
+        BASE_SPINE: ["role"],
+      };
+      assert.doesNotThrow(
+        () => validateSkill(skill, new Set(), badRegistry),
+        `must not throw for entry: ${JSON.stringify(value)}`
+      );
+      const errors = validateSkill(skill, new Set(), badRegistry);
+      assert.ok(Array.isArray(errors), `result must be an array for entry ${JSON.stringify(value)}`);
+      assert.ok(
+        errors.some(
+          (e) =>
+            e.message.startsWith('template "bad-tpl"') &&
+            e.message.includes("has an invalid registry entry") &&
+            e.message.includes(`got ${descriptor}`)
+        ),
+        `expected invalid-registry-entry error (got ${descriptor}) for entry ${JSON.stringify(value)}, got: ${JSON.stringify(errors)}`
+      );
+    }
+  });
+
+  it("validateSkill still resolves a valid object template entry — normal requires-<section> errors are unchanged (WR-04 guard does not swallow the real cascade)", () => {
+    const skill = {
+      dirName: "my-skill",
+      data: {
+        name: "my-skill",
+        description: "use when X",
+        audience: "public",
+        template: "procedure",
+      },
+      body: "# My Skill\n\n<role>\nYou are a helper.\n</role>\n",
+    };
+    const errors = validateSkill(skill);
+    assert.ok(
+      errors.some((e) => /^template "procedure" requires/.test(e.message)),
+      `expected requires-<section> error for real procedure template, got: ${JSON.stringify(errors)}`
+    );
+  });
 });
 
 describe("hasClosedSection", () => {
