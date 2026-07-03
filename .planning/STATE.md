@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-07-02 after v0.0.4)
 Phase: 18
 Plan: Not started
 Status: Phase complete — ready for verification
-Last activity: 2026-07-03 — Phase 18 complete
+Last activity: 2026-07-03 — Completed quick task 260703-nya: IN-02 shared fence-tracking helper
 Note: decision-coverage-plan gate overridden (could-not-parse: CONTEXT.md decisions are category bullets without D-NN IDs; checker Dimension 7 manually verified all locked decisions covered) — verify-phase may re-surface
 
 Progress: [████████░░] 80%
@@ -121,6 +121,12 @@ None yet.
 - **Phase 16 gate override (plan-phase 13a):** decision-coverage gate returned `could-not-parse` (16-CONTEXT.md decisions use category bullets, not `- **D-NN:**` form; zero uncovered). Operator chose "Proceed anyway" after planner and plan-checker both verified all locked decisions honored in the plan. Verify-phase should re-check decision compliance manually, not via the mechanical gate.
 - **Cross-phase (per-phase check):** each phase must decide whether `motto init`'s scaffold needs updating (starter skill `template:`? example outputs file? marketplace/doc strings) — no speculative requirement; decide against real need.
 - Carried from prior milestones: no CI (husky-only, CI-01, deferred); repo still private.
+
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 260703-nya | Close IN-02: extract shared fence-tracking helper in src/schema.js | 2026-07-03 | fdede19 | [260703-nya-close-in-02-extract-shared-fence-trackin](./quick/260703-nya-close-in-02-extract-shared-fence-trackin/) |
 
 ### Roadmap Evolution
 
