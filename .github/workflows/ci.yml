@@ -26,11 +26,14 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
           cache: 'npm'
-      # npm ci fires both the `prepare` guard (scripts/prepare.mjs, no-ops on
+      # npm ci fires the `prepare` guard (scripts/prepare.mjs — no-ops on
       # .git-less installs but runs here since checkout gives us a real .git)
-      # and `prepublishOnly` (node bin/motto.js build) on every leg of this
-      # matrix. Both are idempotent today — re-check this comment if a
-      # non-idempotent lifecycle script is ever added (Pitfall 1).
+      # on every leg of this matrix. NOTE: `prepublishOnly` (node bin/motto.js
+      # build) does NOT run on npm ci — per npm's lifecycle docs it runs only
+      # on `npm publish`; the build is exercised by the dogfood job and by
+      # `npm pack` inside pack-install-e2e instead. `prepare` is idempotent
+      # today — re-check this comment if a non-idempotent lifecycle script is
+      # ever added (Pitfall 1).
       - run: npm ci
       - run: npm test
 
