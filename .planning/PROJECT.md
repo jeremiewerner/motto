@@ -10,28 +10,30 @@ The **strict schema + linter**. Skills that always conform to one rigid-yet-crea
 
 ## Current State
 
-**Shipped: v0.0.4 (2026-07-02)** — Project bootstrap complete. A stranger with only `npm i -g @jeremiewerner/motto` can scaffold, build, and distribute their own skills project: `motto init [name] [--force]` scaffolds a complete, lint-and-build-clean project (starter skill, `motto.yaml`, `.gitignore`, `marketplace.json`) via never-throw `src/init.js`, guarded by a permanent init → lint → build dogfood test; `motto --help` (global + per-subcommand) and `lint`/`build [path]` make the CLI discoverable and relocatable; the README documents the full ship-your-plugin flow; the superseded `setup-project` skill is retired; and all 5 carried tech-debt items closed in Phase 13. 10/10 requirements, 131 tests, 1,380 LOC, single dep `yaml`. See `milestones/v0.0.4-ROADMAP.md`.
+**Shipped: v0.0.5 (2026-07-03)** — Skill Builder complete. A user describes a procedure in any form and Motto structures it into a validated, conforming, distributable skill: the `template:` mechanism enforces real rules from the pure-data `src/templates.js` registry (`procedure` ships, fence-aware section matching); `outputs:`/`dependencies:`/`allowed-tools` are validated with integrity guards (path-safety + symlink-escape, resolution + self-dep + audience-direction, format-only), all never-throw; the `build-skill` Agent Skill ingests any input, gap-fills, generates, and self-verifies against the real linter (`author-skill` retired); `skill-schema.md` matches the live validator with a doc-sync test that breaks the suite on drift; and the base spine migrated from `**Role:**` bold-lines to a registry-driven `<role>…</role>` section tag (hard break, two distinct lint errors). 19/19 requirements + Phase 18's 9-decision contract, 213 tests, 1,964 LOC, single dep `yaml`. See `milestones/v0.0.5-ROADMAP.md`.
 
-**Prior:** v0.0.3 (2026-07-01) — installable + distributable: npm `@jeremiewerner/motto`, self-hosted marketplace, real `release` publish flow (13 reqs). · v0.0.2 (2026-07-01) — Motto self-hosts: own `skills/` tree + dogfood guard + spec-complete `validateSkill` (10 reqs). · v0.0.1 (2026-06-30) — core `motto lint` + `motto build` CLI (22 reqs). Archives in `milestones/`.
+**Prior:** v0.0.4 (2026-07-02) — project bootstrap: `motto init`, `--help`/`[path]` ergonomics, README ship flow, setup-project retired (10 reqs, 131 tests). · v0.0.3 (2026-07-01) — installable + distributable: npm `@jeremiewerner/motto`, self-hosted marketplace, real `release` publish flow (13 reqs). · v0.0.2 (2026-07-01) — Motto self-hosts: own `skills/` tree + dogfood guard + spec-complete `validateSkill` (10 reqs). · v0.0.1 (2026-06-30) — core `motto lint` + `motto build` CLI (22 reqs). Archives in `milestones/`.
 
-**Hardening note:** post-v0.0.2 `/code-review high` caught 3 D-01 never-throw violations the milestone tests missed; fixed + guarded. v0.0.4 continued the pattern: never-throw contract now enforced with adversarial malformed-input regression tests across scaffold paths (WR-01 closure, Phase 10-03).
+**Hardening note:** post-v0.0.2 `/code-review high` caught 3 D-01 never-throw violations the milestone tests missed; fixed + guarded. v0.0.4 continued the pattern (adversarial scaffold-path tests). v0.0.5 made it structural: phase 18's review caught a Critical never-throw registry-shape crash (CR-01) *before* verification instead of after ship, and the twice-deferred WR-04 shape guard was closed at milestone close — zero known never-throw gaps at ship for the first time.
 
-## Current Milestone: v0.0.5 Skill Builder
+## Next Milestone Goals
 
-**Goal:** A user describes a procedure in any form and Motto structures it into a validated, conforming, distributable skill.
-
-**Progress:** All 5 phases complete (2026-07-03) — `template:` cascade live (14), three new frontmatter fields validated never-throw (15), `build-skill` shipped + `author-skill` retired (16), docs audited with doc-sync drift guard (17), base-spine `**Role:**` migrated to registry-driven `<role>` section tag with hard break (18). 211 tests. Phase 18 review remediated (CR-01 never-throw registry-shape crash + 3 warnings fixed pre-verification). Milestone ready to ship.
-
-**Target features:**
-- Template mechanism live: `template:` field validated, data-driven template + section-tag registry, `procedure` template ships (closes TMPL-01)
-- `procedure` template requires `<process>` + `<success_criteria>` body sections; unknown tags stay legal
-- New validated optional fields (global, when present): `outputs:` named map → path-safe existing files, `dependencies:` resolve in project tree, `allowed-tools` format check
-- `build-skill` Agent Skill — structurer, not ideator: ingest any input → gap-fill questions → generate skill → self-verify with `motto lint`; itself `template: procedure` (dogfood)
-- `author-skill` retired (closes AUTH-SKILL, removes lint-string duplication)
-
-**Design spec:** `.planning/superpowers/specs/2026-07-02-skill-builder-design.md` (decisions D-01..D-08, evolution ledger, standing principles).
+Not yet defined — run `/gsd-new-milestone`. Backlog candidates in ROADMAP.md: CLI ergonomics (`--quiet`, `--format json`), CI workflow, `motto ship`, design-ledger items (action section tags, skill-calls-skill, `{var}` interpolation, multi-template, `agent` template), build-skill human-verify session.
 
 **Standing principles (every step):** heavy research; design for unknown purpose; lightweight (readable code/md, no doc sprawl); agentic best practice (skills + agents + subagents + API/MCP are first-class); simple to adapt, creativity free; rigor in a small easy spine.
+
+<details>
+<summary>Shipped: v0.0.5 — Skill Builder (2026-07-03)</summary>
+
+**Goal:** A user describes a procedure in any form and Motto structures it into a validated, conforming, distributable skill. ✅ Shipped — see `milestones/v0.0.5-ROADMAP.md`.
+
+**Delivered:** data-driven `template:` enforcement (`procedure` ships, fence-aware matching); `outputs:`/`dependencies:`/`allowed-tools` validated with integrity guards, never-throw; `build-skill` Agent Skill (ingest → gap-fill → generate → lint-loop → quality gate), `author-skill` retired atomically; `skill-schema.md` current + doc-sync drift test; base spine `**Role:**` → registry-driven `<role>` tag (hard break, BASE_SPINE data, two lint errors).
+
+**Design spec:** `.planning/superpowers/specs/2026-07-02-skill-builder-design.md` (decisions D-01..D-08, evolution ledger).
+
+**Deferred out:** build-skill live-behavior human-verify items (3) — tracked in ROADMAP Backlog.
+
+</details>
 
 <details>
 <summary>Shipped: v0.0.4 — Project Bootstrap (2026-07-02)</summary>
@@ -77,13 +79,18 @@ The **strict schema + linter**. Skills that always conform to one rigid-yet-crea
 - [x] `setup-project` skill removed (superseded by init + README) — v0.0.4 (DOC-05, atomic delete + dogfood count sync)
 - [x] `outputs:`/`dependencies:`/`allowed-tools` frontmatter fields validated with integrity guards (path-safety + symlink-escape, dependency resolution + self-dep + audience-direction, format-only allowed-tools), all never-throw — Validated in Phase 15 (v0.0.5, VAL-01..06; post-review hardening: 2 critical + 3 warning fixes with regression tests)
 
+- [x] Template mechanism live: `template:` field enforced from the pure-data registry; `procedure` template requires `<process>` + `<success_criteria>` — Validated in Phase 14 (v0.0.5, TMPL-01..05; closes the long-deferred TMPL-01)
+- [x] `build-skill` structures any freeform input into a lint-clean conforming skill, self-verifying against the real linter; `author-skill` retired atomically — Validated in Phase 16 (v0.0.5, BSKL-01..06; live-behavior fidelity pending human-verify)
+- [x] `skill-schema.md` matches the live validator, guarded by a doc-sync test that breaks the suite on drift; README documents the build-skill flow — Validated in Phase 17 (v0.0.5, DOC-06..07)
+- [x] Base spine = `# Title` + non-empty `<role>…</role>` section tag, registry-driven (BASE_SPINE), template-waivable — Validated in Phase 18 (v0.0.5, hard break from `**Role:**`)
+
 ### Active
 
-- [ ] Template *mechanism* exists (schema add-ons via `template:`), with zero concrete templates shipped — mechanism shipped v0.0.1; concrete-template validation deferred (TMPL-01)
+(None — define with the next milestone via `/gsd-new-milestone`.)
 
 ### Out of Scope
 
-- Concrete templates (procedure/form/reference) — mechanism only in v1; design against the first real skill that needs them
+- Additional concrete templates beyond `procedure` (form/reference/agent) — design each against the first real skill that needs it
 - Tone engine, datasets, forms, output templates, sub-skills — YAGNI until a skill demands them
 - MCP-dependency resolution — `dependencies` is linted as present but not resolved at build
 - Distribution layer (packaging Motto itself as a plugin, global install / per-project version pinning, the meta-skill content) — separate follow-up; depends on the open install-mechanism decision
@@ -95,8 +102,8 @@ The **strict schema + linter**. Skills that always conform to one rigid-yet-crea
 - Output is **standard Agent Skills** (`SKILL.md` + frontmatter + `references/`). The tooling is Claude-Code-specific; the output is portable.
 - A full design spec and a 6-task TDD implementation plan already exist: `.planning/superpowers/specs/2026-06-29-motto-design.md` and `.planning/superpowers/plans/2026-06-30-motto-core-cli.md`.
 - Repo layout for a Motto project: `skills/<name>/` (SKILL.md, references/, scripts/) + `shared/references/` → generated `dist/{public,private}/`.
-- Codebase state after v0.0.4: 1,380 LOC plain ESM JS (`bin/` + `src/`), 131 tests (`node --test`), single dep `yaml`, husky pre-commit full-suite hook, no CI.
-- Known debt: no CI (CI-01), `author-skill` instructional skill under review (challenge before rework), repo still private.
+- Codebase state after v0.0.5: 1,964 LOC plain ESM JS (`bin/` + `src/`), 213 tests (`node --test`), single dep `yaml`, husky pre-commit full-suite hook, no CI. Two live skills (`release`, `build-skill`), doc-sync test pins `skill-schema.md` to the validator source.
+- Known debt: no CI (CI-01), repo still private, 3 build-skill live-behavior human-verify items + 1 info-level prose gap (see `milestones/v0.0.5-MILESTONE-AUDIT.md` tech_debt).
 
 ## Constraints
 
@@ -113,8 +120,13 @@ The **strict schema + linter**. Skills that always conform to one rigid-yet-crea
 | Build = lint + resolve-deps + copy (no content compiler) | Maintainability; compilers rot | ✓ Good — verbatim copy held through 4 milestones |
 | Distribute via plugin; output named per-project (`/myproject`, not `/motto`) | Motto's brand never reaches consumers | ✓ Good — init scaffolds marketplace.json named per project |
 | `audience` binary (`public`\|`private`), private optional | A `both` value would collide across locally-installed plugins | ✓ Good — v0.0.2 |
-| Spine = Title + Role, mandatory but template-waivable | The rigid-vs-creative dial; escape hatch is explicit | ✓ Good — held through dogfood + scaffold |
-| v1 ships zero concrete templates (mechanism only) | YAGNI — design templates against real skills | — Pending (TMPL-01 still deferred) |
+| Spine = Title + Role, mandatory but template-waivable | The rigid-vs-creative dial; escape hatch is explicit | ✓ Good — held through dogfood + scaffold; v0.0.5 migrated Role to a `<role>` section tag, registry-driven (BASE_SPINE) |
+| v1 ships zero concrete templates (mechanism only) | YAGNI — design templates against real skills | ✅ v0.0.5 — `procedure` designed against the real `release` skill; registry stayed pure data (TMPL-01 closed) |
+| Template + section registry is pure data (`src/templates.js`) | Adding a template/spine rule = data edit, no linter change | ✅ v0.0.5 — proven twice: `procedure` (14) and `role` spine (18) |
+| `allowed-tools` format-only validation (Option A — no shape regex) | Real spec forms like `Bash(git add *)` must pass; tokenizing invites false rejects | ✅ v0.0.5 |
+| build-skill description is WHEN-only; quality gate is prose, not linter | Trigger-matching beats capability lists; hollow-content defense at write-time, lint stays structural | ✅ v0.0.5 (BSKL-05) |
+| Doc freshness = doc-sync test, not version headers | The stale v0.0.2 header proved manual sync fails; drift now breaks the suite | ✅ v0.0.5 (Phase 17 D-03/D-04) |
+| `<role>` hard break, no dual-accept window | Pre-1.0, repo-private, 2 live skills; dual-path validator code is permanent cost | ✅ v0.0.5 (Phase 18 D-01) |
 | Config in `motto.yaml` | Project-specific, room for future prefs (output language…) | ✓ Good |
 | Install mechanism (global plugin vs repo-local `.motto/`) left open | Decide in the distribution follow-up plan | ✅ v0.0.3 — npm (CLI) + self-hosted marketplace (skills) |
 | No `--zip` build feature; document shell one-liner instead | Desktop Code tab is Claude Code → marketplace covers it; zip is web-upload-only edge case; keeps zero-dep + no Node zip code | ✅ v0.0.3 (research-backed) |
@@ -141,4 +153,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-03 — Phase 18 (Role Section Tag Migration) complete; v0.0.5 all phases done*
+*Last updated: 2026-07-03 after v0.0.5 milestone*

@@ -2,12 +2,12 @@
 gsd_state_version: 1.0
 milestone: v0.0.5
 milestone_name: Skill Builder
-current_phase: 18
-status: verifying
+current_phase: 0.5
+status: Awaiting next milestone
 stopped_at: Completed 18-02-PLAN.md
-last_updated: "2026-07-03T15:38:04.930Z"
+last_updated: "2026-07-03T15:39:20.371Z"
 last_activity: 2026-07-03
-last_activity_desc: "Completed quick task 260703-occ: WR-04 shape guard on TPL[tpl] entry"
+last_activity_desc: Milestone v0.0.5 completed and archived
 progress:
   total_phases: 5
   completed_phases: 5
@@ -24,17 +24,14 @@ current_phase_name: migrate-base-spine-role-to-role-section-tag
 See: .planning/PROJECT.md (updated 2026-07-02 after v0.0.4)
 
 **Core value:** A strict schema + linter that guarantees authored skills conform before they ship, then packages them into self-contained standard Agent Skill plugins.
-**Current focus:** Phase 18 — migrate-base-spine-role-to-role-section-tag
+**Current focus:** Planning next milestone (run /gsd-new-milestone)
 
 ## Current Position
 
-Phase: 18
-Plan: Not started
-Status: Phase complete — ready for verification
-Last activity: 2026-07-03 — Completed quick task 260703-occ: WR-04 shape guard on TPL[tpl] entry
-Note: decision-coverage-plan gate overridden (could-not-parse: CONTEXT.md decisions are category bullets without D-NN IDs; checker Dimension 7 manually verified all locked decisions covered) — verify-phase may re-surface
-
-Progress: [████████░░] 80%
+Phase: Milestone v0.0.5 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-07-03 — Milestone v0.0.5 completed and archived
 
 ## Performance Metrics
 
@@ -152,5 +149,4 @@ Resume file: None
 
 ## Operator Next Steps
 
-- Review the v0.0.5 roadmap draft (`.planning/ROADMAP.md`).
-- Then plan the first phase with `/gsd-plan-phase 14`.
+- Start the next milestone with /gsd-new-milestone
