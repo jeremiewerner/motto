@@ -669,6 +669,19 @@ describe("hasClosedSection", () => {
     assert.equal(hasClosedSection("", "process"), false);
   });
 
+  // Truthy non-string bodies -> false, never throws (D-01, review WR-02):
+  // `body || ""` only coerced falsy values; 123 / {} / [] used to reach
+  // `.split()` unguarded and throw.
+  it("returns false without throwing for truthy non-string bodies (D-01, review WR-02)", () => {
+    for (const bad of [123, {}, [], true, 0, null]) {
+      assert.doesNotThrow(
+        () => hasClosedSection(bad, "process"),
+        `must not throw for body: ${JSON.stringify(bad)}`
+      );
+      assert.equal(hasClosedSection(bad, "process"), false);
+    }
+  });
+
   // Mixed backtick and tilde fences: a stray ~~~ content line inside an open
   // backtick fence must not be mistaken for a fence boundary of its own —
   // the tags stay excluded until a matching backtick fence actually closes

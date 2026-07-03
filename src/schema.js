@@ -71,7 +71,10 @@ export const NAME_KEBAB = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/;
  * @returns {boolean}
  */
 export function hasClosedSection(body, tagName) {
-  const bodyStr = body || "";
+  // typeof guard, not `body || ""` (review WR-02): `||` only replaces FALSY
+  // values, so a truthy non-string (123, {}, []) would reach `.split()`
+  // below and throw — violating the module's never-throw guarantee (D-01).
+  const bodyStr = typeof body === "string" ? body : "";
   const lines = bodyStr.split("\n");
   const fenceRe = /^ {0,3}(`{3,}|~{3,})/;
   const unfencedLines = [];
@@ -123,12 +126,10 @@ export function hasClosedSection(body, tagName) {
  *
  * `body` is coerced to a string (any non-string input — null, undefined, a
  * number, an object, an array — becomes `""`) BEFORE it is ever passed to
- * `hasClosedSection` or used in a string method here. `hasClosedSection`'s
- * own `body || ""` only coerces FALSY values; a truthy non-string (e.g. `123`,
- * `{}`, `[]`) would otherwise reach its internal `.split()` call unguarded
- * and throw. Coercing here — strictly ahead of the delegated call — keeps
- * this function's never-throw guarantee (D-01) intact without modifying
- * `hasClosedSection` itself (out of scope for this plan).
+ * `hasClosedSection` or used in a string method here. `hasClosedSection`
+ * applies the same typeof guard itself (review WR-02), so both exported
+ * validators uphold the module's never-throw guarantee (D-01) independently
+ * — neither relies on the other's coercion.
  *
  * @param {string} body
  * @param {string} tagName
