@@ -142,7 +142,7 @@ Full phase details: [milestones/v0.0.4-ROADMAP.md](milestones/v0.0.4-ROADMAP.md)
 
 **Goal**: The base-spine role declaration moves from the `**Role:**` bold-line convention to a `<role>…</role>` section tag, consistently across linter, existing skills, init scaffold, build-skill generation, and docs.
 **Depends on**: Phase 17 (documents the settled schema this phase changes)
-**Requirements**: TBD (run /gsd-discuss-phase 18 — key decisions: hard break vs transitional dual-accept; registry-driven base spine vs hardcoded tag swap)
+**Requirements**: D-01..D-09 (locked in 18-CONTEXT.md — phase added post-audit; decisions serve as the requirement contract). Hard break to `<role>`; registry-driven BASE_SPINE; non-empty role; two distinct lint errors.
 **Known touch points** (from pre-phase scoping):
 
   - `src/schema.js:322-327` — Role check is base-spine code, not registry data
@@ -152,11 +152,12 @@ Full phase details: [milestones/v0.0.4-ROADMAP.md](milestones/v0.0.4-ROADMAP.md)
   - `shared/references/skill-schema.md` base-spine section + `test/doc-sync.test.js` segments
   - README examples
 
-**Plans**: 0 plans
+**Plans**: 2 plans
 
 Plans:
 
-- [ ] TBD (run /gsd-plan-phase 18 to break down)
+- [ ] 18-01-PLAN.md — Additive prep: BASE_SPINE + SECTIONS.role registry data and the isolated, adversarially-tested hasNonEmptyClosedSection helper (behavior-neutral, green on its own)
+- [ ] 18-02-PLAN.md — Atomic flip: registry-driven role check (missing + empty errors), migrate both live skills, init starter, docs, drift guard, README, and all fixtures in one green commit
 
 ## Progress
 
@@ -173,7 +174,7 @@ Phases execute in numeric order: 14 → 15 → 16 → 17 → 18
 | 15. Field Validation & Integrity Guards | v0.0.5 | 2/2 | Complete    | 2026-07-03 |
 | 16. build-skill & author-skill Retirement | v0.0.5 | 2/2 | Complete    | 2026-07-03 |
 | 17. Docs Audit | v0.0.5 | 2/2 | Complete    | 2026-07-03 |
-| 18. Role Section Tag Migration | v0.0.5 | 0/? | Not planned | — |
+| 18. Role Section Tag Migration | v0.0.5 | 0/2 | Planned | — |
 
 ## Backlog
 
