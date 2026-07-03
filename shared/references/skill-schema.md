@@ -136,8 +136,10 @@ shared_references:
 ## 6. `template` Field
 
 **Rule:** Optional. Absent `template` key skips all template checks entirely — no template means no
-additional body-section requirements. An explicitly-present but falsy value (`template: ""`,
-`template: null`) is NOT silently skipped: it is treated as an unknown template name and errors.
+additional body-section requirements. An explicitly-present but falsy value is NOT silently
+skipped: `template: ""` is treated as an unknown template name and errors at step 2, while
+`template: null` (e.g. a bare `template:` key, which YAML parses to null) is a non-string —
+`typeof null === "object"` — and errors at step 1 (`template must be a string (got object)`).
 
 ```yaml
 template: procedure
