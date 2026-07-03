@@ -174,7 +174,8 @@ async function loadSkillAudiences(skillsDir, skillNames) {
 // ---------------------------------------------------------------------------
 
 /**
- * Check the fs-dependent half of `outputs:` validation: file existence and
+ * Check the fs-dependent half of `outputs:` validation: file existence
+ * (the target must exist AND be a regular file — phase-15 review WR-02) and
  * symlink-escape containment. Reuses `isOutputPathLexicallySafe` (exported
  * from `./schema.js`) to gate which entries are even eligible for an fs
  * check — lexically-unsafe entries were already reported by `validateSkill`
@@ -201,10 +202,19 @@ async function checkOutputsFs(skillsDir, dirName, data, errors) {
     // validateSkill by construction, so "already reported" is guaranteed.
     if (!isOutputPathLexicallySafe(value)) continue; // schema.js already reported it
     const targetAbs = resolve(skillDirAbs, value);
+    let stats;
     try {
-      await stat(targetAbs);
+      stats = await stat(targetAbs);
     } catch {
       errors.push({ skill: dirName, message: `outputs.${key} file "${value}" does not exist` });
+      continue;
+    }
+    if (!stats.isFile()) {
+      // Phase-15 review WR-02: `outputs:` entries must name FILES. stat()
+      // follows symlinks, so a symlink to a regular file still passes here
+      // (and the symlink-escape check below still runs for it); directories
+      // — including "." (the skill directory itself) — are spec violations.
+      errors.push({ skill: dirName, message: `outputs.${key} "${value}" is not a file` });
       continue;
     }
     // Symlink-escape check: resolve REAL filesystem paths, re-verify

@@ -428,6 +428,19 @@ describe('lintProject — outputs fs-layer (VAL-01)', () => {
       join(root, 'skills', 'output-symlink-escape', 'SKILL.md'),
       makeSkillWithExtra('output-symlink-escape', 'public', ['outputs:', '  doc: escape.txt']),
     );
+
+    // Case D (phase-15 review WR-02): outputs entries naming DIRECTORIES —
+    // "." (the skill dir itself) and a real subdirectory. stat() succeeds on
+    // both, so before the isFile() guard they passed lint with zero errors.
+    await mkdir(join(root, 'skills', 'output-dir', 'subdir'), { recursive: true });
+    await writeFile(
+      join(root, 'skills', 'output-dir', 'SKILL.md'),
+      makeSkillWithExtra('output-dir', 'public', [
+        'outputs:',
+        '  self: "."',
+        '  sub: subdir',
+      ]),
+    );
   });
 
   after(async () => {
@@ -460,6 +473,26 @@ describe('lintProject — outputs fs-layer (VAL-01)', () => {
         /escapes the skill directory via symlink/i.test(e.message),
     );
     assert.ok(entry, `expected a symlink-escape error, got: ${JSON.stringify(result.errors)}`);
+  });
+
+  it('(D) outputs entries naming a directory — "." and a subdirectory — each report an "is not a file" error (phase-15 review WR-02)', async () => {
+    const result = await lintProject(root);
+    const dirErrors = result.errors.filter(
+      (e) => e.skill === 'output-dir' && /is not a file/i.test(e.message),
+    );
+    assert.strictEqual(
+      dirErrors.length,
+      2,
+      `expected 2 "is not a file" errors (outputs.self and outputs.sub), got: ${JSON.stringify(result.errors.filter((e) => e.skill === 'output-dir'))}`,
+    );
+    assert.ok(
+      dirErrors.some((e) => e.message.includes('outputs.self')),
+      `expected an outputs.self error, got: ${JSON.stringify(dirErrors)}`,
+    );
+    assert.ok(
+      dirErrors.some((e) => e.message.includes('outputs.sub')),
+      `expected an outputs.sub error, got: ${JSON.stringify(dirErrors)}`,
+    );
   });
 });
 
