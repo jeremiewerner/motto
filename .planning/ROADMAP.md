@@ -155,8 +155,12 @@ Full phase details: [milestones/v0.0.4-ROADMAP.md](milestones/v0.0.4-ROADMAP.md)
 **Plans**: 2 plans
 
 Plans:
+**Wave 1**
 
 - [ ] 18-01-PLAN.md — Additive prep: BASE_SPINE + SECTIONS.role registry data and the isolated, adversarially-tested hasNonEmptyClosedSection helper (behavior-neutral, green on its own)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 18-02-PLAN.md — Atomic flip: registry-driven role check (missing + empty errors), migrate both live skills, init starter, docs, drift guard, README, and all fixtures in one green commit
 
 ## Progress
