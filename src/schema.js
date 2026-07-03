@@ -2,15 +2,19 @@
  * Motto skill-schema validator.
  *
  * Pure object validator — no filesystem, no YAML parsing, no imports beyond
- * this file's own scope (except the pure-data `./templates.js` registry).
+ * this file's own scope (except the pure-data `./templates.js` registry and
+ * `node:path`, which is pure string math and never touches the filesystem).
  * NEVER throws (D-01). All validation failures surface through the returned
  * errors[].
  *
  * Exports:
  *   - NAME_KEBAB {RegExp}  — canonical letter-start kebab regex (D-08, D-16)
  *   - hasClosedSection(body, tagName) -> boolean
- *   - validateSkill(skill, sharedRefs?, templatesRegistry?) -> Array<{ skill, message }>
+ *   - isOutputPathLexicallySafe(skillDirAbs, entry) -> boolean
+ *   - validateSkill(skill, sharedRefs?, templatesRegistry?, skillNames?, audienceMap?) -> Array<{ skill, message }>
  */
+
+import { resolve, sep, isAbsolute } from "node:path";
 
 import { SECTIONS, TEMPLATES } from "./templates.js";
 
@@ -97,6 +101,34 @@ export function hasClosedSection(body, tagName) {
 }
 
 /**
+ * Determine whether a relative `outputs:` entry stays lexically contained
+ * inside the skill's own directory — no absolute path, no `..` traversal
+ * escape. Pure `node:path` string math only; does NOT touch the filesystem
+ * (existence and symlink-escape checks are the fs-dependent layer's job —
+ * `src/lint.js`'s `checkOutputsFs`, which reuses this exact predicate to
+ * decide which entries are even eligible for an fs check, so the lexical
+ * cascade lives in exactly one place — Pitfall/anti-pattern: do not
+ * reimplement this logic in lint.js).
+ *
+ * Both the root and the target are resolved and given a trailing `sep`
+ * before the containment `startsWith` comparison — this is the documented
+ * fix for the sibling-directory-prefix false positive (e.g. a `build-skill`
+ * root must not treat `build-skill-evil/x` as contained just because the
+ * string "build-skill" is a prefix of "build-skill-evil").
+ *
+ * @param {string} skillDirAbs — absolute (or resolvable) path to the skill's own directory
+ * @param {string} entry — the raw `outputs:` value to check
+ * @returns {boolean}
+ */
+export function isOutputPathLexicallySafe(skillDirAbs, entry) {
+  if (typeof entry !== "string" || entry === "") return false;
+  if (isAbsolute(entry)) return false;
+  const root = resolve(skillDirAbs) + sep;
+  const target = resolve(skillDirAbs, entry) + sep;
+  return target.startsWith(root);
+}
+
+/**
  * Reserved substrings that must not appear in a skill's SKILL.md `name`
  * frontmatter field (LINT-02, D-09).
  *
@@ -125,9 +157,10 @@ const RESERVED = ["anthropic", "claude"];
  *     shared_references entry) are INDEPENDENT: they all run and all errors
  *     are collected together regardless of what other checks find.
  *
- * `dependencies` (and any other unknown frontmatter key) is accepted without
- * error (D-14). `template` is no longer a passthrough key as of TMPL-01 — see
- * the TEMPLATE cascade below.
+ * Any other genuinely unknown frontmatter key is accepted without error.
+ * `template` (TMPL-01) and `dependencies`/`outputs`/`allowed-tools` (VAL-01..06)
+ * are all now validated fields — see the TEMPLATE cascade and the outputs/
+ * dependencies/allowed-tools blocks below.
  *
  * @param {{ dirName: string, data: object, body: string }} skill
  *   `dirName` — the skill's source folder name (cascade anchor + error.skill)
@@ -140,6 +173,13 @@ const RESERVED = ["anthropic", "claude"];
  *   Injectable template registry, defaulting to the real `./templates.js`
  *   exports. Tests use this to exercise the `waives` merge logic via a
  *   fixture template without mutating `src/templates.js` (TMPL-02).
+ * @param {Set<string>} [skillNames]
+ *   Set of all discovered skill dirNames in the project tree. Defaults to an
+ *   empty Set; bare `dependencies:` entries are resolved against it (VAL-02).
+ * @param {Map<string,string>} [audienceMap]
+ *   Map of dirName -> audience ("public"|"private") for every discoverable
+ *   skill in the tree. Defaults to an empty Map; consulted by the
+ *   `dependencies:` audience-direction guard (VAL-03).
  * @returns {Array<{ skill: string, message: string }>}
  *   Empty array when the skill is fully valid; one object per error otherwise.
  *   Each object's `skill` field equals `dirName`.
@@ -147,7 +187,9 @@ const RESERVED = ["anthropic", "claude"];
 export function validateSkill(
   skill,
   sharedRefs = new Set(),
-  templatesRegistry = { SECTIONS, TEMPLATES }
+  templatesRegistry = { SECTIONS, TEMPLATES },
+  skillNames = new Set(),
+  audienceMap = new Map()
 ) {
   const { dirName, data, body } = skill;
   const errors = [];
@@ -288,6 +330,39 @@ export function validateSkill(
     } else if (!sharedRefs.has(entry)) {
       // Safe basename but not in the available set.
       err(`shared_references entry "${entry}" not found in shared/references/`);
+    }
+  }
+
+  // ── OUTPUTS (VAL-01, lexical half — hasOwnProperty-gated, D-07 precedent) ─
+  // Existence + symlink-escape checks are fs-dependent and deferred to the
+  // lint.js orchestration layer (Plan 02), which reuses the exported
+  // isOutputPathLexicallySafe predicate above so the cascade lives in one
+  // place only. `skillDirAbs` is resolved from `dirName` against the process
+  // cwd purely for the lexical containment math — no fs access occurs.
+  if (Object.prototype.hasOwnProperty.call(data, "outputs")) {
+    const outputs = data.outputs;
+    if (outputs === null || typeof outputs !== "object" || Array.isArray(outputs)) {
+      // Pitfall 4: typeof null === 'object' and arrays are objects too —
+      // both must route here, not into Object.entries() below.
+      err(
+        `outputs must be a map of name -> file (got ${Array.isArray(outputs) ? "array" : typeof outputs})`
+      );
+    } else {
+      const skillDirAbs = resolve(dirName);
+      for (const [key, value] of Object.entries(outputs)) {
+        if (typeof value !== "string" || value === "") {
+          err(`outputs.${key} must be a non-empty string path (got ${typeof value})`);
+          continue;
+        }
+        if (!isOutputPathLexicallySafe(skillDirAbs, value)) {
+          err(
+            `outputs.${key} path "${value}" is unsafe (must not be absolute or contain ".." traversal)`
+          );
+          continue;
+        }
+        // Lexically safe — existence/symlink-escape are checked by lint.js's
+        // fs layer (Plan 02), not here.
+      }
     }
   }
 
