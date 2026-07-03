@@ -4,17 +4,17 @@ milestone: v0.0.5
 milestone_name: Skill Builder
 current_phase: 18
 current_phase_name: migrate-base-spine-role-to-role-section-tag
-status: executing
-stopped_at: Phase 18 context gathered
-last_updated: "2026-07-03T14:43:53.520Z"
+status: verifying
+stopped_at: Completed 18-02-PLAN.md
+last_updated: "2026-07-03T14:54:17.460Z"
 last_activity: 2026-07-03
 last_activity_desc: Phase 18 execution started
 progress:
   total_phases: 5
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 11
-  completed_plans: 10
-  percent: 80
+  completed_plans: 11
+  percent: 100
 ---
 
 # Project State
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-07-02 after v0.0.4)
 
 Phase: 18 (migrate-base-spine-role-to-role-section-tag) — EXECUTING
 Plan: 2 of 2
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-07-03 — Phase 18 execution started
 Note: decision-coverage-plan gate overridden (could-not-parse: CONTEXT.md decisions are category bullets without D-NN IDs; checker Dimension 7 manually verified all locked decisions covered) — verify-phase may re-surface
 
@@ -73,6 +73,7 @@ Progress: [████████░░] 80%
 | Phase 17 P01 | 25min | 3 tasks | 3 files |
 | Phase 17 P02 | 6min | 2 tasks | 1 files |
 | Phase 18 P01 | 7min | 2 tasks | 3 files |
+| Phase 18 P02 | 20min | 3 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -106,6 +107,8 @@ Recent decisions affecting current work:
 - [Phase 18]: hasNonEmptyClosedSection coerces body via typeof check before delegating to hasClosedSection (which only guards falsy values via body||'', letting truthy non-strings like 123/{}/[] throw); fixed only in the new caller
 - [Phase 18]: role added to SECTIONS but not to TEMPLATES.procedure.requiredSections -- role is base-spine data (BASE_SPINE), not a per-template requirement (D-03)
 - [Phase 18]: hasNonEmptyClosedSection exported but unwired into validateSkill in Plan 18-01 -- legacy Role check stays live; wiring happens atomically in Plan 18-02
+- [Phase 18]: legacy **Role:** bold-line regex fully removed from src/schema.js (D-01 hard break) -- a leftover legacy line is now inert body text, producing the missing-role error, not a separate legacy-line-detected check (D-02)
+- [Phase 18]: validateSkill's top-level bodyStr coercion changed from body||'' to a typeof guard -- pre-existing latent never-throw gap (truthy non-string body like 123/{}/[] would throw on .split()), newly exercised by the plan-mandated adversarial test; same fix shape as Plan 18-01's hasNonEmptyClosedSection
 
 ### Pending Todos
 
@@ -134,9 +137,9 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-03T14:38:50.932Z
-Stopped at: Phase 18 context gathered
-Resume file: .planning/phases/18-migrate-base-spine-role-to-role-section-tag/18-CONTEXT.md
+Last session: 2026-07-03T14:54:06.500Z
+Stopped at: Completed 18-02-PLAN.md
+Resume file: None
 
 ## Operator Next Steps
 

@@ -43,7 +43,7 @@ Full phase details: [milestones/v0.0.4-ROADMAP.md](milestones/v0.0.4-ROADMAP.md)
 - [x] **Phase 15: Field Validation & Integrity Guards** - Validate `outputs:`/`dependencies:`/`allowed-tools` with audience-direction, self-reference, and path-safety guards (completed 2026-07-03)
 - [x] **Phase 16: build-skill & author-skill Retirement** - `build-skill` Agent Skill structures any input into a conforming skill; `author-skill` retired atomically (completed 2026-07-03)
 - [x] **Phase 17: Docs Audit** - Rewrite `skill-schema.md` current and update README for build-skill (completed 2026-07-03)
-- [ ] **Phase 18: Role Section Tag Migration** - Migrate base-spine `**Role:**` line to a `<role>` section tag (added post-audit)
+- [x] **Phase 18: Role Section Tag Migration** - Migrate base-spine `**Role:**` line to a `<role>` section tag (added post-audit) (completed 2026-07-03)
 
 ## Phase Details
 
@@ -152,7 +152,7 @@ Full phase details: [milestones/v0.0.4-ROADMAP.md](milestones/v0.0.4-ROADMAP.md)
   - `shared/references/skill-schema.md` base-spine section + `test/doc-sync.test.js` segments
   - README examples
 
-**Plans**: 1/2 plans executed
+**Plans**: 2/2 plans complete
 
 Plans:
 **Wave 1**
@@ -161,7 +161,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 18-02-PLAN.md — Atomic flip: registry-driven role check (missing + empty errors), migrate both live skills, init starter, docs, drift guard, README, and all fixtures in one green commit
+- [x] 18-02-PLAN.md — Atomic flip: registry-driven role check (missing + empty errors), migrate both live skills, init starter, docs, drift guard, README, and all fixtures in one green commit
 
 ## Progress
 
@@ -178,7 +178,7 @@ Phases execute in numeric order: 14 → 15 → 16 → 17 → 18
 | 15. Field Validation & Integrity Guards | v0.0.5 | 2/2 | Complete    | 2026-07-03 |
 | 16. build-skill & author-skill Retirement | v0.0.5 | 2/2 | Complete    | 2026-07-03 |
 | 17. Docs Audit | v0.0.5 | 2/2 | Complete    | 2026-07-03 |
-| 18. Role Section Tag Migration | v0.0.5 | 1/2 | In Progress|  |
+| 18. Role Section Tag Migration | v0.0.5 | 2/2 | Complete   | 2026-07-03 |
 
 ## Backlog
 
