@@ -58,7 +58,9 @@ Full phase details: [milestones/v0.0.5-ROADMAP.md](milestones/v0.0.5-ROADMAP.md)
   2. Running `motto lint`/`motto build` with `--format json` emits exactly one JSON document serializing the existing `{ok, errors}` shape on stdout — and nothing else on stdout.
   3. Diagnostics and errors write to stderr while results write to stdout, so `--format json` output is pipe-safe (Pitfall 7 fixed).
   4. One real skill is authored end-to-end through `build-skill` from freeform input — gap-fill fidelity (BSKL-01), quality gate on hollow output (BSKL-05), and runtime name-recovery (WR-01) are observed; findings recorded and divergences fixed or ticketed.
-**Plans**: TBD
+**Plans**: 2 plans
+- [ ] 19-01-PLAN.md — CLI ergonomics: `--quiet` + `--format text|json` + stdout/stderr split in bin/motto.js (CLIX-01/02/03)
+- [ ] 19-02-PLAN.md — build-skill live verification on one real skill; 19-BSKV-FINDINGS.md (BSKV-01)
 
 ### Phase 20: CI Workflow
 **Goal**: Every push and PR is gated by a full CI pipeline (`.github/workflows/ci.yml`) that proves Motto works on a clean checkout and as npm actually ships it — all while the repo is still private, so the gate is trusted before anything is exposed.
