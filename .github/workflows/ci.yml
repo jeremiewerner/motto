@@ -1,0 +1,76 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [20, 22, 24]
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+      # npm ci fires both the `prepare` guard (scripts/prepare.mjs, no-ops on
+      # .git-less installs but runs here since checkout gives us a real .git)
+      # and `prepublishOnly` (node bin/motto.js build) on every leg of this
+      # matrix. Both are idempotent today — re-check this comment if a
+      # non-idempotent lifecycle script is ever added (Pitfall 1).
+      - run: npm ci
+      - run: npm test
+
+  dogfood:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: 'npm'
+      - run: npm ci
+      - name: lint --quiet (empty stdout, exit 0)
+        run: |
+          out=$(node bin/motto.js lint --quiet)
+          if [ -n "$out" ]; then echo "expected empty stdout, got: $out" >&2; exit 1; fi
+      - name: build --quiet (empty stdout, exit 0)
+        run: |
+          out=$(node bin/motto.js build --quiet)
+          if [ -n "$out" ]; then echo "expected empty stdout, got: $out" >&2; exit 1; fi
+
+  pack-install-e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: 'npm'
+      - run: npm ci
+      - name: pack-install E2E (real npm consumer path)
+        run: node scripts/pack-install-e2e.mjs
+      - name: prepare guard proof (.git-less no-op, CIW-05)
+        run: node scripts/prepare-guard-check.mjs
+
+  npm-drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20
+      - run: node scripts/npm-drift-check.mjs
