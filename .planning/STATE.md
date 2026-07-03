@@ -4,9 +4,9 @@ milestone: v0.0.6
 milestone_name: Prove & Publish
 current_phase: 20
 current_phase_name: CI Workflow
-status: verifying
+status: executing
 stopped_at: Phase 20 context gathered
-last_updated: "2026-07-03T20:55:58.454Z"
+last_updated: "2026-07-03T21:25:09.113Z"
 last_activity: 2026-07-03
 last_activity_desc: Phase 19 complete, transitioned to Phase 20
 progress:
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-07-02 after v0.0.4)
 
 Phase: 20 — CI Workflow
 Plan: Not started
-Status: Phase complete — ready for verification
+Status: Ready to execute
 Last activity: 2026-07-03 — Phase 19 complete, transitioned to Phase 20
 
 **Milestone shape (v0.0.6, coarse):**

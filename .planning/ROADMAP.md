@@ -82,8 +82,13 @@ Full phase details: [milestones/v0.0.5-ROADMAP.md](milestones/v0.0.5-ROADMAP.md)
 **Plans**: 3 plans
 
 Plans:
+**Wave 1**
+
 - [ ] 20-01-PLAN.md — Husky prepare guard (`scripts/prepare.mjs`) + explicit `.git`-less proof script (CIW-05, closes the D-15 gap)
 - [ ] 20-02-PLAN.md — Pack-install E2E script + never-red npm-drift check script (CIW-03, CIW-04)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 20-03-PLAN.md — `.github/workflows/ci.yml` with 4 parallel jobs + live green-run verification (CIW-01, CIW-02)
 
 ### Phase 21: Publish Automation & Release Rewrite
