@@ -4,10 +4,11 @@ milestone: v0.0.5
 milestone_name: Skill Builder
 current_phase: 16
 current_phase_name: build-skill & author-skill Retirement
-status: verifying
+status: executing
 stopped_at: Phase 16 context gathered
-last_updated: "2026-07-03T09:57:06.633Z"
+last_updated: "2026-07-03T10:25:49.536Z"
 last_activity: 2026-07-03
+last_activity_desc: Phase 16 planning complete
 progress:
   total_phases: 4
   completed_phases: 2
@@ -29,8 +30,8 @@ See: .planning/PROJECT.md (updated 2026-07-02 after v0.0.4)
 
 Phase: 16 — build-skill & author-skill Retirement
 Plan: Not started
-Status: Phase complete — ready for verification
-Last activity: 2026-07-03
+Status: Ready to execute
+Last activity: 2026-07-03 — Phase 16 planning complete
 Note: decision-coverage-plan gate overridden (could-not-parse: CONTEXT.md decisions are category bullets without D-NN IDs; checker Dimension 7 manually verified all locked decisions covered) — verify-phase may re-surface
 
 Progress: [████████░░] 80%
@@ -94,7 +95,7 @@ None yet.
 ### Blockers/Concerns
 
 - **Phase 15 gate override (plan-phase 13a):** decision-coverage gate returned `could-not-parse` (15-CONTEXT.md decisions use bold-category bullets, not `- **D-NN:**` form; zero uncovered). Operator chose "Proceed anyway" after plan-checker Dimension 7 verified all context decisions honored in plans. Verify-phase should re-check decision compliance manually, not via the mechanical gate.
-- **Phase 16 research needed:** build-skill prompt engineering — inherit from skill-creator / writing-skills (token budget <500 words, flowcharts only for non-obvious decisions, no narrative stories).
+- **Phase 16 gate override (plan-phase 13a):** decision-coverage gate returned `could-not-parse` (16-CONTEXT.md decisions use category bullets, not `- **D-NN:**` form; zero uncovered). Operator chose "Proceed anyway" after planner and plan-checker both verified all locked decisions honored in the plan. Verify-phase should re-check decision compliance manually, not via the mechanical gate.
 - **Cross-phase (per-phase check):** each phase must decide whether `motto init`'s scaffold needs updating (starter skill `template:`? example outputs file? marketplace/doc strings) — no speculative requirement; decide against real need.
 - Carried from prior milestones: no CI (husky-only, CI-01, deferred); repo still private.
 
