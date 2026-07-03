@@ -109,12 +109,16 @@ Full phase details: [milestones/v0.0.4-ROADMAP.md](milestones/v0.0.4-ROADMAP.md)
   4. `build-skill`'s instructions enforce a content-quality self-review gate — no empty Role, no vacuous criteria, and the description states WHEN to trigger, not what the skill does.
   5. `author-skill` is removed atomically with `build-skill`'s arrival — dogfood skill count synced, main never red.
 
-**Plans**: 1/1 plans complete
+**Plans**: 1/2 plans complete
 **Research flag**: RESOLVED — 16-RESEARCH.md gathered the prompt-engineering guidance (WHEN-only descriptions, feedback-loop pattern, untrusted-input boundary, no lint-string duplication) from Anthropic skill docs + superpowers writing-skills.
 
 **Wave 1**
 
 - [x] 16-01-PLAN.md — Author `skills/build-skill/` (public, template: procedure; ingest → gap-fill → guarded write → filtered ≤3-attempt lint loop → anti-hollow quality gate → receipt) and retire `skills/author-skill/` atomically (delete + dogfood test swap) in one green commit (BSKL-01..06)
+
+**Wave 2 (gap closure — verification found 5/7 must-haves)**
+
+- [ ] 16-02-PLAN.md — Close the 2 verification gaps + 3 carried review findings in `skills/build-skill/SKILL.md`: full NAME-cascade guard (kebab + ≤64 + no anthropic/claude) with name-recovery clause (WR-01), exec-vs-lint-failure fallback semantics (WR-02), Step 2 supersede (WR-03), Step 7 check-2 scoping (IN-01), attempt-budget clause (IN-02) (BSKL-02, BSKL-03, BSKL-05)
 
 ### Phase 17: Docs Audit
 
