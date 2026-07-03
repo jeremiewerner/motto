@@ -4,17 +4,17 @@ milestone: v0.0.5
 milestone_name: Skill Builder
 current_phase: 15
 current_phase_name: Field Validation & Integrity Guards
-status: executing
-stopped_at: Phase 15 context gathered
-last_updated: "2026-07-03T06:23:25.056Z"
+status: verifying
+stopped_at: Phase 15 complete (both plans executed)
+last_updated: "2026-07-03T06:31:04.654Z"
 last_activity: 2026-07-03
 last_activity_desc: Phase 15 execution started
 progress:
   total_phases: 4
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 5
-  completed_plans: 4
-  percent: 80
+  completed_plans: 5
+  percent: 50
 ---
 
 # Project State
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-07-02 after v0.0.4)
 
 Phase: 15 (Field Validation & Integrity Guards) — EXECUTING
 Plan: 2 of 2
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-07-03 — Phase 15 execution started
 Note: decision-coverage-plan gate overridden (could-not-parse: CONTEXT.md decisions are category bullets without D-NN IDs; checker Dimension 7 manually verified all locked decisions covered) — verify-phase may re-surface
 
@@ -64,6 +64,7 @@ Progress: [████████░░] 80%
 | Phase 14 P02 | 12min | 2 tasks | 2 files |
 | Phase 14 P03 | 9min | 2 tasks | 2 files |
 | Phase 15 P01 | 5min | 3 tasks | 2 files |
+| Phase 15 P02 | 4min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -82,6 +83,9 @@ Recent decisions affecting current work:
 - [Phase 14]: hasClosedSection tracks opening fence character+length (not boolean toggle) and requires open-before-close match ordering (WR-01/WR-02 closure, Phase 14 gap closure)
 - [Phase 15]: Self-dependency check ordered strictly before skillNames.has() membership check in dependencies cascade (Pitfall 2)
 - [Phase 15]: allowed-tools locked to Option A: format-only, non-empty string or array, no shape regex, no tokenizing
+- [Phase 15]: checkOutputsFs called from inside processSkill's existing outer try (not a second backstop) — its own per-entry try/catch already converts every failure to an error entry
+- [Phase 15]: loadSkillAudiences pre-pass runs unconditionally for every discovered skill (build.js 'Option A — re-read' precedent), not gated on which skills declare dependencies
+- [Phase 15]: release's allowed-tools authored as a 3-entry array (Bash(node *), Bash(npm *), Bash(git *)) to exercise the array per-entry validator path live, not just the string form
 
 ### Pending Todos
 
@@ -109,9 +113,9 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-03T06:22:39.483Z
-Stopped at: Phase 15 context gathered
-Resume file: .planning/phases/15-field-validation-integrity-guards/15-CONTEXT.md
+Last session: 2026-07-03T06:31:04.650Z
+Stopped at: Phase 15 complete (both plans executed)
+Resume file: .planning/phases/15-field-validation-integrity-guards/15-02-SUMMARY.md
 
 ## Operator Next Steps
 

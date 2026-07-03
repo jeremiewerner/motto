@@ -40,7 +40,7 @@ Full phase details: [milestones/v0.0.4-ROADMAP.md](milestones/v0.0.4-ROADMAP.md)
 **Execution order** (research-locked — see `research/SUMMARY.md` "Implications for Roadmap"): template mechanism → field validators + integrity guards → build-skill + author-skill retirement → docs audit. `skill-schema.md` rewrite is scheduled LAST, after all schema-touching phases land.
 
 - [x] **Phase 14: Template Mechanism** - Data-driven `template:` field that lint enforces (`procedure` ships) (completed 2026-07-02)
-- [ ] **Phase 15: Field Validation & Integrity Guards** - Validate `outputs:`/`dependencies:`/`allowed-tools` with audience-direction, self-reference, and path-safety guards
+- [x] **Phase 15: Field Validation & Integrity Guards** - Validate `outputs:`/`dependencies:`/`allowed-tools` with audience-direction, self-reference, and path-safety guards (completed 2026-07-03)
 - [ ] **Phase 16: build-skill & author-skill Retirement** - `build-skill` Agent Skill structures any input into a conforming skill; `author-skill` retired atomically
 - [ ] **Phase 17: Docs Audit** - Rewrite `skill-schema.md` current and update README for build-skill
 
@@ -85,7 +85,7 @@ Full phase details: [milestones/v0.0.4-ROADMAP.md](milestones/v0.0.4-ROADMAP.md)
   4. `allowed-tools` entries in real spec forms — including parenthesized patterns like `Bash(git add *)` — pass, while malformed forms fail.
   5. Every new validator returns accumulated errors without throwing, proven by adversarial malformed-input tests.
 
-**Plans**: 1/2 plans executed
+**Plans**: 2/2 plans complete
 **Research flag**: RESOLVED — Option A locked (each `allowed-tools` entry is a non-empty string, no shape regex; `Bash(git add *)` passes trivially) in 15-CONTEXT.md.
 
 **Wave 1**
@@ -94,7 +94,7 @@ Full phase details: [milestones/v0.0.4-ROADMAP.md](milestones/v0.0.4-ROADMAP.md)
 
 **Wave 2** *(depends on 15-01)*
 
-- [ ] 15-02-PLAN.md — fs orchestrator (`src/lint.js`): `loadSkillAudiences` pre-pass + `checkOutputsFs` (existence + symlink-escape), cross-skill wiring, fs-layer fixtures, `release` gains `allowed-tools` live dogfood (VAL-01/02/03/05/06)
+- [x] 15-02-PLAN.md — fs orchestrator (`src/lint.js`): `loadSkillAudiences` pre-pass + `checkOutputsFs` (existence + symlink-escape), cross-skill wiring, fs-layer fixtures, `release` gains `allowed-tools` live dogfood (VAL-01/02/03/05/06)
 
 ### Phase 16: build-skill & author-skill Retirement
 
@@ -137,7 +137,7 @@ Phases execute in numeric order: 14 → 15 → 16 → 17
 | 12. Docs & Cleanup | v0.0.4 | 3/3 | Complete | 2026-07-02 |
 | 13. Tech-Debt Closure | v0.0.4 | 2/2 | Complete | 2026-07-02 |
 | 14. Template Mechanism | v0.0.5 | 3/3 | Complete    | 2026-07-02 |
-| 15. Field Validation & Integrity Guards | v0.0.5 | 1/2 | In Progress|  |
+| 15. Field Validation & Integrity Guards | v0.0.5 | 2/2 | Complete   | 2026-07-03 |
 | 16. build-skill & author-skill Retirement | v0.0.5 | 0/TBD | Not started | - |
 | 17. Docs Audit | v0.0.5 | 0/TBD | Not started | - |
 
