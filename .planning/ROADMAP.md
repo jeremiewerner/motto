@@ -152,12 +152,12 @@ Full phase details: [milestones/v0.0.4-ROADMAP.md](milestones/v0.0.4-ROADMAP.md)
   - `shared/references/skill-schema.md` base-spine section + `test/doc-sync.test.js` segments
   - README examples
 
-**Plans**: 2 plans
+**Plans**: 1/2 plans executed
 
 Plans:
 **Wave 1**
 
-- [ ] 18-01-PLAN.md — Additive prep: BASE_SPINE + SECTIONS.role registry data and the isolated, adversarially-tested hasNonEmptyClosedSection helper (behavior-neutral, green on its own)
+- [x] 18-01-PLAN.md — Additive prep: BASE_SPINE + SECTIONS.role registry data and the isolated, adversarially-tested hasNonEmptyClosedSection helper (behavior-neutral, green on its own)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -178,7 +178,7 @@ Phases execute in numeric order: 14 → 15 → 16 → 17 → 18
 | 15. Field Validation & Integrity Guards | v0.0.5 | 2/2 | Complete    | 2026-07-03 |
 | 16. build-skill & author-skill Retirement | v0.0.5 | 2/2 | Complete    | 2026-07-03 |
 | 17. Docs Audit | v0.0.5 | 2/2 | Complete    | 2026-07-03 |
-| 18. Role Section Tag Migration | v0.0.5 | 0/2 | Planned | — |
+| 18. Role Section Tag Migration | v0.0.5 | 1/2 | In Progress|  |
 
 ## Backlog
 

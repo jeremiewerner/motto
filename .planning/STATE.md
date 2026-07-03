@@ -3,17 +3,17 @@ gsd_state_version: 1.0
 milestone: v0.0.5
 milestone_name: Skill Builder
 current_phase: 18
-current_phase_name: Role Section Tag Migration
+current_phase_name: migrate-base-spine-role-to-role-section-tag
 status: executing
 stopped_at: Phase 18 context gathered
-last_updated: "2026-07-03T14:33:30.202Z"
+last_updated: "2026-07-03T14:43:53.520Z"
 last_activity: 2026-07-03
-last_activity_desc: Phase 17 complete, transitioned to Phase 18
+last_activity_desc: Phase 18 execution started
 progress:
   total_phases: 5
   completed_phases: 4
-  total_plans: 9
-  completed_plans: 9
+  total_plans: 11
+  completed_plans: 10
   percent: 80
 ---
 
@@ -24,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-02 after v0.0.4)
 
 **Core value:** A strict schema + linter that guarantees authored skills conform before they ship, then packages them into self-contained standard Agent Skill plugins.
-**Current focus:** Phase 18 — migrate base-spine **Role:** to <role> section tag
+**Current focus:** Phase 18 — migrate-base-spine-role-to-role-section-tag
 
 ## Current Position
 
-Phase: 18 — Role Section Tag Migration
-Plan: Not started
+Phase: 18 (migrate-base-spine-role-to-role-section-tag) — EXECUTING
+Plan: 2 of 2
 Status: Ready to execute
-Last activity: 2026-07-03 — Phase 17 complete, transitioned to Phase 18
+Last activity: 2026-07-03 — Phase 18 execution started
 Note: decision-coverage-plan gate overridden (could-not-parse: CONTEXT.md decisions are category bullets without D-NN IDs; checker Dimension 7 manually verified all locked decisions covered) — verify-phase may re-surface
 
 Progress: [████████░░] 80%
@@ -72,6 +72,7 @@ Progress: [████████░░] 80%
 | Phase 16 P02 | 8min | 2 tasks | 1 files |
 | Phase 17 P01 | 25min | 3 tasks | 3 files |
 | Phase 17 P02 | 6min | 2 tasks | 1 files |
+| Phase 18 P01 | 7min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -102,6 +103,9 @@ Recent decisions affecting current work:
 - [Phase 17]: D-01 surgical patch: kept existing skill-schema.md §1/§3/§5 skeleton verbatim; only §2/§4/§6 patched and §7-§9 added net-new; renumbered old §7 to §10
 - [Phase 17]: Doc-sync test uses Option 1 (source-text extraction) per RESEARCH.md recommendation — no fixture wiring, no re-invocation of validateSkill
 - [Phase 17]: D-06/D-07: README author-skill references replaced with build-skill (section body rewritten around real flow; 5 mechanical sample-name sites swapped); grep -c author-skill README.md returns 0
+- [Phase 18]: hasNonEmptyClosedSection coerces body via typeof check before delegating to hasClosedSection (which only guards falsy values via body||'', letting truthy non-strings like 123/{}/[] throw); fixed only in the new caller
+- [Phase 18]: role added to SECTIONS but not to TEMPLATES.procedure.requiredSections -- role is base-spine data (BASE_SPINE), not a per-template requirement (D-03)
+- [Phase 18]: hasNonEmptyClosedSection exported but unwired into validateSkill in Plan 18-01 -- legacy Role check stays live; wiring happens atomically in Plan 18-02
 
 ### Pending Todos
 
@@ -130,7 +134,7 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-03T14:13:17.484Z
+Last session: 2026-07-03T14:38:50.932Z
 Stopped at: Phase 18 context gathered
 Resume file: .planning/phases/18-migrate-base-spine-role-to-role-section-tag/18-CONTEXT.md
 
