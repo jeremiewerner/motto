@@ -502,9 +502,9 @@ Import `validateSkill` (and, for the fs-layer messages, call `lintProject` again
 
 **All catalog claims (Validator Ground Truth Catalog) are [VERIFIED] against live source read directly in this session — not assumed.** The only [ASSUMED]-tier judgment call in this research is the doc-sync test SHAPE recommendation above, which is explicitly marked as discretionary in CONTEXT.md itself.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Exact renumbering scheme for skill-schema.md's sections**
+1. **RESOLVED — Exact renumbering scheme for skill-schema.md's sections** (plan 17-01 adopts the §1-§10 contiguous scheme recommended below)
    - What we know: D-01 locks "keep the existing 7-section structure" for §1-§5/§7, and mandates new content for `outputs`/`allowed-tools` plus the §6 rewrite. That's 5 existing + 1 rewritten + 2 new = 8 distinct rule-sections, plus the unchanged §7 Frontmatter Envelope which logically belongs LAST (it's about the file envelope, not a frontmatter field).
    - What's unclear: whether to renumber Frontmatter Envelope from §7 to §10 (as this research assumes, to keep field-rule sections contiguous: §1 name, §2 description, §3 audience, §4 body spine, §5 shared_references, §6 template, §7 outputs, §8 dependencies, §9 allowed-tools, §10 frontmatter envelope) or to keep it as some other number, or to interleave differently.
    - Recommendation: the §1-§10 contiguous renumbering above reads naturally and requires renumbering only ONE existing section header (§7→§10) plus updating any cross-references to "§7" if the doc contains any (none found in the read version). Low-risk, mechanical — safe for the planner to lock without further research.
