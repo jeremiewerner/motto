@@ -676,3 +676,71 @@ describe('lintProject — no double-reporting from loadSkillAudiences pre-pass (
     assert.deepStrictEqual(cleanErrors, []);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Never-throw boundary on non-ENOENT fs errors (phase-15 review CR-02)
+// ---------------------------------------------------------------------------
+// The module docblock guarantees lintProject NEVER throws at its boundary.
+// Before the fix, loadSharedRefs and discoverSkillNames rethrew any
+// non-ENOENT error, so a plain FILE named `skills` or `shared/references`
+// (one-touch user errors, ENOTDIR on readdir) crashed the CLI with an
+// unhandled rejection instead of a diagnostic.
+
+describe('lintProject — never-throw on non-ENOENT fs errors (phase-15 review CR-02)', () => {
+  let skillsIsFileRoot;
+  let refsIsFileRoot;
+
+  before(async () => {
+    // Root A: `skills` is a FILE, not a directory → readdir fails ENOTDIR.
+    skillsIsFileRoot = await mkdtemp(join(tmpdir(), 'motto-lint-'));
+    await writeFile(join(skillsIsFileRoot, 'motto.yaml'), VALID_CONFIG);
+    await writeFile(join(skillsIsFileRoot, 'skills'), 'not a directory\n');
+
+    // Root B: `shared/references` is a FILE → readdir fails ENOTDIR; the
+    // skill scan must still run and the valid skill must still pass.
+    refsIsFileRoot = await mkdtemp(join(tmpdir(), 'motto-lint-'));
+    await writeFile(join(refsIsFileRoot, 'motto.yaml'), VALID_CONFIG);
+    await mkdir(join(refsIsFileRoot, 'shared'), { recursive: true });
+    await writeFile(join(refsIsFileRoot, 'shared', 'references'), 'not a directory\n');
+    await mkdir(join(refsIsFileRoot, 'skills', 'my-skill'), { recursive: true });
+    await writeFile(join(refsIsFileRoot, 'skills', 'my-skill', 'SKILL.md'), makeSkillMd('my-skill'));
+  });
+
+  after(async () => {
+    await rm(skillsIsFileRoot, { recursive: true, force: true });
+    await rm(refsIsFileRoot, { recursive: true, force: true });
+  });
+
+  it('a FILE named skills/ resolves (never rejects) with a "could not read skills/" error, not "no skills found"', async () => {
+    // Awaiting directly IS the regression assertion: pre-fix this rejected
+    // with ENOTDIR and the test would fail with an unhandled error.
+    const result = await lintProject(skillsIsFileRoot);
+    assert.strictEqual(result.ok, false);
+    assert.strictEqual(result.count, 0);
+    assert.ok(
+      result.errors.some(
+        (e) => e.skill === '(project)' && /could not read skills\//.test(e.message),
+      ),
+      `expected a "could not read skills/" error, got: ${JSON.stringify(result.errors)}`,
+    );
+    assert.ok(
+      !result.errors.some((e) => /no skills found/i.test(e.message)),
+      `unreadable skills/ must not be misreported as "no skills found": ${JSON.stringify(result.errors)}`,
+    );
+  });
+
+  it('a FILE named shared/references resolves with a "could not read shared/references/" error and the skill scan still runs', async () => {
+    const result = await lintProject(refsIsFileRoot);
+    assert.strictEqual(result.ok, false);
+    assert.strictEqual(result.count, 1, 'the skill scan must still discover the valid skill');
+    assert.ok(
+      result.errors.some(
+        (e) => e.skill === '(project)' && /could not read shared\/references\//.test(e.message),
+      ),
+      `expected a "could not read shared/references/" error, got: ${JSON.stringify(result.errors)}`,
+    );
+    // The valid skill itself contributes no errors — refs failure is isolated.
+    const skillErrors = result.errors.filter((e) => e.skill === 'my-skill');
+    assert.deepStrictEqual(skillErrors, []);
+  });
+});

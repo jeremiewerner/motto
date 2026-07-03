@@ -67,12 +67,16 @@ async function processConfig(projectRoot, errors) {
 /**
  * Scan shared/references/*.md and return a Set of basenames (without .md).
  * A missing shared/ or shared/references/ directory is NOT an error — returns
- * an empty Set (D2-08). Other unexpected I/O errors are rethrown.
+ * an empty Set (D2-08). Any OTHER I/O error (e.g. ENOTDR when shared/references
+ * is a file — phase-15 review CR-02) is converted to a '(project)'-labelled
+ * error entry and an empty Set is returned; NEVER rethrown, upholding the
+ * lintProject never-throw boundary (D-01 / D2-06).
  *
  * @param {string} projectRoot
+ * @param {Array<{skill: string, message: string}>} errors - mutated in place
  * @returns {Promise<Set<string>>}
  */
-async function loadSharedRefs(projectRoot) {
+async function loadSharedRefs(projectRoot, errors) {
   const refsDir = join(projectRoot, 'shared', 'references');
   try {
     const entries = await readdir(refsDir, { withFileTypes: true });
@@ -82,8 +86,15 @@ async function loadSharedRefs(projectRoot) {
         .map((e) => basename(e.name, '.md')),
     );
   } catch (e) {
-    if (e.code === 'ENOENT') return new Set(); // D2-08: absence is not an error
-    throw e; // unexpected — propagate to the lintProject boundary
+    if (e.code !== 'ENOENT') {
+      // ENOENT is fine (D2-08: absence is not an error); anything else —
+      // ENOTDIR, EACCES, … — must surface as a diagnostic, not a rejection.
+      errors.push({
+        skill: '(project)',
+        message: `could not read shared/references/: ${e.message}`,
+      });
+    }
+    return new Set();
   }
 }
 
@@ -97,12 +108,15 @@ async function loadSharedRefs(projectRoot) {
  * Filters: non-hidden directories only (D2-04).
  * Sort: localeCompare for deterministic alphabetical order (D2-03, Pitfall 1).
  *
- * Returns `null`  when skillsDir is missing (ENOENT) — caller maps to "no skills found".
- * Returns `[]`    when skillsDir exists but contains no candidates — same treatment.
- * Rethrows any other I/O error.
+ * Returns `null`          when skillsDir is missing (ENOENT) — caller maps to "no skills found".
+ * Returns `[]`            when skillsDir exists but contains no candidates — same treatment.
+ * Returns `{ error: msg }` for any OTHER I/O error (e.g. ENOTDIR when `skills`
+ * is a file — phase-15 review CR-02) — caller pushes it as a '(project)'-
+ * labelled error entry. NEVER throws, upholding the lintProject never-throw
+ * boundary (D-01 / D2-06).
  *
  * @param {string} skillsDir - absolute path to the skills/ directory
- * @returns {Promise<string[]|null>}
+ * @returns {Promise<string[]|null|{error: string}>}
  */
 async function discoverSkillNames(skillsDir) {
   let entries;
@@ -110,7 +124,7 @@ async function discoverSkillNames(skillsDir) {
     entries = await readdir(skillsDir, { withFileTypes: true });
   } catch (e) {
     if (e.code === 'ENOENT') return null; // caller converts to "no skills found"
-    throw e;
+    return { error: `could not read skills/: ${e.message}` }; // caller pushes '(project)' entry
   }
   return entries
     .filter((e) => e.isDirectory() && !e.name.startsWith('.')) // D2-04
@@ -299,12 +313,21 @@ export async function lintProject(projectRoot) {
   // 1. Config errors first so they precede all skill errors (D2-10)
   await processConfig(projectRoot, errors);
 
-  // 2. Shared references set (empty if shared/ missing — D2-08)
-  const sharedRefs = await loadSharedRefs(projectRoot);
+  // 2. Shared references set (empty if shared/ missing — D2-08; non-ENOENT
+  //    read failures become '(project)' error entries — CR-02, never thrown)
+  const sharedRefs = await loadSharedRefs(projectRoot, errors);
 
-  // 3. Discover skills — null = ENOENT, [] = empty dir; both map to "no skills found" (D2-13, Pitfall 9)
+  // 3. Discover skills — null = ENOENT, [] = empty dir; both map to "no skills found" (D2-13, Pitfall 9).
+  //    An { error } sentinel means skills/ exists but could not be read (e.g.
+  //    it is a file — ENOTDIR): report it and stop, never reject (CR-02).
   const skillsDir = join(projectRoot, 'skills');
-  const skillNames = await discoverSkillNames(skillsDir);
+  const discovered = await discoverSkillNames(skillsDir);
+
+  if (discovered !== null && !Array.isArray(discovered)) {
+    errors.push({ skill: '(project)', message: discovered.error });
+    return { ok: false, errors, count: 0 };
+  }
+  const skillNames = discovered;
 
   if (skillNames === null || skillNames.length === 0) {
     errors.push({ skill: '(project)', message: 'no skills found' });
