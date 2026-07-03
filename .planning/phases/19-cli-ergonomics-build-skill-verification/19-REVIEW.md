@@ -15,6 +15,12 @@ findings:
   info: 6
   total: 9
 status: issues_found
+fix_status: warnings_fixed
+fixed_at: 2026-07-03T20:34:00Z
+fix_commits:
+  WR-01: 42907ef
+  WR-02: 26a9e1c
+  WR-03: c88e0e3
 ---
 
 # Phase 19: Code Review Report
@@ -33,6 +39,8 @@ One confirmed behavioral regression was found and reproduced: the D-09 help-rout
 ## Warnings
 
 ### WR-01: D-09 help routing broken by `--format`'s value — `--help` before the subcommand yields focused help instead of global help
+
+**Status:** fixed (commit `42907ef`) — the raw-argv scan now skips `STRING_OPTS` (`--format`) values and the `--format=value` form when locating the first positional; added regression test `--format text --help lint` in `test/cli.test.js`.
 
 **File:** `bin/motto.js:257-261`
 **Issue:** The `helpBeforeSubcommand` heuristic scans raw argv for the first token not starting with `-`:
@@ -66,11 +74,15 @@ Add a regression test: `runCli(['--format', 'text', '--help', 'lint'])` must pri
 
 ### WR-02: changelog skill writes `## [<new-version>]` but no step determines the new version
 
+**Status:** fixed (commit `26a9e1c`) — added a new "Step 5 — Propose the next version" (semver inference from Step 4's grouped commit types, or `[Unreleased]` when ambiguous), renumbered the write/handback steps, and updated the Step 7 handback + success criteria to flag the proposed version for maintainer confirmation. `node bin/motto.js lint` still reports 3 skills OK.
+
 **File:** `skills/changelog/SKILL.md:38`
 **Issue:** Step 5 instructs the agent to insert the entry under `## [<new-version>] - <date>`, but no step in the procedure derives, infers, or asks for the version number. Steps 1–4 cover tag discovery, commit collection, early exit, and grouping; the version the heading requires appears from nowhere. The executing agent must invent one (or stall), and an invented version in CHANGELOG.md is exactly the kind of side-effect-claim drift this project has been burned by before.
 **Fix:** Add an explicit step between Steps 4 and 5: propose the next version by semver inference from the grouped commit types (any `feat` → minor, only `fix`/`docs`/`chore` → patch, breaking marker → major), state the proposal in the draft, and flag it for maintainer confirmation in the Step 6 handback. Alternatively, write the heading as `## [Unreleased]` and let the release flow assign the version.
 
 ### WR-03: `init` rejection tests spawn a destructive command with the real repo root as cwd
+
+**Status:** fixed (commit `c88e0e3`) — both rejection tests now run against a fresh `mkdtemp` fixture (cleaned up in a `finally` block), matching the file's own pattern for every other `init` test.
 
 **File:** `test/cli.test.js:403-413`
 **Issue:** The two D-03/D-11 rejection tests call `runCli(['init', '--format', 'json'])` and `runCli(['init', '--quiet'])` with no `cwd` option, so the child process inherits the test runner's cwd — the developer's actual repo checkout. These tests exist precisely to verify the rejection branch in `bin/motto.js`; if that branch regresses (the scenario under test), the child executes `motto init` against the real working tree, and the only thing preventing file writes is `scaffoldProject`'s not-empty guard in `src/init.js` — a second, unrelated layer. Every other `init` test in this file (`lines 374-401`) correctly runs inside a `mkdtemp` fixture.
