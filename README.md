@@ -92,7 +92,7 @@ Two guards protect the scaffold:
 
 ## Author a skill
 
-Use the `/motto:author-skill` skill in Claude Code for a step-by-step guide to writing a conforming `SKILL.md`.
+Hand the `/motto:build-skill` skill in Claude Code any input — pasted text, a document, or a conversation transcript. It extracts what's already given and asks about genuinely-missing schema slots in one batched message, auto-detects whether the skill needs `template: procedure`, writes `skills/<name>/SKILL.md` (plus any declared output-template files), runs the real `motto lint` in a loop (up to 3 self-fixing attempts), self-reviews against a content-quality gate, then reports back with a compact receipt.
 
 Every `SKILL.md` requires three frontmatter fields and a two-line body spine:
 
@@ -200,7 +200,7 @@ motto init my-project
 
 ```sh
 # 3 — Author your first skill (Claude Code slash command)
-/motto:author-skill
+/motto:build-skill
 ```
 
 ```sh
@@ -251,7 +251,7 @@ This installs Motto's public skills into Claude Code, making the following slash
 
 | Skill | Slash command | What it does |
 |-------|--------------|-------------|
-| `author-skill` | `/motto:author-skill` | Step-by-step guide for writing a conforming `SKILL.md` |
+| `build-skill` | `/motto:build-skill` | Structures freeform input — pasted text, a document, or a transcript — into a conforming, lint-clean skill |
 
 ---
 
