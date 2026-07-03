@@ -20,7 +20,7 @@ The **strict schema + linter**. Skills that always conform to one rigid-yet-crea
 
 **Goal:** Motto's ship path becomes automated and trustworthy — CI gates every push, tags publish themselves to npm, repo goes public, and build-skill is proven on a real skill.
 
-**Progress:** Phase 19 complete (2026-07-03) — CLI is pipe-safe (`--quiet`, `--format json`, full stdout/stderr split; CLIX-01..03) and build-skill proven live on a real skill (`skills/changelog`, private; BSKL-01/BSKL-05/WR-01 all conform — BSKV-01, v0.0.5 debt closed). Live run surfaced + fixed 2 real divergences (build-skill stale-global lint trap, hardcoded dogfood counts) and code review caught a help-routing regression (D-09 vs string-flag values), fixed. 231 tests. Next: Phase 20 ci-workflow.
+**Progress:** Phase 20 complete (2026-07-03) — CI gate live: `.github/workflows/ci.yml` with 4 parallel jobs (Node 20/22/24 test matrix, dogfood lint/build, pack-install E2E, npm-drift advisory; CIW-01..05), proven by two real green `pull_request` runs (PR #3, opened/closed unmerged). Research falsified locked D-15 (`npm install <tarball>` never fires a nested dep's `prepare`) — closed with an explicit `git archive`-based `.git`-less `npm ci` proof (`scripts/prepare-guard-check.mjs`). Post-execution review caught 1 Critical (bare `npx motto` in CI = registry-substitution hazard; pinned to `node_modules/.bin/motto`) + 5 warnings incl. a never-red violation in `npm-drift-check.mjs` — all 6 fixed, post-fix CI run green. 231 tests. Prior: Phase 19 (pipe-safe CLI `--quiet`/`--format json`; build-skill proven live on `skills/changelog`). Next: Phase 21 publish-automation & release rewrite.
 
 **Target features:**
 - CI workflow: Node 20/22/24 test matrix + dogfood lint/build + pack-install E2E (tarball → tmp dir → init/lint/build) + publish-on-tag + npm-drift warning
@@ -165,4 +165,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-03 — Phase 19 complete (CLI ergonomics + build-skill verification)*
+*Last updated: 2026-07-03 — Phase 20 complete (CI workflow live, gate proven green pre-public)*
