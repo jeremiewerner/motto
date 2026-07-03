@@ -4,17 +4,17 @@ milestone: v0.0.5
 milestone_name: Skill Builder
 current_phase: 17
 current_phase_name: docs-audit
-status: executing
+status: verifying
 stopped_at: Completed 17-01-PLAN.md
-last_updated: "2026-07-03T13:04:15.113Z"
+last_updated: "2026-07-03T13:07:35.572Z"
 last_activity: 2026-07-03
 last_activity_desc: Phase 17 execution started
 progress:
   total_phases: 4
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 9
-  completed_plans: 8
-  percent: 75
+  completed_plans: 9
+  percent: 100
 ---
 
 # Project State
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-07-02 after v0.0.4)
 
 Phase: 17 (docs-audit) — EXECUTING
 Plan: 2 of 2
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-07-03 — Phase 17 execution started
 Note: decision-coverage-plan gate overridden (could-not-parse: CONTEXT.md decisions are category bullets without D-NN IDs; checker Dimension 7 manually verified all locked decisions covered) — verify-phase may re-surface
 
@@ -70,6 +70,7 @@ Progress: [████████░░] 80%
 | Phase 16 P01 | 6min | 2 tasks | 3 files |
 | Phase 16 P02 | 8min | 2 tasks | 1 files |
 | Phase 17 P01 | 25min | 3 tasks | 3 files |
+| Phase 17 P02 | 6min | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -99,6 +100,7 @@ Recent decisions affecting current work:
 - [Phase 17]: Header D-04: skill-schema.md carries a source citation, not a version number — the doc-sync test is the freshness guarantee going forward
 - [Phase 17]: D-01 surgical patch: kept existing skill-schema.md §1/§3/§5 skeleton verbatim; only §2/§4/§6 patched and §7-§9 added net-new; renumbered old §7 to §10
 - [Phase 17]: Doc-sync test uses Option 1 (source-text extraction) per RESEARCH.md recommendation — no fixture wiring, no re-invocation of validateSkill
+- [Phase 17]: D-06/D-07: README author-skill references replaced with build-skill (section body rewritten around real flow; 5 mechanical sample-name sites swapped); grep -c author-skill README.md returns 0
 
 ### Pending Todos
 
@@ -126,7 +128,7 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-03T13:04:15.108Z
+Last session: 2026-07-03T13:07:07.265Z
 Stopped at: Completed 17-01-PLAN.md
 Resume file: None
 
