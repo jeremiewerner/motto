@@ -577,6 +577,34 @@ describe("validateSkill — role spine (D-01, D-02, D-05, D-08)", () => {
       );
     }
   });
+
+  // Review CR-01 (never-throw D-01): the pre-phase-18 documented registry
+  // shape { SECTIONS, TEMPLATES } (no BASE_SPINE key) is a public injection
+  // seam — it must degrade to the real spine, never crash the spine loop.
+  it("validateSkill never throws for a pre-18 registry shape without BASE_SPINE and still reports the missing-role error (D-01, review CR-01)", () => {
+    const skill = {
+      dirName: "my-skill",
+      data: baseData,
+      body: "# My Skill\n\nNo role section here.\n",
+    };
+    const oldShapeRegistry = { SECTIONS: {}, TEMPLATES: {} };
+    assert.doesNotThrow(() => validateSkill(skill, new Set(), oldShapeRegistry));
+    const errors = validateSkill(skill, new Set(), oldShapeRegistry);
+    assert.ok(
+      errors.some((e) => e.message.startsWith("body must contain <role>")),
+      `expected missing-role error via the default spine, got: ${JSON.stringify(errors)}`
+    );
+    // Belt-and-braces: a present-but-non-array BASE_SPINE also falls back
+    // to the real spine instead of throwing.
+    const nonArraySpine = { SECTIONS: {}, TEMPLATES: {}, BASE_SPINE: "role" };
+    assert.doesNotThrow(() => validateSkill(skill, new Set(), nonArraySpine));
+    assert.ok(
+      validateSkill(skill, new Set(), nonArraySpine).some((e) =>
+        e.message.startsWith("body must contain <role>")
+      ),
+      "non-array BASE_SPINE must fall back to the real spine"
+    );
+  });
 });
 
 describe("hasClosedSection", () => {

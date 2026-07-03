@@ -242,10 +242,14 @@ const RESERVED = ["anthropic", "claude"];
  * @param {Set<string>} [sharedRefs]
  *   Set of available shared-reference basenames (without `.md`). Defaults to
  *   an empty Set; entries in data.shared_references are resolved against it.
- * @param {{ SECTIONS: object, TEMPLATES: object, BASE_SPINE: string[] }} [templatesRegistry]
+ * @param {{ SECTIONS: object, TEMPLATES: object, BASE_SPINE?: string[] }} [templatesRegistry]
  *   Injectable template registry, defaulting to the real `./templates.js`
  *   exports. Tests use this to exercise the `waives` merge logic via a
  *   fixture template without mutating `src/templates.js` (TMPL-02).
+ *   `BASE_SPINE` is optional and fail-soft (review CR-01): a registry in the
+ *   pre-phase-18 `{ SECTIONS, TEMPLATES }` shape — or one carrying a
+ *   non-array `BASE_SPINE` — degrades to the real `./templates.js` spine
+ *   instead of throwing (D-01).
  * @param {Set<string>} [skillNames]
  *   Set of all discovered skill dirNames in the project tree. Defaults to an
  *   empty Set; bare `dependencies:` entries are resolved against it (VAL-02).
@@ -266,7 +270,17 @@ export function validateSkill(
 ) {
   const { dirName, data, body } = skill;
   const errors = [];
-  const { SECTIONS: SEC, TEMPLATES: TPL, BASE_SPINE: SPINE } = templatesRegistry;
+  // Fail-soft on the phase-18 registry key (never-throw D-01, review CR-01):
+  // the default PARAMETER above only applies when templatesRegistry itself is
+  // undefined. A caller injecting the previously-documented registry shape
+  // { SECTIONS, TEMPLATES } (no BASE_SPINE) must degrade to the real spine —
+  // the destructuring default covers a missing key, and the Array.isArray
+  // guard at the spine loop below covers a present-but-non-array value.
+  const {
+    SECTIONS: SEC,
+    TEMPLATES: TPL,
+    BASE_SPINE: SPINE = BASE_SPINE,
+  } = templatesRegistry;
 
   /** Push one error attributed to this skill's dirName. */
   const err = (message) => errors.push({ skill: dirName, message });
@@ -398,7 +412,9 @@ export function validateSkill(
   // D-05). Exactly one of the two errors fires per tag — never both (D-08).
   // The legacy **Role:** bold-line convention is no longer recognized at all
   // (D-01 hard break) — any leftover line is inert body text (D-02).
-  for (const s of SPINE) {
+  // Belt-and-braces (review CR-01): a registry carrying a non-array
+  // BASE_SPINE falls back to the real spine instead of throwing.
+  for (const s of Array.isArray(SPINE) ? SPINE : BASE_SPINE) {
     if (waivedSections.has(s)) continue;
     if (!hasClosedSection(bodyStr, s)) {
       err(`body must contain <${s}>…</${s}> — ${SEC[s] ?? ""}`);
