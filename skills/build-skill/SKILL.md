@@ -46,7 +46,7 @@ Input is a sequence of steps to follow?
 ## Step 5 — Guard, then write
 
 Before writing anything:
-1. Validate the proposed `name`: it must be kebab-case, starting with a lowercase letter. On failure, stop and re-prompt for a valid name instead of silently sanitizing it — the name becomes a filesystem path segment.
+1. Validate the proposed `name`: it must be kebab-case, starting with a lowercase letter, at most 64 characters long, and must not contain the word "anthropic" or the word "claude". On failure, stop and re-prompt for a valid name instead of silently sanitizing it — the name becomes a filesystem path segment.
 2. Confirm the current directory is a real Motto project (a `motto.yaml` file exists at its root). If it is absent, stop and direct the user to run `motto init` first, or to move into an existing Motto project.
 3. Check whether `skills/<name>/` already exists. If it does, stop and refuse — surface a clear message rather than silently overwriting an existing skill.
 
@@ -54,13 +54,15 @@ Once all three guards pass, write `skills/<name>/SKILL.md` and any declared outp
 
 ## Step 6 — Lint loop
 
-Run the real linter, trying each of the following in order until one resolves:
+Run the real linter. Try each of the following in order, falling through only when the command itself cannot be found or executed — a run that executes and reports lint errors IS the resolved linter; use its output and do not fall through to the next one:
 
     node_modules/.bin/motto lint
     motto lint
     npx @jeremiewerner/motto lint
 
 Read its output. Filter the reported errors down to the ones for the new skill's own directory name; report — once, read-only — any pre-existing errors in other skills, and never edit files outside `skills/<name>/`. Self-fix and re-lint, up to 3 attempts. If it is still dirty after 3 attempts, stop and hand back the remaining errors plus what you tried.
+
+If the linter rejects the `name` itself (as opposed to a body or frontmatter issue inside the file), delete `skills/<name>/` and return to Step 5 with a corrected name — this delete-and-recreate is the one permitted whole-directory operation, an explicit exception to the "never edit files outside `skills/<name>/`" rule above, which otherwise still holds.
 
 ## Step 7 — Content-quality gate
 
