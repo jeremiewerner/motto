@@ -103,9 +103,11 @@ export function hasClosedSection(body, tagName) {
 
 /**
  * Determine whether `body` contains a matched, line-anchored `<tagName>` /
- * `</tagName>` pair (per `hasClosedSection`) AND the unfenced text strictly
- * between the open and close tags contains at least one non-whitespace
- * character (D-05). Isolated as its own function (D-06) so generalizing the
+ * `</tagName>` pair (per `hasClosedSection`) AND the unfenced section content
+ * — the open-tag line's own trailing remainder (Assumption A2, review WR-01)
+ * plus the unfenced text strictly between the open and close tag lines —
+ * contains at least one non-whitespace character (D-05). Isolated as its own
+ * function (D-06) so generalizing the
  * non-empty check to other sections later is a one-liner, and so this
  * riskier new validator path — plus its never-throw guarantee — has its own
  * reviewable, adversarially-tested surface, independent of `hasClosedSection`.
@@ -163,8 +165,16 @@ export function hasNonEmptyClosedSection(body, tagName) {
   );
   if (openIdx === -1 || closeIdx === -1) return false;
 
+  // Assumption A2 parity with `hasClosedSection` (review WR-01): trailing
+  // same-line content after the open tag (e.g. `<role> You are a helper.`)
+  // counts for PRESENCE, so it must count for emptiness too — otherwise a
+  // section with visible content gets a false "must not be empty" error.
+  // Strip the tag itself and keep the open line's remainder. The close tag
+  // needs no such treatment: it is line-anchored, so nothing can precede it
+  // on its line, and trailing text AFTER `</tag>` is outside the section.
+  const openRemainder = unfencedLines[openIdx].replace(openRe, "");
   const between = unfencedLines.slice(openIdx + 1, closeIdx).join("\n");
-  return between.trim().length > 0;
+  return (openRemainder + "\n" + between).trim().length > 0;
 }
 
 /**

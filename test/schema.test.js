@@ -549,6 +549,15 @@ describe("validateSkill — role spine (D-01, D-02, D-05, D-08)", () => {
     );
   });
 
+  it("a one-line role with same-line trailing content reports NO false empty-section error (A2, review WR-01)", () => {
+    const skill = {
+      dirName: "my-skill",
+      data: baseData,
+      body: "# My Skill\n\n<role> You are a helper.\n</role>\n",
+    };
+    assert.deepEqual(validateSkill(skill), []);
+  });
+
   it("a body carrying only the legacy **Role:** bold-line convention (no <role> tag) reports the missing-role error — the legacy line is inert (D-01/D-02 hard break)", () => {
     const skill = {
       dirName: "my-skill",
@@ -712,6 +721,27 @@ describe("hasNonEmptyClosedSection", () => {
   // Missing section entirely -> false
   it("returns false when the section is entirely missing", () => {
     const body = "# t\nJust some prose.\n";
+    assert.equal(hasNonEmptyClosedSection(body, "role"), false);
+  });
+
+  // Same-line trailing content after the open tag counts as content —
+  // Assumption A2 parity with hasClosedSection (review WR-01): content that
+  // counts for presence must count for emptiness too.
+  it("returns true when the only content is same-line trailing text after the open tag (A2, review WR-01)", () => {
+    const body = "# T\n<role> You are a helper.\n</role>\n";
+    assert.equal(hasNonEmptyClosedSection(body, "role"), true);
+  });
+
+  // Whitespace-only trailing text on the open line is still empty (D-05)
+  it("returns false when the open tag's trailing text is whitespace-only and nothing sits between the tags", () => {
+    const body = "# T\n<role>   \n</role>\n";
+    assert.equal(hasNonEmptyClosedSection(body, "role"), false);
+  });
+
+  // Trailing text after the CLOSE tag is outside the section — it must not
+  // rescue an otherwise-empty section.
+  it("returns false when the only trailing text follows the close tag", () => {
+    const body = "# T\n<role>\n</role> not section content\n";
     assert.equal(hasNonEmptyClosedSection(body, "role"), false);
   });
 

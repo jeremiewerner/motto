@@ -92,7 +92,7 @@ The skill body (the Markdown after the closing `---` delimiter) must satisfy two
 
 **Lint error if missing:** `body must begin with an H1 title line (# Title) as its first non-blank line`
 
-**Check 2 — `<role>` section:** The body must contain a matched, closed `<role>...</role>` section, using the same `hasClosedSection` semantics documented in §6 (line-start-anchored open/close tags, fenced code excluded, the open tag must precede the close tag). The section must additionally be non-empty — the unfenced text strictly between the tags must contain at least one non-whitespace character.
+**Check 2 — `<role>` section:** The body must contain a matched, closed `<role>...</role>` section, using the same `hasClosedSection` semantics documented in §6 (line-start-anchored open/close tags, fenced code excluded, the open tag must precede the close tag). The section must additionally be non-empty — the unfenced section content must contain at least one non-whitespace character. Section content is the open tag's own same-line trailing text (per the §6 trailing-content rule, `<role> You are a helper.` counts) plus the unfenced text on the lines between the tags; trailing text after `</role>` is outside the section.
 
 ```markdown
 <role>
