@@ -20,7 +20,7 @@ The **strict schema + linter**. Skills that always conform to one rigid-yet-crea
 
 **Goal:** A user describes a procedure in any form and Motto structures it into a validated, conforming, distributable skill.
 
-**Progress:** Phase 14 (Template Mechanism) and Phase 15 (Field Validation & Integrity Guards) complete — `template:` cascade live, three new frontmatter fields validated never-throw, 194 tests. Next: Phase 16 (build-skill & author-skill retirement).
+**Progress:** All 5 phases complete (2026-07-03) — `template:` cascade live (14), three new frontmatter fields validated never-throw (15), `build-skill` shipped + `author-skill` retired (16), docs audited with doc-sync drift guard (17), base-spine `**Role:**` migrated to registry-driven `<role>` section tag with hard break (18). 211 tests. Phase 18 review remediated (CR-01 never-throw registry-shape crash + 3 warnings fixed pre-verification). Milestone ready to ship.
 
 **Target features:**
 - Template mechanism live: `template:` field validated, data-driven template + section-tag registry, `procedure` template ships (closes TMPL-01)
@@ -141,4 +141,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-03 — Phase 15 (Field Validation & Integrity Guards) complete*
+*Last updated: 2026-07-03 — Phase 18 (Role Section Tag Migration) complete; v0.0.5 all phases done*
