@@ -32,14 +32,14 @@ describe('NAME_KEBAB parity (DOG-04)', () => {
 
 // ── DOG-03: Lint the real repo root in-place (read-only) ─────────────────────
 describe('dogfood lint (DOG-03)', () => {
-  it('lintProject on REPO_ROOT returns ok:true with count=2', async () => {
+  it('lintProject on REPO_ROOT returns ok:true with count=3', async () => {
     const result = await lintProject(REPO_ROOT);
     assert.strictEqual(
       result.ok,
       true,
       `lint failed:\n${JSON.stringify(result.errors, null, 2)}`,
     );
-    assert.strictEqual(result.count, 2, `expected 2 skills, got ${result.count}`);
+    assert.strictEqual(result.count, 3, `expected 3 skills, got ${result.count}`);
     assert.deepStrictEqual(result.errors, []);
   });
 });
@@ -77,13 +77,13 @@ describe('dogfood build (DOG-03)', () => {
   });
 
   // ── Return shape ─────────────────────────────────────────────────────────────
-  it('buildProject returns ok:true with skillCount=2 and bucketCount=2', () => {
+  it('buildProject returns ok:true with skillCount=3 and bucketCount=2', () => {
     assert.strictEqual(
       buildResult.ok,
       true,
       `build failed:\n${JSON.stringify(buildResult.errors, null, 2)}`,
     );
-    assert.strictEqual(buildResult.skillCount, 2);
+    assert.strictEqual(buildResult.skillCount, 3);
     assert.strictEqual(buildResult.bucketCount, 2); // public + private
     assert.deepStrictEqual(buildResult.errors, []);
   });
