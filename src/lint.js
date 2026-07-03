@@ -18,8 +18,8 @@
  *   count  — number of skills discovered (0 when none found).
  *
  * Internal helpers (not exported): processConfig, loadSharedRefs,
- * discoverSkillNames, processSkill — per RESEARCH Module Decomposition
- * Recommendation.
+ * discoverSkillNames, loadSkillAudiences, checkOutputsFs, processSkill — per
+ * RESEARCH Module Decomposition Recommendation.
  */
 
 import { readFile, readdir, stat, realpath } from 'node:fs/promises';
@@ -228,9 +228,11 @@ async function checkOutputsFs(skillsDir, dirName, data, errors) {
  * @param {string} skillsDir
  * @param {string} dirName
  * @param {Set<string>} sharedRefs
+ * @param {Set<string>} skillNames - all discovered skill dirNames (VAL-02 resolution)
+ * @param {Map<string,string>} audienceMap - dirName -> audience (VAL-03 guard)
  * @param {Array<{skill: string, message: string}>} errors - mutated in place
  */
-async function processSkill(skillsDir, dirName, sharedRefs, errors) {
+async function processSkill(skillsDir, dirName, sharedRefs, skillNames, audienceMap, errors) {
   try {
     const skillPath = join(skillsDir, dirName, 'SKILL.md');
     let text;
@@ -254,8 +256,17 @@ async function processSkill(skillsDir, dirName, sharedRefs, errors) {
     }
 
     // Schema validation — already returns { skill, message } shaped (already normalized)
-    const schemaErrors = validateSkill({ dirName, data, body }, sharedRefs);
+    const schemaErrors = validateSkill(
+      { dirName, data, body },
+      sharedRefs,
+      undefined,
+      skillNames,
+      audienceMap,
+    );
     errors.push(...schemaErrors);
+
+    // fs-dependent half of outputs: validation (VAL-01) — existence + symlink-escape
+    await checkOutputsFs(skillsDir, dirName, data, errors);
   } catch (e) {
     // Backstop: any unexpected failure during per-skill I/O or validation (D2-06)
     errors.push({ skill: dirName, message: `unexpected error: ${e.message}` });
@@ -273,7 +284,9 @@ async function processSkill(skillsDir, dirName, sharedRefs, errors) {
  *   1. processConfig  — reads motto.yaml; errors labelled 'motto.yaml'
  *   2. loadSharedRefs — scans shared/references/*.md → Set of basenames
  *   3. discoverSkillNames — reads skills/ directory; null or [] → "no skills found"
- *   4. processSkill (each, in sorted order) — reads + validates each SKILL.md
+ *   4. loadSkillAudiences — cross-skill pre-pass building Map<dirName, audience>
+ *   5. processSkill (each, in sorted order) — reads + validates each SKILL.md,
+ *      then runs the fs-dependent outputs: existence/symlink-escape check
  *
  * @param {string} projectRoot - absolute path to the project root
  * @returns {Promise<{ ok: boolean, errors: Array<{skill: string, message: string}>, count: number }>}
@@ -296,9 +309,13 @@ export async function lintProject(projectRoot) {
     return { ok: false, errors, count: 0 };
   }
 
-  // 4. Process each skill in the sorted (alphabetical) order returned by discoverSkillNames
+  // 4. Cross-skill context for VAL-02/VAL-03 — read-only pre-pass, never throws
+  const skillNameSet = new Set(skillNames);
+  const audienceMap = await loadSkillAudiences(skillsDir, skillNames);
+
+  // 5. Process each skill in the sorted (alphabetical) order returned by discoverSkillNames
   for (const dirName of skillNames) {
-    await processSkill(skillsDir, dirName, sharedRefs, errors);
+    await processSkill(skillsDir, dirName, sharedRefs, skillNameSet, audienceMap, errors);
   }
 
   return { ok: errors.length === 0, errors, count: skillNames.length };
