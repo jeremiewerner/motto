@@ -14,7 +14,8 @@ const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 //
 // Direction is code -> doc ONLY (Pitfall 3, 17-RESEARCH.md): the expected set
 // of static error-message segments is derived from src/schema.js,
-// src/lint.js, and src/frontmatter.js's own source text, then asserted as a
+// src/lint.js, src/frontmatter.js, and src/templates.js's own source text,
+// then asserted as a
 // substring of shared/references/skill-schema.md. Never the reverse —
 // iterating the doc's own tables and checking them against the code would
 // invert the source-of-truth relationship and mask a doc going stale.
@@ -63,24 +64,35 @@ const staticSegments = [
   "missing frontmatter: file must begin with a '--- ... ---' block",
   "unterminated frontmatter: no closing '---' delimiter found",
   "stray '---' delimiter in frontmatter: the block must contain exactly one closing '---'",
+  // §4/§6 registry strings — sourced from src/templates.js (review WR-03).
+  // The doc quotes the full role errors INCLUDING the interpolated
+  // SECTIONS.role description, and transcribes the registry snippet
+  // (BASE_SPINE = ["role"]) verbatim — both live in templates.js, so editing
+  // that file must stale-fail here, not drift silently.
+  'Behavioral instruction that tells the agent who it is and how to act.',
+  'BASE_SPINE = ["role"]',
 ];
 
 describe('doc-sync (DOC-06)', () => {
   it('every curated static segment is live source text AND is quoted in skill-schema.md', async () => {
-    const [schemaSrc, lintSrc, frontmatterSrc, docText] = await Promise.all([
+    const [schemaSrc, lintSrc, frontmatterSrc, templatesSrc, docText] = await Promise.all([
       readFile(join(REPO_ROOT, 'src', 'schema.js'), 'utf8'),
       readFile(join(REPO_ROOT, 'src', 'lint.js'), 'utf8'),
       readFile(join(REPO_ROOT, 'src', 'frontmatter.js'), 'utf8'),
+      readFile(join(REPO_ROOT, 'src', 'templates.js'), 'utf8'),
       readFile(join(REPO_ROOT, 'shared', 'references', 'skill-schema.md'), 'utf8'),
     ]);
 
     for (const seg of staticSegments) {
       // Self-check: the curated segment must still be real, live source text —
-      // catches the case where schema.js/lint.js/frontmatter.js changed and
-      // the curated list here was never updated to match.
+      // catches the case where schema.js/lint.js/frontmatter.js/templates.js
+      // changed and the curated list here was never updated to match.
       assert.ok(
-        schemaSrc.includes(seg) || lintSrc.includes(seg) || frontmatterSrc.includes(seg),
-        `stale curated segment (not in schema.js/lint.js/frontmatter.js source): "${seg}"`,
+        schemaSrc.includes(seg) ||
+          lintSrc.includes(seg) ||
+          frontmatterSrc.includes(seg) ||
+          templatesSrc.includes(seg),
+        `stale curated segment (not in schema.js/lint.js/frontmatter.js/templates.js source): "${seg}"`,
       );
       // Doc containment: the doc must still quote this exact static segment —
       // catches the case where the doc drifted from the live validator.
