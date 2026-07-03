@@ -4,17 +4,17 @@ milestone: v0.0.5
 milestone_name: Skill Builder
 current_phase: 17
 status: verifying
-stopped_at: Completed 17-01-PLAN.md
-last_updated: "2026-07-03T13:27:00.900Z"
+stopped_at: Phase 18 context gathered
+last_updated: "2026-07-03T14:13:17.488Z"
 last_activity: 2026-07-03
 last_activity_desc: Phase 17 complete
 progress:
-  total_phases: 4
+  total_phases: 5
   completed_phases: 4
   total_plans: 9
   completed_plans: 9
-  percent: 100
-current_phase_name: docs-audit
+  percent: 80
+current_phase_name: migrate-base-spine-role-to-role-section-tag
 ---
 
 # Project State
@@ -24,7 +24,7 @@ current_phase_name: docs-audit
 See: .planning/PROJECT.md (updated 2026-07-02 after v0.0.4)
 
 **Core value:** A strict schema + linter that guarantees authored skills conform before they ship, then packages them into self-contained standard Agent Skill plugins.
-**Current focus:** Phase 17 — docs-audit
+**Current focus:** Phase 18 — migrate base-spine **Role:** to <role> section tag
 
 ## Current Position
 
@@ -117,6 +117,7 @@ None yet.
 ### Roadmap Evolution
 
 - v0.0.5 roadmap created: Phase 14 (Template Mechanism — TMPL-01..05), Phase 15 (Field Validation & Integrity Guards — VAL-01..06), Phase 16 (build-skill & author-skill Retirement — BSKL-01..06), Phase 17 (Docs Audit — DOC-06..07). Numbering continues from v0.0.4 (ended at Phase 13). Coarse granularity → 4 phases, matching research's locked ordering (mechanism → validators → build-skill dogfood → docs-last). 19/19 requirements mapped, no orphans.
+- Phase 18 added: Migrate base-spine **Role:** to <role> section tag
 
 ## Deferred Items
 
@@ -129,9 +130,9 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-03T13:07:07.265Z
-Stopped at: Completed 17-01-PLAN.md
-Resume file: None
+Last session: 2026-07-03T14:13:17.484Z
+Stopped at: Phase 18 context gathered
+Resume file: .planning/phases/18-migrate-base-spine-role-to-role-section-tag/18-CONTEXT.md
 
 ## Operator Next Steps
 
