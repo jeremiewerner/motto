@@ -236,6 +236,14 @@ export function validateSkill(
   // ── DESCRIPTION (LINT-01, independent) ────────────────────────────────────
   if (!data.description) {
     err("description is required");
+  } else if (typeof data.description !== "string") {
+    // Non-string guard BEFORE .length / regex .test() — mirrors the NAME and
+    // TEMPLATE guards (D-01, T-14-03): RegExp.prototype.test coerces via
+    // ToString, so a throwing toString/Symbol.toPrimitive object would throw,
+    // and a number/array description would silently pass. (Phase-15 review WR-01)
+    err(
+      `description must be a string (got ${Array.isArray(data.description) ? "array" : typeof data.description})`
+    );
   } else {
     // Both checks run independently — neither guards the other (D-13).
     // Guards are inside the else branch so a falsy description cannot throw (D-01).

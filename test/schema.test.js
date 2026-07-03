@@ -348,6 +348,55 @@ describe("validateSkill", () => {
     );
   });
 
+  // Phase-15 review WR-01: description gets the same non-string guard as
+  // every other field — a truthy non-string must error (never silently pass)
+  // and an adversarial toString/Symbol.toPrimitive object must never throw.
+  it("WR-01: non-string truthy description (number / array) reports a 'must be a string' error", () => {
+    for (const [bad, label] of [
+      [123, "number"],
+      [["a", "b"], "array"],
+    ]) {
+      const skill = {
+        dirName: "my-skill",
+        data: { name: "my-skill", description: bad, audience: "public" },
+        body: VALID_BODY,
+      };
+      const errors = validateSkill(skill);
+      assert.equal(
+        errors.length,
+        1,
+        `expected 1 error for description: ${JSON.stringify(bad)}, got: ${JSON.stringify(errors)}`
+      );
+      assert.ok(
+        new RegExp(`description must be a string \\(got ${label}\\)`).test(errors[0].message),
+        `expected 'must be a string (got ${label})' error, got: "${errors[0].message}"`
+      );
+    }
+  });
+
+  it("WR-01: description with a throwing toString/Symbol.toPrimitive never throws; reports a 'must be a string' error", () => {
+    const throwingValue = {
+      toString() {
+        throw new Error("boom");
+      },
+      [Symbol.toPrimitive]() {
+        throw new Error("boom");
+      },
+    };
+    const skill = {
+      dirName: "my-skill",
+      data: { name: "my-skill", description: throwingValue, audience: "public" },
+      body: VALID_BODY,
+    };
+    assert.doesNotThrow(() => validateSkill(skill));
+    const errors = validateSkill(skill);
+    assert.equal(errors.length, 1, `expected 1 error, got: ${JSON.stringify(errors)}`);
+    assert.ok(
+      /description must be a string \(got object\)/.test(errors[0].message),
+      `expected 'must be a string (got object)' error, got: "${errors[0].message}"`
+    );
+  });
+
   // B17: name exactly 64 chars, valid kebab — boundary value is valid (D-03)
   it("B17: name exactly 64 characters is valid (boundary — D-03)", () => {
     const name64 = "a".repeat(64);
