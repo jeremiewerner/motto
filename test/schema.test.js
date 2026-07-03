@@ -766,3 +766,382 @@ describe("validateSkill — template cascade (TMPL-01, TMPL-04, TMPL-05)", () =>
     );
   });
 });
+
+// ── Phase 15: outputs / dependencies / allowed-tools (VAL-01..06) ──────────
+// Adversarial + happy-path coverage for the three new optional frontmatter
+// fields. Every field gets at least one throwing-toString/Symbol.toPrimitive
+// adversarial case (T-14-03 precedent, VAL-06).
+
+describe("validateSkill — outputs (VAL-01, lexical)", () => {
+  const baseData = { name: "my-skill", description: "use when X", audience: "public" };
+
+  it("outputs: {} is a valid no-op — zero errors", () => {
+    const skill = { dirName: "my-skill", data: { ...baseData, outputs: {} }, body: VALID_BODY };
+    assert.deepEqual(validateSkill(skill), []);
+  });
+
+  it("outputs: null / string / array all report one 'must be a map' error and never throw", () => {
+    for (const bad of [null, "x", [1, 2, 3]]) {
+      const skill = {
+        dirName: "my-skill",
+        data: { ...baseData, outputs: bad },
+        body: VALID_BODY,
+      };
+      assert.doesNotThrow(
+        () => validateSkill(skill),
+        `must not throw for outputs: ${JSON.stringify(bad)}`
+      );
+      const errors = validateSkill(skill);
+      assert.equal(
+        errors.length,
+        1,
+        `expected 1 error for outputs: ${JSON.stringify(bad)}, got: ${JSON.stringify(errors)}`
+      );
+      assert.ok(
+        /must be a map/.test(errors[0].message),
+        `expected 'must be a map' error, got: "${errors[0].message}"`
+      );
+    }
+  });
+
+  it("an entry with an absolute path value reports an 'unsafe' error", () => {
+    const skill = {
+      dirName: "my-skill",
+      data: { ...baseData, outputs: { doc: "/etc/passwd" } },
+      body: VALID_BODY,
+    };
+    const errors = validateSkill(skill);
+    assert.equal(errors.length, 1, `expected 1 error, got: ${JSON.stringify(errors)}`);
+    assert.ok(
+      /unsafe/.test(errors[0].message),
+      `expected unsafe error, got: "${errors[0].message}"`
+    );
+  });
+
+  it("an entry with a '../escape' traversal value reports an 'unsafe' error", () => {
+    const skill = {
+      dirName: "my-skill",
+      data: { ...baseData, outputs: { doc: "../escape/secret.md" } },
+      body: VALID_BODY,
+    };
+    const errors = validateSkill(skill);
+    assert.equal(errors.length, 1, `expected 1 error, got: ${JSON.stringify(errors)}`);
+    assert.ok(
+      /unsafe/.test(errors[0].message),
+      `expected unsafe error, got: "${errors[0].message}"`
+    );
+  });
+
+  it("an entry with a non-string/empty value reports a 'must be a non-empty string path' error", () => {
+    for (const bad of [123, "", null, {}]) {
+      const skill = {
+        dirName: "my-skill",
+        data: { ...baseData, outputs: { doc: bad } },
+        body: VALID_BODY,
+      };
+      const errors = validateSkill(skill);
+      assert.equal(
+        errors.length,
+        1,
+        `expected 1 error for outputs.doc: ${JSON.stringify(bad)}, got: ${JSON.stringify(errors)}`
+      );
+      assert.ok(
+        /must be a non-empty string path/.test(errors[0].message),
+        `expected non-empty-string-path error, got: "${errors[0].message}"`
+      );
+    }
+  });
+
+  it("an entry value with a throwing toString/Symbol.toPrimitive never throws; returns an error", () => {
+    const throwingValue = {
+      toString() {
+        throw new Error("boom");
+      },
+      [Symbol.toPrimitive]() {
+        throw new Error("boom");
+      },
+    };
+    const skill = {
+      dirName: "my-skill",
+      data: { ...baseData, outputs: { doc: throwingValue } },
+      body: VALID_BODY,
+    };
+    assert.doesNotThrow(() => validateSkill(skill));
+    const errors = validateSkill(skill);
+    assert.equal(errors.length, 1, `expected 1 error, got: ${JSON.stringify(errors)}`);
+    assert.ok(
+      /must be a non-empty string path/.test(errors[0].message),
+      `expected non-empty-string-path error, got: "${errors[0].message}"`
+    );
+  });
+});
+
+describe("validateSkill — dependencies (VAL-02/03/04)", () => {
+  const baseData = { name: "my-skill", description: "use when X", audience: "public" };
+
+  it("dependencies: [] is a valid no-op — zero errors", () => {
+    const skill = {
+      dirName: "my-skill",
+      data: { ...baseData, dependencies: [] },
+      body: VALID_BODY,
+    };
+    assert.deepEqual(validateSkill(skill), []);
+  });
+
+  it('dependencies: "nope" (non-array) reports a \'must be an array\' error', () => {
+    const skill = {
+      dirName: "my-skill",
+      data: { ...baseData, dependencies: "nope" },
+      body: VALID_BODY,
+    };
+    const errors = validateSkill(skill);
+    assert.equal(errors.length, 1, `expected 1 error, got: ${JSON.stringify(errors)}`);
+    assert.ok(
+      /must be an array/.test(errors[0].message),
+      `expected array-type error, got: "${errors[0].message}"`
+    );
+  });
+
+  it("a bare entry equal to dirName reports the SPECIFIC self-dependency error (Pitfall 2)", () => {
+    const skillNames = new Set(["my-skill", "other-skill"]);
+    const skill = {
+      dirName: "my-skill",
+      data: { ...baseData, dependencies: ["my-skill"] },
+      body: VALID_BODY,
+    };
+    const errors = validateSkill(skill, new Set(), undefined, skillNames, new Map());
+    assert.equal(errors.length, 1, `expected 1 error, got: ${JSON.stringify(errors)}`);
+    assert.ok(
+      /is a self-dependency/.test(errors[0].message) &&
+        errors[0].message.includes('"my-skill"'),
+      `expected specific self-dependency error, got: "${errors[0].message}"`
+    );
+  });
+
+  it("a bare entry not present in skillNames reports 'not found (available: ...)' with sorted names", () => {
+    const skillNames = new Set(["zeta-skill", "alpha-skill"]);
+    const skill = {
+      dirName: "my-skill",
+      data: { ...baseData, dependencies: ["ghost-skill"] },
+      body: VALID_BODY,
+    };
+    const errors = validateSkill(skill, new Set(), undefined, skillNames, new Map());
+    assert.equal(errors.length, 1, `expected 1 error, got: ${JSON.stringify(errors)}`);
+    assert.ok(
+      errors[0].message.includes(
+        'dependency "ghost-skill" not found (available: alpha-skill, zeta-skill)'
+      ),
+      `expected sorted not-found error, got: "${errors[0].message}"`
+    );
+  });
+
+  it("a bare entry present in skillNames — public skill depending on a private target reports the audience-direction error", () => {
+    const skillNames = new Set(["my-skill", "private-dep"]);
+    const audienceMap = new Map([["private-dep", "private"]]);
+    const skill = {
+      dirName: "my-skill",
+      data: { ...baseData, audience: "public", dependencies: ["private-dep"] },
+      body: VALID_BODY,
+    };
+    const errors = validateSkill(skill, new Set(), undefined, skillNames, audienceMap);
+    assert.equal(errors.length, 1, `expected 1 error, got: ${JSON.stringify(errors)}`);
+    assert.ok(
+      /audience-direction guard/.test(errors[0].message),
+      `expected audience-direction error, got: "${errors[0].message}"`
+    );
+  });
+
+  it("private->private, private->public, public->public all pass with zero dependency errors", () => {
+    const skillNames = new Set(["my-skill", "dep-a"]);
+    const cases = [
+      { audience: "private", depAudience: "private" },
+      { audience: "private", depAudience: "public" },
+      { audience: "public", depAudience: "public" },
+    ];
+    for (const { audience, depAudience } of cases) {
+      const audienceMap = new Map([["dep-a", depAudience]]);
+      const skill = {
+        dirName: "my-skill",
+        data: { ...baseData, audience, dependencies: ["dep-a"] },
+        body: VALID_BODY,
+      };
+      const errors = validateSkill(skill, new Set(), undefined, skillNames, audienceMap);
+      assert.deepEqual(
+        errors,
+        [],
+        `expected zero errors for ${audience} -> ${depAudience}, got: ${JSON.stringify(errors)}`
+      );
+    }
+  });
+
+  it("namespaced 'good-plugin:good-skill' passes; malformed namespaced forms fail format check; namespaced entries are exempt from resolution/audience guard", () => {
+    // Deliberately empty/irrelevant — proves namespaced entries never consult
+    // skillNames/audienceMap (they would fail resolution/audience checks if
+    // they were consulted).
+    const skillNames = new Set(["my-skill"]);
+    const audienceMap = new Map();
+
+    const goodSkill = {
+      dirName: "my-skill",
+      data: { ...baseData, dependencies: ["good-plugin:good-skill"] },
+      body: VALID_BODY,
+    };
+    assert.deepEqual(
+      validateSkill(goodSkill, new Set(), undefined, skillNames, audienceMap),
+      []
+    );
+
+    for (const bad of ["Foo:bar", "a::b", ":x", "x:"]) {
+      const skill = {
+        dirName: "my-skill",
+        data: { ...baseData, dependencies: [bad] },
+        body: VALID_BODY,
+      };
+      const errors = validateSkill(skill, new Set(), undefined, skillNames, audienceMap);
+      assert.equal(
+        errors.length,
+        1,
+        `expected 1 error for "${bad}", got: ${JSON.stringify(errors)}`
+      );
+      assert.ok(
+        /not valid "plugin:skill" format/.test(errors[0].message),
+        `expected format error for "${bad}", got: "${errors[0].message}"`
+      );
+    }
+  });
+
+  it("an entry that is a throwing-toString object never throws; returns an error", () => {
+    const throwingEntry = {
+      toString() {
+        throw new Error("boom");
+      },
+      [Symbol.toPrimitive]() {
+        throw new Error("boom");
+      },
+    };
+    const skill = {
+      dirName: "my-skill",
+      data: { ...baseData, dependencies: [throwingEntry] },
+      body: VALID_BODY,
+    };
+    assert.doesNotThrow(() => validateSkill(skill));
+    const errors = validateSkill(skill);
+    assert.equal(errors.length, 1, `expected 1 error, got: ${JSON.stringify(errors)}`);
+    assert.ok(
+      /must be a non-empty string/.test(errors[0].message),
+      `expected non-empty-string error, got: "${errors[0].message}"`
+    );
+  });
+});
+
+describe("validateSkill — allowed-tools (VAL-05)", () => {
+  const baseData = { name: "my-skill", description: "use when X", audience: "public" };
+
+  it("a non-empty string, including a parenthesized rule like Bash(git add *), passes with zero errors", () => {
+    for (const val of ["Read", "Bash(git add *)"]) {
+      const skill = {
+        dirName: "my-skill",
+        data: { ...baseData, "allowed-tools": val },
+        body: VALID_BODY,
+      };
+      assert.deepEqual(validateSkill(skill), [], `expected zero errors for "${val}"`);
+    }
+  });
+
+  it("an empty string reports an error", () => {
+    const skill = {
+      dirName: "my-skill",
+      data: { ...baseData, "allowed-tools": "" },
+      body: VALID_BODY,
+    };
+    const errors = validateSkill(skill);
+    assert.equal(errors.length, 1, `expected 1 error, got: ${JSON.stringify(errors)}`);
+    assert.ok(
+      /allowed-tools/.test(errors[0].message) && /empty/.test(errors[0].message),
+      `expected empty-string error, got: "${errors[0].message}"`
+    );
+  });
+
+  it("[] (empty array) passes with zero errors", () => {
+    const skill = {
+      dirName: "my-skill",
+      data: { ...baseData, "allowed-tools": [] },
+      body: VALID_BODY,
+    };
+    assert.deepEqual(validateSkill(skill), []);
+  });
+
+  it('["Read", "Bash(git add *)", "mcp__github__*"] passes with zero errors', () => {
+    const skill = {
+      dirName: "my-skill",
+      data: { ...baseData, "allowed-tools": ["Read", "Bash(git add *)", "mcp__github__*"] },
+      body: VALID_BODY,
+    };
+    assert.deepEqual(validateSkill(skill), []);
+  });
+
+  it("an array with a non-string/empty entry reports an indexed error", () => {
+    const skill = {
+      dirName: "my-skill",
+      data: { ...baseData, "allowed-tools": ["Read", "", 5] },
+      body: VALID_BODY,
+    };
+    const errors = validateSkill(skill);
+    assert.equal(errors.length, 2, `expected 2 errors, got: ${JSON.stringify(errors)}`);
+    assert.ok(
+      errors.some((e) => e.message.includes("allowed-tools[1]")),
+      `expected an indexed error for index 1, got: ${JSON.stringify(errors)}`
+    );
+    assert.ok(
+      errors.some((e) => e.message.includes("allowed-tools[2]")),
+      `expected an indexed error for index 2, got: ${JSON.stringify(errors)}`
+    );
+  });
+
+  it("a non-string/non-array value (number, object, null) reports a 'must be a string or array' error and never throws", () => {
+    for (const bad of [5, {}, null]) {
+      const skill = {
+        dirName: "my-skill",
+        data: { ...baseData, "allowed-tools": bad },
+        body: VALID_BODY,
+      };
+      assert.doesNotThrow(
+        () => validateSkill(skill),
+        `must not throw for allowed-tools: ${JSON.stringify(bad)}`
+      );
+      const errors = validateSkill(skill);
+      assert.equal(
+        errors.length,
+        1,
+        `expected 1 error for allowed-tools: ${JSON.stringify(bad)}, got: ${JSON.stringify(errors)}`
+      );
+      assert.ok(
+        /must be a string or array/.test(errors[0].message),
+        `expected string-or-array error, got: "${errors[0].message}"`
+      );
+    }
+  });
+
+  it("an array entry with a throwing toString/Symbol.toPrimitive never throws; returns an indexed error", () => {
+    const throwingEntry = {
+      toString() {
+        throw new Error("boom");
+      },
+      [Symbol.toPrimitive]() {
+        throw new Error("boom");
+      },
+    };
+    const skill = {
+      dirName: "my-skill",
+      data: { ...baseData, "allowed-tools": [throwingEntry] },
+      body: VALID_BODY,
+    };
+    assert.doesNotThrow(() => validateSkill(skill));
+    const errors = validateSkill(skill);
+    assert.equal(errors.length, 1, `expected 1 error, got: ${JSON.stringify(errors)}`);
+    assert.ok(
+      errors[0].message.includes("allowed-tools[0]"),
+      `expected indexed error, got: "${errors[0].message}"`
+    );
+  });
+});
