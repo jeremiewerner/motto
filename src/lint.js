@@ -22,11 +22,11 @@
  * Recommendation.
  */
 
-import { readFile, readdir } from 'node:fs/promises';
-import { join, basename, extname } from 'node:path';
+import { readFile, readdir, stat, realpath } from 'node:fs/promises';
+import { join, basename, extname, resolve, relative, isAbsolute } from 'node:path';
 
 import { parseFrontmatter } from './frontmatter.js';
-import { validateSkill } from './schema.js';
+import { validateSkill, isOutputPathLexicallySafe } from './schema.js';
 import { loadConfig } from './config.js';
 
 // ---------------------------------------------------------------------------
@@ -116,6 +116,104 @@ async function discoverSkillNames(skillsDir) {
     .filter((e) => e.isDirectory() && !e.name.startsWith('.')) // D2-04
     .sort((a, b) => a.name.localeCompare(b.name)) // D2-03 — MANDATORY (Pitfall 1)
     .map((e) => e.name);
+}
+
+// ---------------------------------------------------------------------------
+// loadSkillAudiences — cross-skill pre-pass (VAL-02/VAL-03 context)
+// ---------------------------------------------------------------------------
+
+/**
+ * Re-read every discovered skill's SKILL.md frontmatter to build a
+ * `Map<dirName, audience>` for the `dependencies:` bare-resolution (VAL-02)
+ * and audience-direction guard (VAL-03) in `validateSkill`.
+ *
+ * Modeled on `loadSharedRefs`'s tolerant-of-absence shape (D2-08), but MUST
+ * swallow ALL per-file read/parse failures silently — never pushes to any
+ * errors array. A skill absent from the map simply means the audience guard
+ * does not fire for it; that skill's own `processSkill` pass independently
+ * reports its real error (Pitfall 3 — no double-reporting).
+ *
+ * @param {string} skillsDir - absolute path to the skills/ directory
+ * @param {string[]} skillNames - discovered skill dirNames
+ * @returns {Promise<Map<string,string>>}
+ */
+async function loadSkillAudiences(skillsDir, skillNames) {
+  const audienceMap = new Map();
+  for (const dirName of skillNames) {
+    try {
+      const text = await readFile(join(skillsDir, dirName, 'SKILL.md'), 'utf8');
+      const { data } = parseFrontmatter(text); // never throws (D-01)
+      const audience = data && typeof data.audience === 'string' ? data.audience : undefined;
+      if (audience) audienceMap.set(dirName, audience);
+      // No entry when unreadable/missing/invalid — the audience-direction
+      // guard simply does not fire for that dependency target.
+    } catch {
+      // Unreadable file — skip silently, never throw (D-01); processSkill
+      // will report the read error when it processes this skill directly.
+    }
+  }
+  return audienceMap;
+}
+
+// ---------------------------------------------------------------------------
+// checkOutputsFs — fs-dependent half of VAL-01 (existence + symlink-escape)
+// ---------------------------------------------------------------------------
+
+/**
+ * Check the fs-dependent half of `outputs:` validation: file existence and
+ * symlink-escape containment. Reuses `isOutputPathLexicallySafe` (exported
+ * from `./schema.js`) to gate which entries are even eligible for an fs
+ * check — lexically-unsafe entries were already reported by `validateSkill`
+ * and must not be double-reported here (Pitfall 3).
+ *
+ * Never throws: `data.outputs` shape errors were already reported by
+ * `validateSkill`, so a non-object/null/array value is a silent no-op here.
+ * Per-entry stat/realpath failures are converted to error entries, not
+ * exceptions.
+ *
+ * @param {string} skillsDir - absolute path to the skills/ directory
+ * @param {string} dirName - the skill's source folder name
+ * @param {object} data - parsed YAML frontmatter object
+ * @param {Array<{skill: string, message: string}>} errors - mutated in place
+ */
+async function checkOutputsFs(skillsDir, dirName, data, errors) {
+  const outputs = data && typeof data === 'object' ? data.outputs : undefined;
+  if (outputs === null || typeof outputs !== 'object' || Array.isArray(outputs)) {
+    return; // schema.js already reported the shape error — no duplicate
+  }
+  const skillDirAbs = resolve(skillsDir, dirName);
+  for (const [key, value] of Object.entries(outputs)) {
+    if (!isOutputPathLexicallySafe(skillDirAbs, value)) continue; // schema.js already reported it
+    const targetAbs = resolve(skillDirAbs, value);
+    try {
+      await stat(targetAbs);
+    } catch {
+      errors.push({ skill: dirName, message: `outputs.${key} file "${value}" does not exist` });
+      continue;
+    }
+    // Symlink-escape check: resolve REAL filesystem paths, re-verify
+    // containment via path.relative (Assumption A1 — confirmed empirically
+    // by the adversarial symlink fixture in test/lint.test.js).
+    try {
+      const [realRoot, realTarget] = await Promise.all([
+        realpath(skillDirAbs),
+        realpath(targetAbs),
+      ]);
+      const rel = relative(realRoot, realTarget);
+      const contained = rel === '' || (!rel.startsWith('..') && !isAbsolute(rel));
+      if (!contained) {
+        errors.push({
+          skill: dirName,
+          message: `outputs.${key} file "${value}" escapes the skill directory via symlink`,
+        });
+      }
+    } catch (e) {
+      errors.push({
+        skill: dirName,
+        message: `outputs.${key} file "${value}" could not be resolved: ${e.message}`,
+      });
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------
