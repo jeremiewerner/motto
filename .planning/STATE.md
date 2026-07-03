@@ -3,16 +3,17 @@ gsd_state_version: 1.0
 milestone: v0.0.6
 milestone_name: Prove & Publish
 current_phase: 19
-status: roadmapped
-stopped_at: Phase 19 context gathered
-last_updated: "2026-07-03T17:19:42.521Z"
+current_phase_name: cli-ergonomics-build-skill-verification
+status: executing
+stopped_at: Completed 19-01-PLAN.md
+last_updated: "2026-07-03T17:56:00.187Z"
 last_activity: 2026-07-03
-last_activity_desc: v0.0.6 roadmap created (4 phases, 17/17 requirements mapped)
+last_activity_desc: Phase 19 execution started
 progress:
   total_phases: 4
   completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  total_plans: 2
+  completed_plans: 1
   percent: 0
 ---
 
@@ -23,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-02 after v0.0.4)
 
 **Core value:** A strict schema + linter that guarantees authored skills conform before they ship, then packages them into self-contained standard Agent Skill plugins.
-**Current focus:** v0.0.6 Prove & Publish — automate and harden the ship path (CI gate → tag-publish → public flip), plus prove build-skill on a real skill
+**Current focus:** Phase 19 — cli-ergonomics-build-skill-verification
 
 ## Current Position
 
-Phase: 19 — CLI Ergonomics & Build-Skill Verification (not started)
-Plan: —
-Status: Roadmapped — ready to plan Phase 19
-Last activity: 2026-07-03 — v0.0.6 roadmap created (4 phases, 17/17 requirements mapped)
+Phase: 19 (cli-ergonomics-build-skill-verification) — EXECUTING
+Plan: 2 of 2
+Status: Ready to execute
+Last activity: 2026-07-03 — Phase 19 execution started
 
 **Milestone shape (v0.0.6, coarse):**
 
@@ -80,6 +81,7 @@ Ordering (research-locked): CLI flags first (pack-E2E consumes them) → CI prov
 | Phase 17 P02 | 6min | 2 tasks | 1 files |
 | Phase 18 P01 | 7min | 2 tasks | 3 files |
 | Phase 18 P02 | 20min | 3 tasks | 10 files |
+| Phase 19 P01 | 30min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -116,6 +118,9 @@ Recent decisions affecting current work:
 - [Phase 18]: legacy **Role:** bold-line regex fully removed from src/schema.js (D-01 hard break) -- a leftover legacy line is now inert body text, producing the missing-role error, not a separate legacy-line-detected check (D-02)
 - [Phase 18]: validateSkill's top-level bodyStr coercion changed from body||'' to a typeof guard -- pre-existing latent never-throw gap (truthy non-string body like 123/{}/[] would throw on .split()), newly exercised by the plan-mandated adversarial test; same fix shape as Plan 18-01's hasNonEmptyClosedSection
 - [Phase quick-260703-occ]: Template cascade guards TPL[tpl] entry shape (null/string/number/array) before destructure, emitting a maintainer-integrity error (WR-04 closed, commits 9e36477/2f3e601)
+- [Phase 19]: [Phase 19-01] init rejects --format/--quiet as unknown options via a post-parse scoped check in the init branch (parseArgs options are global, not per-subcommand)
+- [Phase 19]: [Phase 19-01] renderResult(result, {format, quiet, successLine}) extracted as a shared lint/build result-rendering helper (structurally identical branches per RESEARCH.md)
+- [Phase 19]: [Phase 19-01] TDD RED/GREEN commits sequenced with GREEN code already in the working tree before either commit, since husky's pre-commit hook runs the full suite against disk state (not git index) and --no-verify is prohibited
 
 ### Pending Todos
 
@@ -151,9 +156,9 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-03T17:19:42.516Z
-Stopped at: Phase 19 context gathered
-Resume file: .planning/phases/19-cli-ergonomics-build-skill-verification/19-CONTEXT.md
+Last session: 2026-07-03T17:56:00.183Z
+Stopped at: Completed 19-01-PLAN.md
+Resume file: None
 
 ## Operator Next Steps
 

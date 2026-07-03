@@ -8,9 +8,9 @@ Maintainer-facing milestone: no end-user feature work. "User" below = maintainer
 
 ### CLI Ergonomics (CLIX)
 
-- [ ] **CLIX-01**: Maintainer can run `motto lint`/`motto build` with `--quiet` — success/progress output suppressed, errors still print, exit codes unchanged
-- [ ] **CLIX-02**: Maintainer can run `motto lint`/`motto build` with `--format json` — stdout carries exactly one JSON document serializing the existing `{ok, errors}` result shape; nothing else on stdout
-- [ ] **CLIX-03**: Diagnostics and errors write to stderr, results to stdout — the current stdout conflation in `bin/motto.js` is fixed so JSON output is pipe-safe (presentation layer only; never-throw core untouched)
+- [x] **CLIX-01**: Maintainer can run `motto lint`/`motto build` with `--quiet` — success/progress output suppressed, errors still print, exit codes unchanged
+- [x] **CLIX-02**: Maintainer can run `motto lint`/`motto build` with `--format json` — stdout carries exactly one JSON document serializing the existing `{ok, errors}` result shape; nothing else on stdout
+- [x] **CLIX-03**: Diagnostics and errors write to stderr, results to stdout — the current stdout conflation in `bin/motto.js` is fixed so JSON output is pipe-safe (presentation layer only; never-throw core untouched)
 
 ### CI Workflow (CIW)
 
