@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v0.0.5
 milestone_name: Skill Builder
-current_phase: 15
-current_phase_name: Field Validation & Integrity Guards
+current_phase: 16
+current_phase_name: build-skill & author-skill Retirement
 status: verifying
 stopped_at: Phase 15 complete (both plans executed)
-last_updated: "2026-07-03T06:31:04.654Z"
+last_updated: "2026-07-03T06:53:06.126Z"
 last_activity: 2026-07-03
-last_activity_desc: Phase 15 execution started
+last_activity_desc: Phase 15 complete, transitioned to Phase 16
 progress:
   total_phases: 4
   completed_phases: 2
@@ -28,10 +28,10 @@ See: .planning/PROJECT.md (updated 2026-07-02 after v0.0.4)
 
 ## Current Position
 
-Phase: 15 (Field Validation & Integrity Guards) — EXECUTING
-Plan: 2 of 2
+Phase: 16 — build-skill & author-skill Retirement
+Plan: Not started
 Status: Phase complete — ready for verification
-Last activity: 2026-07-03 — Phase 15 execution started
+Last activity: 2026-07-03 — Phase 15 complete, transitioned to Phase 16
 Note: decision-coverage-plan gate overridden (could-not-parse: CONTEXT.md decisions are category bullets without D-NN IDs; checker Dimension 7 manually verified all locked decisions covered) — verify-phase may re-surface
 
 Progress: [████████░░] 80%
@@ -40,7 +40,7 @@ Progress: [████████░░] 80%
 
 **Velocity:**
 
-- Total plans completed: 4
+- Total plans completed: 5
 - Average duration: -
 - Total execution time: 0 hours
 
@@ -53,6 +53,7 @@ Progress: [████████░░] 80%
 | 16. build-skill & author-skill Retirement | 0 | - | - |
 | 17. Docs Audit | 0 | - | - |
 | 14 | 3 | - | - |
+| 15 | 2 | - | - |
 
 **Recent Trend:**
 
