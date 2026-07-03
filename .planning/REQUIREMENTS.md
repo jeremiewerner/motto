@@ -32,7 +32,7 @@
 
 ### Docs (DOC)
 
-- [ ] **DOC-06**: `skill-schema.md` rewritten current (version header, template/outputs/dependencies/allowed-tools sections); build-skill prose contains no duplicated lint strings/regexes
+- [x] **DOC-06**: `skill-schema.md` rewritten current (version header, template/outputs/dependencies/allowed-tools sections); build-skill prose contains no duplicated lint strings/regexes
 - [ ] **DOC-07**: README updated — author-skill references removed, build-skill flow documented
 
 ## Phase-Research Notes
@@ -79,7 +79,7 @@
 | BSKL-04 | Phase 16 | Complete |
 | BSKL-05 | Phase 16 | Complete |
 | BSKL-06 | Phase 16 | Complete |
-| DOC-06 | Phase 17 | Pending |
+| DOC-06 | Phase 17 | Complete |
 | DOC-07 | Phase 17 | Pending |
 
 **Coverage:** 19/19 v1 requirements mapped · no orphans · no duplicates

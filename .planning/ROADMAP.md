@@ -131,10 +131,10 @@ Full phase details: [milestones/v0.0.4-ROADMAP.md](milestones/v0.0.4-ROADMAP.md)
   2. `build-skill`'s prose contains no duplicated lint strings or regexes — the schema is referenced (bundled shared ref), not inlined.
   3. The README removes all `author-skill` references and documents the `build-skill` flow.
 
-**Plans**: 2 plans
+**Plans**: 1/2 plans executed
 **Wave 1** *(both plans parallel — disjoint files)*
 
-- [ ] 17-01-PLAN.md — Rewrite `skill-schema.md` current (header/§2 fix/§6 rewrite/new §7-§9/§10 renumber) + `doc-sync.test.js` drift guard + trim build-skill Step 2 (DOC-06)
+- [x] 17-01-PLAN.md — Rewrite `skill-schema.md` current (header/§2 fix/§6 rewrite/new §7-§9/§10 renumber) + `doc-sync.test.js` drift guard + trim build-skill Step 2 (DOC-06)
 - [ ] 17-02-PLAN.md — Rewrite README "Author a skill" body around build-skill's flow + swap all 8 author-skill sites to build-skill (DOC-07)
 
 ## Progress
@@ -151,7 +151,7 @@ Phases execute in numeric order: 14 → 15 → 16 → 17
 | 14. Template Mechanism | v0.0.5 | 3/3 | Complete    | 2026-07-02 |
 | 15. Field Validation & Integrity Guards | v0.0.5 | 2/2 | Complete    | 2026-07-03 |
 | 16. build-skill & author-skill Retirement | v0.0.5 | 2/2 | Complete    | 2026-07-03 |
-| 17. Docs Audit | v0.0.5 | 0/2 | Not started | - |
+| 17. Docs Audit | v0.0.5 | 1/2 | In Progress|  |
 
 ## Backlog
 

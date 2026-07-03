@@ -3,17 +3,17 @@ gsd_state_version: 1.0
 milestone: v0.0.5
 milestone_name: Skill Builder
 current_phase: 17
-current_phase_name: Docs Audit
+current_phase_name: docs-audit
 status: executing
-stopped_at: Phase 17 context gathered
-last_updated: "2026-07-03T12:34:28.637Z"
+stopped_at: Completed 17-01-PLAN.md
+last_updated: "2026-07-03T13:04:15.113Z"
 last_activity: 2026-07-03
-last_activity_desc: Phase 16 complete, transitioned to Phase 17
+last_activity_desc: Phase 17 execution started
 progress:
   total_phases: 4
   completed_phases: 3
-  total_plans: 7
-  completed_plans: 7
+  total_plans: 9
+  completed_plans: 8
   percent: 75
 ---
 
@@ -24,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-02 after v0.0.4)
 
 **Core value:** A strict schema + linter that guarantees authored skills conform before they ship, then packages them into self-contained standard Agent Skill plugins.
-**Current focus:** Phase 16 — build-skill-author-skill-retirement
+**Current focus:** Phase 17 — docs-audit
 
 ## Current Position
 
-Phase: 17 — Docs Audit
-Plan: Not started
+Phase: 17 (docs-audit) — EXECUTING
+Plan: 2 of 2
 Status: Ready to execute
-Last activity: 2026-07-03 — Phase 16 complete, transitioned to Phase 17
+Last activity: 2026-07-03 — Phase 17 execution started
 Note: decision-coverage-plan gate overridden (could-not-parse: CONTEXT.md decisions are category bullets without D-NN IDs; checker Dimension 7 manually verified all locked decisions covered) — verify-phase may re-surface
 
 Progress: [████████░░] 80%
@@ -69,6 +69,7 @@ Progress: [████████░░] 80%
 | Phase 15 P02 | 4min | 3 tasks | 3 files |
 | Phase 16 P01 | 6min | 2 tasks | 3 files |
 | Phase 16 P02 | 8min | 2 tasks | 1 files |
+| Phase 17 P01 | 25min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -95,6 +96,9 @@ Recent decisions affecting current work:
 - [Phase 16]: build-skill's allowed-tools declares only the honest lint-invocation fallback chain (local-bin, PATH, npx) — no contrived outputs/dependencies fields
 - [Phase 16]: skill-schema.md bundled as-is (stale re: template/outputs/dependencies/allowed-tools); build-skill's own prose carries the delta as behavioral guidance, never duplicated lint strings
 - [Phase 16]: Step 5 name guard mirrors full src/schema.js NAME cascade (kebab + lowercase-start + <=64 chars + no anthropic/claude); Step 6 authorizes delete-and-recover as the sole exception to the never-edit-outside-skills/<name>/ rule; Step 6 fallback falls through only on exec failure, never on a genuine lint failure
+- [Phase 17]: Header D-04: skill-schema.md carries a source citation, not a version number — the doc-sync test is the freshness guarantee going forward
+- [Phase 17]: D-01 surgical patch: kept existing skill-schema.md §1/§3/§5 skeleton verbatim; only §2/§4/§6 patched and §7-§9 added net-new; renumbered old §7 to §10
+- [Phase 17]: Doc-sync test uses Option 1 (source-text extraction) per RESEARCH.md recommendation — no fixture wiring, no re-invocation of validateSkill
 
 ### Pending Todos
 
@@ -122,9 +126,9 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-03T12:34:28.633Z
-Stopped at: Phase 17 context gathered
-Resume file: .planning/phases/17-docs-audit/17-CONTEXT.md
+Last session: 2026-07-03T13:04:15.108Z
+Stopped at: Completed 17-01-PLAN.md
+Resume file: None
 
 ## Operator Next Steps
 
