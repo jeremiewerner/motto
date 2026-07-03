@@ -20,6 +20,8 @@ The **strict schema + linter**. Skills that always conform to one rigid-yet-crea
 
 **Goal:** Motto's ship path becomes automated and trustworthy — CI gates every push, tags publish themselves to npm, repo goes public, and build-skill is proven on a real skill.
 
+**Progress:** Phase 19 complete (2026-07-03) — CLI is pipe-safe (`--quiet`, `--format json`, full stdout/stderr split; CLIX-01..03) and build-skill proven live on a real skill (`skills/changelog`, private; BSKL-01/BSKL-05/WR-01 all conform — BSKV-01, v0.0.5 debt closed). Live run surfaced + fixed 2 real divergences (build-skill stale-global lint trap, hardcoded dogfood counts) and code review caught a help-routing regression (D-09 vs string-flag values), fixed. 231 tests. Next: Phase 20 ci-workflow.
+
 **Target features:**
 - CI workflow: Node 20/22/24 test matrix + dogfood lint/build + pack-install E2E (tarball → tmp dir → init/lint/build) + publish-on-tag + npm-drift warning
 - Release skill rewrite: local = bump + tag + push only; publish + D-05 tarball assertion move to CI
@@ -163,4 +165,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-03 — milestone v0.0.6 Prove & Publish started*
+*Last updated: 2026-07-03 — Phase 19 complete (CLI ergonomics + build-skill verification)*
