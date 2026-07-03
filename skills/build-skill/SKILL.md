@@ -6,6 +6,7 @@ template: procedure
 shared_references:
   - skill-schema
 allowed-tools:
+  - "Bash(node bin/motto.js lint*)"
   - "Bash(node_modules/.bin/motto lint*)"
   - "Bash(motto lint*)"
   - "Bash(npx @jeremiewerner/motto lint*)"
@@ -52,11 +53,14 @@ Once all three guards pass, write `skills/<name>/SKILL.md` and any declared outp
 
 ## Step 6 — Lint loop
 
-Run the real linter. Try each of the following in order, falling through only when the command itself cannot be found or executed — a run that executes and reports lint errors IS the resolved linter; use its output and do not fall through to the next one:
+Run the real linter. If a repo-local `bin/motto.js` exists at the project root, this IS the Motto source repo itself (not merely a project depending on it) — prefer it first, since any globally-installed `motto` on PATH may be stale relative to the checkout you're editing. Otherwise, try each of the following in order, falling through only when the command itself cannot be found or executed — a run that executes and reports lint errors IS the resolved linter; use its output and do not fall through to the next one:
 
+    node bin/motto.js lint          (only when bin/motto.js exists at the project root — this repo IS Motto)
     node_modules/.bin/motto lint
     motto lint
     npx @jeremiewerner/motto lint
+
+If a resolved linter reports errors that reference a schema rule this SKILL.md's own frontmatter/body no longer uses (for example a bare `**Role:** line` requirement when this file and the bundled `skill-schema` reference both use a `<role>` section tag), treat that as a signal the resolved binary is stale relative to the checkout, not as a real error — fall through to the next candidate in the chain instead of "fixing" the file to match outdated rules.
 
 Read its output. Filter the reported errors down to the ones for the new skill's own directory name; report — once, read-only — any pre-existing errors in other skills, and never edit files outside `skills/<name>/`. Self-fix and re-lint, up to 3 attempts. If it is still dirty after 3 attempts, stop and hand back the remaining errors plus what you tried.
 
