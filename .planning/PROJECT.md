@@ -20,6 +20,8 @@ The **strict schema + linter**. Skills that always conform to one rigid-yet-crea
 
 **Goal:** A user describes a procedure in any form and Motto structures it into a validated, conforming, distributable skill.
 
+**Progress:** Phase 14 (Template Mechanism) and Phase 15 (Field Validation & Integrity Guards) complete — `template:` cascade live, three new frontmatter fields validated never-throw, 194 tests. Next: Phase 16 (build-skill & author-skill retirement).
+
 **Target features:**
 - Template mechanism live: `template:` field validated, data-driven template + section-tag registry, `procedure` template ships (closes TMPL-01)
 - `procedure` template requires `<process>` + `<success_criteria>` body sections; unknown tags stay legal
@@ -73,6 +75,7 @@ The **strict schema + linter**. Skills that always conform to one rigid-yet-crea
 - [x] `lint`/`build` accept optional `[path]` arg (default cwd), with directory-existence guard — Validated in Phase 11 (v0.0.4)
 - [x] README documents the full ship-your-plugin path — v0.0.4 (DOC-04, accuracy gaps closed in Plan 12-03)
 - [x] `setup-project` skill removed (superseded by init + README) — v0.0.4 (DOC-05, atomic delete + dogfood count sync)
+- [x] `outputs:`/`dependencies:`/`allowed-tools` frontmatter fields validated with integrity guards (path-safety + symlink-escape, dependency resolution + self-dep + audience-direction, format-only allowed-tools), all never-throw — Validated in Phase 15 (v0.0.5, VAL-01..06; post-review hardening: 2 critical + 3 warning fixes with regression tests)
 
 ### Active
 
@@ -138,4 +141,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-02 — v0.0.5 Skill Builder milestone started*
+*Last updated: 2026-07-03 — Phase 15 (Field Validation & Integrity Guards) complete*
