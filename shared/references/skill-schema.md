@@ -175,7 +175,7 @@ possible "available" list.
 **`hasClosedSection` semantics** (how a required section is detected as present):
 - Section tags must be line-start anchored: `^<process>` / `^</process>` (multiline regex) — a tag mentioned mid-sentence never counts.
 - Fenced code blocks are excluded from scanning entirely — both fence detection and any tag-like text inside an open fence are ignored. Fence detection matches CommonMark-style fences: 3+ backticks or 3+ tildes, up to 3 leading spaces; a fence only closes on a later line with the same character and length greater than or equal to the opener's.
-- There is no end-of-line anchor on the open tag — `<process> some trailing text` still counts as opening the section; only the close tag is required to have nothing else of interest after it at line start.
+- There is no end-of-line anchor on EITHER tag — the open and close regexes are symmetric (`^<process>` / `^</process>`, multiline). `<process> some trailing text` still counts as opening the section, and `</process> some trailing text` still counts as closing it. Only the line-start anchor is enforced, on both tags.
 - A section is "closed" only if both an open and a matching close tag exist, in that order (open index before close index) — not merely both present anywhere in the body.
 - Bare tags only — no attributes (`<process foo="bar">` does not count).
 
