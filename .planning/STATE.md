@@ -5,15 +5,15 @@ milestone_name: Prove & Publish
 current_phase: 20
 current_phase_name: ci-workflow
 status: executing
-stopped_at: Phase 20 context gathered
-last_updated: "2026-07-03T21:30:19.428Z"
+stopped_at: Completed 20-02-PLAN.md
+last_updated: "2026-07-03T21:35:59.580Z"
 last_activity: 2026-07-03
 last_activity_desc: Phase 20 execution started
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 5
-  completed_plans: 3
+  completed_plans: 4
   percent: 25
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-02 after v0.0.4)
 ## Current Position
 
 Phase: 20 (ci-workflow) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-07-03 — Phase 20 execution started
 
@@ -85,6 +85,7 @@ Ordering (research-locked): CLI flags first (pack-E2E consumes them) → CI prov
 | Phase 19 P01 | 30min | 2 tasks | 2 files |
 | Phase 19 P02 | 45min | 3 tasks | 4 files |
 | Phase 20 P01 | 4min | 2 tasks | 3 files |
+| Phase 20 P02 | 12min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -129,6 +130,8 @@ Recent decisions affecting current work:
 - [Phase 19-02]: changelog skill ships as audience: private; dogfood tests updated count/skillCount 2->3 in the same commit as the skill (husky pre-commit runs suite against disk state)
 - [Phase 20-01]: scripts/ deliberately excluded from package.json files allowlist -- prepare never fires for a nested-dependency install (verified live npm experiment, RESEARCH.md Pitfall 2)
 - [Phase 20-01]: D-15's implicit-proof premise (pack-install-e2e exercises the prepare guard) is false as written -- closed with dedicated scripts/prepare-guard-check.mjs (git archive HEAD | tar -x into a .git-less tmpdir, then npm ci, assert exit 0)
+- [Phase 20-02]: motto init [name] scaffolds into cwd, not a subdirectory -- pack-install-e2e.mjs mkdirs a nested empty e2e-project dir before invoking it, since consumerDir already has package.json/node_modules from the npm install step
+- [Phase 20-02]: pack-install-e2e.mjs's run()/parseJsonOrFail() throw Error instead of calling process.exit(1) directly, so main()'s finally block still removes both tmp dirs on a failure path
 
 ### Pending Todos
 
@@ -164,9 +167,9 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-03T21:29:48.683Z
-Stopped at: Phase 20 context gathered
-Resume file: .planning/phases/20-ci-workflow/20-CONTEXT.md
+Last session: 2026-07-03T21:35:59.577Z
+Stopped at: Completed 20-02-PLAN.md
+Resume file: None
 
 ## Operator Next Steps
 

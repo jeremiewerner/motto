@@ -129,3 +129,11 @@ Both scripts are committed, verified working live (not just unit-tested), and re
 ---
 *Phase: 20-ci-workflow*
 *Completed: 2026-07-03*
+
+## Self-Check: PASSED
+
+- FOUND: scripts/pack-install-e2e.mjs
+- FOUND: scripts/npm-drift-check.mjs
+- FOUND: .planning/phases/20-ci-workflow/20-02-SUMMARY.md
+- FOUND: commit 34c8ec2 (Task 1)
+- FOUND: commit 0958e78 (Task 2)

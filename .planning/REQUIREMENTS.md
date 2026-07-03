@@ -16,8 +16,8 @@ Maintainer-facing milestone: no end-user feature work. "User" below = maintainer
 
 - [ ] **CIW-01**: Every push/PR runs the full test suite on a Node 20/22/24 matrix via `.github/workflows/ci.yml`
 - [ ] **CIW-02**: CI runs dogfood `motto lint` + `motto build` against Motto's own `skills/` tree on a clean checkout
-- [ ] **CIW-03**: CI runs a pack-install E2E (`scripts/pack-install-e2e.mjs`): `npm pack` → install tarball in tmp dir → `motto init` → `lint` → `build` — proving what npm actually ships works standalone
-- [ ] **CIW-04**: CI warns (non-blocking) when npm registry latest lags `package.json` version — the v0.0.4/v0.0.5 silent-drift failure mode becomes visible
+- [x] **CIW-03**: CI runs a pack-install E2E (`scripts/pack-install-e2e.mjs`): `npm pack` → install tarball in tmp dir → `motto init` → `lint` → `build` — proving what npm actually ships works standalone
+- [x] **CIW-04**: CI warns (non-blocking) when npm registry latest lags `package.json` version — the v0.0.4/v0.0.5 silent-drift failure mode becomes visible
 - [x] **CIW-05**: husky `prepare` script is guarded to no-op outside a git checkout (CI tarball installs, `npm ci` in workflows)
 
 ### Publish Automation (PUB)
