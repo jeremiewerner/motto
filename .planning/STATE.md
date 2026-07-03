@@ -2,9 +2,12 @@
 gsd_state_version: 1.0
 milestone: v0.0.6
 milestone_name: Prove & Publish
+current_phase: 19
 status: roadmapped
-last_updated: "2026-07-03T18:30:00.000Z"
+stopped_at: Phase 19 context gathered
+last_updated: "2026-07-03T17:19:42.521Z"
 last_activity: 2026-07-03
+last_activity_desc: v0.0.6 roadmap created (4 phases, 17/17 requirements mapped)
 progress:
   total_phases: 4
   completed_phases: 0
@@ -30,6 +33,7 @@ Status: Roadmapped — ready to plan Phase 19
 Last activity: 2026-07-03 — v0.0.6 roadmap created (4 phases, 17/17 requirements mapped)
 
 **Milestone shape (v0.0.6, coarse):**
+
 - Phase 19: CLI Ergonomics & Build-Skill Verification (CLIX-01..03, BSKV-01)
 - Phase 20: CI Workflow (CIW-01..05)
 - Phase 21: Publish Automation & Release Rewrite (PUB-01..04)
@@ -147,9 +151,9 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-03T15:37:44.924Z
-Stopped at: Completed 18-02-PLAN.md
-Resume file: None
+Last session: 2026-07-03T17:19:42.516Z
+Stopped at: Phase 19 context gathered
+Resume file: .planning/phases/19-cli-ergonomics-build-skill-verification/19-CONTEXT.md
 
 ## Operator Next Steps
 
