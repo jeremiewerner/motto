@@ -5,6 +5,7 @@ import {
   validateSkill,
   NAME_KEBAB,
   hasClosedSection,
+  hasNonEmptyClosedSection,
   isOutputPathLexicallySafe,
 } from "../src/schema.js";
 
@@ -595,6 +596,56 @@ describe("hasClosedSection", () => {
   it("returns false when the close tag precedes the open tag", () => {
     const body = "# t\n</process>\nx\n<process>\n";
     assert.equal(hasClosedSection(body, "process"), false);
+  });
+});
+
+describe("hasNonEmptyClosedSection", () => {
+  // Matched, closed, non-whitespace content between the tags -> true
+  it("returns true for a matched, closed <role>...</role> pair with non-empty content", () => {
+    const body = "# t\n<role>\nYou are a helper.\n</role>\n";
+    assert.equal(hasNonEmptyClosedSection(body, "role"), true);
+  });
+
+  // Closed but whitespace-only content -> false (D-05)
+  it("returns false when the section is closed but the enclosed content is whitespace-only", () => {
+    const body = "# t\n<role>\n   \n\t\n</role>\n";
+    assert.equal(hasNonEmptyClosedSection(body, "role"), false);
+  });
+
+  // Closed but empty (no lines at all between tags) -> false
+  it("returns false when the section is closed with nothing between the tags", () => {
+    const body = "# t\n<role>\n</role>\n";
+    assert.equal(hasNonEmptyClosedSection(body, "role"), false);
+  });
+
+  // Only content between the tags is inside a fenced code block -> excluded,
+  // consistent with hasClosedSection's fence-aware scan
+  it("returns false when the only content between the tags is inside a fenced code block", () => {
+    const body = "# t\n<role>\n```\nnot real content\n```\n</role>\n";
+    assert.equal(hasNonEmptyClosedSection(body, "role"), false);
+  });
+
+  // Unclosed section -> false (delegates to hasClosedSection first)
+  it("returns false when the section is not closed at all", () => {
+    const body = "# t\n<role>\nYou are a helper.\n";
+    assert.equal(hasNonEmptyClosedSection(body, "role"), false);
+  });
+
+  // Missing section entirely -> false
+  it("returns false when the section is entirely missing", () => {
+    const body = "# t\nJust some prose.\n";
+    assert.equal(hasNonEmptyClosedSection(body, "role"), false);
+  });
+
+  // Never-throw boundary: malformed/adversarial body inputs must return a
+  // boolean, never throw (D-01 never-throw invariant)
+  it("returns a boolean and never throws for adversarial malformed body input", () => {
+    const adversarialBodies = [null, undefined, 123, {}, []];
+    for (const body of adversarialBodies) {
+      assert.doesNotThrow(() => hasNonEmptyClosedSection(body, "role"));
+      assert.equal(typeof hasNonEmptyClosedSection(body, "role"), "boolean");
+      assert.equal(hasNonEmptyClosedSection(body, "role"), false);
+    }
   });
 });
 

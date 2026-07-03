@@ -10,6 +10,7 @@
  * Exports:
  *   - NAME_KEBAB {RegExp}  — canonical letter-start kebab regex (D-08, D-16)
  *   - hasClosedSection(body, tagName) -> boolean
+ *   - hasNonEmptyClosedSection(body, tagName) -> boolean
  *   - isOutputPathLexicallySafe(entry) -> boolean
  *   - validateSkill(skill, sharedRefs?, templatesRegistry?, skillNames?, audienceMap?) -> Array<{ skill, message }>
  */
@@ -98,6 +99,72 @@ export function hasClosedSection(body, tagName) {
   const openMatch = openRe.exec(text);
   const closeMatch = closeRe.exec(text);
   return !!openMatch && !!closeMatch && openMatch.index < closeMatch.index;
+}
+
+/**
+ * Determine whether `body` contains a matched, line-anchored `<tagName>` /
+ * `</tagName>` pair (per `hasClosedSection`) AND the unfenced text strictly
+ * between the open and close tags contains at least one non-whitespace
+ * character (D-05). Isolated as its own function (D-06) so generalizing the
+ * non-empty check to other sections later is a one-liner, and so this
+ * riskier new validator path — plus its never-throw guarantee — has its own
+ * reviewable, adversarially-tested surface, independent of `hasClosedSection`.
+ *
+ * Delegates to `hasClosedSection` first: if the section is not matched and
+ * closed at all, this returns false immediately (D-05 only tightens the
+ * ALREADY-closed case; "missing" and "empty" stay two distinct checks/errors
+ * — D-08). Otherwise this reuses the exact same fence-aware unfenced-line
+ * collection strategy as `hasClosedSection` (same fence-tracking loop) to
+ * find the first unfenced open-tag line and the first following unfenced
+ * close-tag line, and tests the unfenced text strictly between them for
+ * non-whitespace content.
+ *
+ * `body` is coerced to a string (any non-string input — null, undefined, a
+ * number, an object, an array — becomes `""`) BEFORE it is ever passed to
+ * `hasClosedSection` or used in a string method here. `hasClosedSection`'s
+ * own `body || ""` only coerces FALSY values; a truthy non-string (e.g. `123`,
+ * `{}`, `[]`) would otherwise reach its internal `.split()` call unguarded
+ * and throw. Coercing here — strictly ahead of the delegated call — keeps
+ * this function's never-throw guarantee (D-01) intact without modifying
+ * `hasClosedSection` itself (out of scope for this plan).
+ *
+ * @param {string} body
+ * @param {string} tagName
+ * @returns {boolean}
+ */
+export function hasNonEmptyClosedSection(body, tagName) {
+  const bodyStr = typeof body === "string" ? body : "";
+  if (!hasClosedSection(bodyStr, tagName)) return false;
+
+  const lines = bodyStr.split("\n");
+  const fenceRe = /^ {0,3}(`{3,}|~{3,})/;
+  const unfencedLines = [];
+  let fence = null;
+  for (const line of lines) {
+    const m = fenceRe.exec(line);
+    if (m) {
+      const ch = m[1][0];
+      const len = m[1].length;
+      if (!fence) {
+        fence = { ch, len };
+      } else if (ch === fence.ch && len >= fence.len) {
+        fence = null;
+      }
+      continue;
+    }
+    if (!fence) unfencedLines.push(line);
+  }
+
+  const openRe = new RegExp(`^<${tagName}>`);
+  const closeRe = new RegExp(`^</${tagName}>`);
+  const openIdx = unfencedLines.findIndex((l) => openRe.test(l));
+  const closeIdx = unfencedLines.findIndex(
+    (l, i) => i > openIdx && closeRe.test(l)
+  );
+  if (openIdx === -1 || closeIdx === -1) return false;
+
+  const between = unfencedLines.slice(openIdx + 1, closeIdx).join("\n");
+  return between.trim().length > 0;
 }
 
 /**
