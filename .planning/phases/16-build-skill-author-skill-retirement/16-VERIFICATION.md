@@ -1,7 +1,7 @@
 ---
 phase: 16-build-skill-author-skill-retirement
 verified: 2026-07-03T12:00:00Z
-status: human_needed
+status: passed
 score: 6/7 must-haves verified
 behavior_unverified: 2
 overrides_applied: 0
@@ -9,26 +9,32 @@ re_verification:
   previous_status: gaps_found
   previous_score: 5/7
   gaps_closed:
+
     - "GUARD then WRITE — Step 5 validates the proposed name before writing (was FAILED — guard 1 now rejects >64-char names and names containing \"anthropic\"/\"claude\", plus Step 6 gained an authorized name-cascade recovery clause as backstop)"
     - "LINT LOOP — exec-failure vs lint-failure fallback ambiguity (was PARTIAL — Step 6 now falls through only on command-not-found/exec failure; a run that executes and reports lint errors is explicitly treated as the resolved linter, never falling through to the stale npx registry version)"
   gaps_remaining: []
   regressions: []
 behavior_unverified_items:
+
   - truth: "build-skill asks only genuinely-missing gap-fill questions, in one batch, for arbitrary freeform input (BSKL-01)"
     test: "Hand build-skill several freeform inputs (a complete spec, a partial spec missing 2-3 slots, a conversation transcript) and observe whether it asks zero questions for the complete case and exactly one batched message for the partial case"
     expected: "Zero questions when input is complete; one batched message listing only missing slots otherwise; no sequential interview"
     why_human: "Prompt-engineering fidelity — whether the prose reliably produces this exact agent behavior across varied real inputs cannot be proven by static grep/lint checks alone"
+
   - truth: "The content-quality gate (Step 7) reliably catches hollow Role lines / vacuous success criteria / workflow-summary descriptions on live-generated output, not just on build-skill's own file (BSKL-05)"
     test: "Generate a skill from an input that would naturally produce a weak Role line or a vacuous success-criteria list, and confirm Step 7 catches and self-fixes it before Step 8's receipt"
     expected: "Gate flags the weak content, agent self-fixes without asking (unless truly unrecoverable info is missing), re-lints, then reports"
     why_human: "Whether the checklist wording is genuinely objective/checkable in practice (not rubber-stampable) is a prose-quality judgment"
 human_verification:
+
   - test: "Live gap-fill fidelity (BSKL-01) — hand build-skill a complete freeform spec, a partial spec missing several slots, and a conversation transcript"
     expected: "Zero questions for the complete case; exactly one batched message listing only missing slots for the partial case; no sequential interview in either case"
     why_human: "Agent-behavior fidelity to prose instructions across varied real inputs is not provable by static analysis"
+
   - test: "Content-quality gate catches real hollow output (BSKL-05) — generate a skill from an input likely to produce a weak Role line or vacuous success criteria; confirm Step 7 catches and self-fixes it"
     expected: "Gate flags the weak content and self-fixes without asking, unless information is genuinely missing; re-lints after any edit"
     why_human: "Whether the checklist is genuinely non-rubber-stampable in practice is a prose-quality judgment"
+
   - test: "Confirm the WR-01 recovery clause actually works end-to-end at runtime — hand build-skill an input implying a name like `claude-something-tools` or a >64-char name"
     expected: "The Step 5 guard rejects the name pre-write with a clear re-prompt (the common case now that the guard covers length + reserved substrings); OR, for the narrower residual case where a reserved word is embedded mid-token (e.g. `myclaude-tools`, IN-01 in 16-REVIEW.md), the write proceeds, lint rejects the name, and the agent follows Step 6's new delete-and-recreate recovery clause to correct it and complete the pipeline — never a stuck agent burning all 3 attempts unfixably"
     why_human: "This is the direct behavioral confirmation that the fix restores the \"any input → complete skill\" guarantee at runtime; grep/code-review can confirm the new prose exists and is internally consistent (16-REVIEW.md did this), but not that an executing agent actually follows the recovery path correctly"

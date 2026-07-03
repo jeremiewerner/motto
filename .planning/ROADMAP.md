@@ -146,7 +146,7 @@ Phases execute in numeric order: 14 → 15 → 16 → 17
 | 13. Tech-Debt Closure | v0.0.4 | 2/2 | Complete | 2026-07-02 |
 | 14. Template Mechanism | v0.0.5 | 3/3 | Complete    | 2026-07-02 |
 | 15. Field Validation & Integrity Guards | v0.0.5 | 2/2 | Complete    | 2026-07-03 |
-| 16. build-skill & author-skill Retirement | v0.0.5 | 2/2 | Complete   | 2026-07-03 |
+| 16. build-skill & author-skill Retirement | v0.0.5 | 2/2 | Complete    | 2026-07-03 |
 | 17. Docs Audit | v0.0.5 | 0/TBD | Not started | - |
 
 ## Backlog
