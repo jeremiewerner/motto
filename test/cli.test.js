@@ -410,15 +410,31 @@ describe('init stderr split (D-07)', () => {
     }
   });
 
-  it('init --format json: rejected as unknown option (D-03, D-11)', () => {
-    const r = runCli(['init', '--format', 'json']);
-    assert.strictEqual(r.status, 1);
-    assert.match(r.stderr, /unknown option/);
+  it('init --format json: rejected as unknown option (D-03, D-11)', async () => {
+    // Runs in a fresh tempdir (not the repo root, WR-03) — this test exists
+    // specifically to verify the rejection branch; if that branch regresses,
+    // the child process would otherwise execute `motto init` against the
+    // developer's real working tree.
+    const dir = await mkdtemp(join(tmpdir(), 'motto-cli-init-reject-'));
+    try {
+      const r = runCli(['init', '--format', 'json'], { cwd: dir });
+      assert.strictEqual(r.status, 1);
+      assert.match(r.stderr, /unknown option/);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
   });
 
-  it('init --quiet: rejected as unknown option (D-03, D-11)', () => {
-    const r = runCli(['init', '--quiet']);
-    assert.strictEqual(r.status, 1);
-    assert.match(r.stderr, /unknown option/);
+  it('init --quiet: rejected as unknown option (D-03, D-11)', async () => {
+    // Runs in a fresh tempdir (not the repo root, WR-03) — see rationale
+    // above for the --format json test.
+    const dir = await mkdtemp(join(tmpdir(), 'motto-cli-init-reject-'));
+    try {
+      const r = runCli(['init', '--quiet'], { cwd: dir });
+      assert.strictEqual(r.status, 1);
+      assert.match(r.stderr, /unknown option/);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
   });
 });
