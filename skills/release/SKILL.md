@@ -3,6 +3,10 @@ name: release
 description: Maintainer release checklist for Motto — run tests, bump version, dogfood lint and build, verify tarball, and publish. Use this skill when releasing a new Motto version.
 audience: private
 template: procedure
+allowed-tools:
+  - "Bash(node *)"
+  - "Bash(npm *)"
+  - "Bash(git *)"
 ---
 
 # Releasing Motto

@@ -1,6 +1,6 @@
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, rm, writeFile, symlink } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
@@ -46,6 +46,32 @@ function makeSkillWithRefs(name, refs) {
     'audience: public',
     'shared_references:',
     ...refs.map((r) => `  - ${r}`),
+    '---',
+    `# ${name}`,
+    '',
+    '**Role:** You are a helper that does things.',
+    '',
+    'Do things.',
+    '',
+  ].join('\n');
+}
+
+/**
+ * Generate a valid SKILL.md with a given audience and arbitrary extra
+ * frontmatter lines injected after the mandatory fields — used for
+ * outputs:/dependencies: fs-layer fixtures.
+ * @param {string} name - skill directory name
+ * @param {string} audience - "public" | "private"
+ * @param {string[]} extraLines - raw YAML lines appended to the frontmatter
+ * @returns {string}
+ */
+function makeSkillWithExtra(name, audience, extraLines = []) {
+  return [
+    '---',
+    `name: ${name}`,
+    `description: A skill named ${name} — use when you need ${name}`,
+    `audience: ${audience}`,
+    ...extraLines,
     '---',
     `# ${name}`,
     '',
@@ -356,5 +382,245 @@ describe('lintProject — shared references resolution', () => {
       unresolved,
       `expected unresolved shared_references error, got: ${JSON.stringify(result.errors)}`,
     );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 9. outputs: fs-layer — existence + symlink-escape (VAL-01)
+// ---------------------------------------------------------------------------
+
+describe('lintProject — outputs fs-layer (VAL-01)', () => {
+  let root;
+  let symlinkSkipped = false;
+
+  before(async () => {
+    root = await mkdtemp(join(tmpdir(), 'motto-lint-'));
+    await writeFile(join(root, 'motto.yaml'), VALID_CONFIG);
+
+    // Case A: outputs entry pointing at a file that EXISTS inside the skill dir
+    await mkdir(join(root, 'skills', 'output-ok'), { recursive: true });
+    await writeFile(join(root, 'skills', 'output-ok', 'notes.txt'), 'hello\n');
+    await writeFile(
+      join(root, 'skills', 'output-ok', 'SKILL.md'),
+      makeSkillWithExtra('output-ok', 'public', ['outputs:', '  doc: notes.txt']),
+    );
+
+    // Case B: outputs entry naming a MISSING file
+    await mkdir(join(root, 'skills', 'output-missing'), { recursive: true });
+    await writeFile(
+      join(root, 'skills', 'output-missing', 'SKILL.md'),
+      makeSkillWithExtra('output-missing', 'public', ['outputs:', '  doc: missing.txt']),
+    );
+
+    // Case C: outputs entry naming a file that is a symlink escaping the skill dir
+    await mkdir(join(root, 'skills', 'output-symlink-escape'), { recursive: true });
+    await mkdir(join(root, 'outside'), { recursive: true });
+    await writeFile(join(root, 'outside', 'secret.txt'), 'outside content\n');
+    try {
+      await symlink(
+        join(root, 'outside', 'secret.txt'),
+        join(root, 'skills', 'output-symlink-escape', 'escape.txt'),
+      );
+    } catch {
+      symlinkSkipped = true; // sandbox filesystem may not permit symlink creation
+    }
+    await writeFile(
+      join(root, 'skills', 'output-symlink-escape', 'SKILL.md'),
+      makeSkillWithExtra('output-symlink-escape', 'public', ['outputs:', '  doc: escape.txt']),
+    );
+  });
+
+  after(async () => {
+    await rm(root, { recursive: true, force: true });
+  });
+
+  it('(A) an outputs entry pointing at an existing file inside the skill dir reports no outputs error', async () => {
+    const result = await lintProject(root);
+    const entryErrors = result.errors.filter((e) => e.skill === 'output-ok');
+    assert.deepStrictEqual(entryErrors, []);
+  });
+
+  it('(B) an outputs entry naming a missing file reports a "does not exist" error', async () => {
+    const result = await lintProject(root);
+    const entry = result.errors.find(
+      (e) => e.skill === 'output-missing' && /does not exist/i.test(e.message),
+    );
+    assert.ok(entry, `expected a "does not exist" error, got: ${JSON.stringify(result.errors)}`);
+  });
+
+  it('(C) a symlink escaping the skill dir reports an "escapes the skill directory via symlink" error (RESEARCH Assumption A1)', async (t) => {
+    if (symlinkSkipped) {
+      t.skip('symlink creation not permitted in this sandbox filesystem');
+      return;
+    }
+    const result = await lintProject(root);
+    const entry = result.errors.find(
+      (e) =>
+        e.skill === 'output-symlink-escape' &&
+        /escapes the skill directory via symlink/i.test(e.message),
+    );
+    assert.ok(entry, `expected a symlink-escape error, got: ${JSON.stringify(result.errors)}`);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 10. dependencies: cross-skill resolution (VAL-02)
+// ---------------------------------------------------------------------------
+
+describe('lintProject — dependencies cross-skill resolution (VAL-02)', () => {
+  let root;
+
+  before(async () => {
+    root = await mkdtemp(join(tmpdir(), 'motto-lint-'));
+    await writeFile(join(root, 'motto.yaml'), VALID_CONFIG);
+
+    await mkdir(join(root, 'skills', 'dep-target'), { recursive: true });
+    await writeFile(join(root, 'skills', 'dep-target', 'SKILL.md'), makeSkillMd('dep-target'));
+
+    await mkdir(join(root, 'skills', 'dep-source'), { recursive: true });
+    await writeFile(
+      join(root, 'skills', 'dep-source', 'SKILL.md'),
+      makeSkillWithExtra('dep-source', 'public', [
+        'dependencies:',
+        '  - dep-target',
+        '  - nonexistent-skill',
+      ]),
+    );
+  });
+
+  after(async () => {
+    await rm(root, { recursive: true, force: true });
+  });
+
+  it('a bare dependency entry naming an existing skill resolves clean (no error for it)', async () => {
+    const result = await lintProject(root);
+    const resolvedErr = result.errors.find(
+      (e) => e.skill === 'dep-source' && /"dep-target"/.test(e.message),
+    );
+    assert.strictEqual(
+      resolvedErr,
+      undefined,
+      `dep-target should resolve clean, got: ${JSON.stringify(result.errors)}`,
+    );
+  });
+
+  it('a bare dependency entry naming a nonexistent skill reports "not found (available: ...)"', async () => {
+    const result = await lintProject(root);
+    const entry = result.errors.find(
+      (e) => e.skill === 'dep-source' && /nonexistent-skill.*not found/i.test(e.message),
+    );
+    assert.ok(entry, `expected a not-found error, got: ${JSON.stringify(result.errors)}`);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 11. dependencies: audience-direction guard (VAL-03)
+// ---------------------------------------------------------------------------
+
+describe('lintProject — dependencies audience-direction guard (VAL-03)', () => {
+  let root;
+
+  before(async () => {
+    root = await mkdtemp(join(tmpdir(), 'motto-lint-'));
+    await writeFile(join(root, 'motto.yaml'), VALID_CONFIG);
+
+    await mkdir(join(root, 'skills', 'private-target'), { recursive: true });
+    await writeFile(
+      join(root, 'skills', 'private-target', 'SKILL.md'),
+      makeSkillWithExtra('private-target', 'private'),
+    );
+
+    await mkdir(join(root, 'skills', 'public-target'), { recursive: true });
+    await writeFile(
+      join(root, 'skills', 'public-target', 'SKILL.md'),
+      makeSkillWithExtra('public-target', 'public'),
+    );
+
+    // public -> private: MUST fail (the guarded direction)
+    await mkdir(join(root, 'skills', 'public-source'), { recursive: true });
+    await writeFile(
+      join(root, 'skills', 'public-source', 'SKILL.md'),
+      makeSkillWithExtra('public-source', 'public', ['dependencies:', '  - private-target']),
+    );
+
+    // private -> public: MUST pass
+    await mkdir(join(root, 'skills', 'private-source'), { recursive: true });
+    await writeFile(
+      join(root, 'skills', 'private-source', 'SKILL.md'),
+      makeSkillWithExtra('private-source', 'private', ['dependencies:', '  - public-target']),
+    );
+
+    // public -> public: MUST pass
+    await mkdir(join(root, 'skills', 'public-source-two'), { recursive: true });
+    await writeFile(
+      join(root, 'skills', 'public-source-two', 'SKILL.md'),
+      makeSkillWithExtra('public-source-two', 'public', ['dependencies:', '  - public-target']),
+    );
+  });
+
+  after(async () => {
+    await rm(root, { recursive: true, force: true });
+  });
+
+  it('a public skill depending on a private skill reports the audience-direction error', async () => {
+    const result = await lintProject(root);
+    const entry = result.errors.find(
+      (e) => e.skill === 'public-source' && /audience-direction guard/i.test(e.message),
+    );
+    assert.ok(entry, `expected audience-direction error, got: ${JSON.stringify(result.errors)}`);
+  });
+
+  it('private->public and public->public both pass with zero dependency errors', async () => {
+    const result = await lintProject(root);
+    const privateSourceErrors = result.errors.filter((e) => e.skill === 'private-source');
+    const publicSourceTwoErrors = result.errors.filter((e) => e.skill === 'public-source-two');
+    assert.deepStrictEqual(privateSourceErrors, []);
+    assert.deepStrictEqual(publicSourceTwoErrors, []);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 12. No double-reporting from the loadSkillAudiences pre-pass (Pitfall 3)
+// ---------------------------------------------------------------------------
+
+describe('lintProject — no double-reporting from loadSkillAudiences pre-pass (Pitfall 3)', () => {
+  let root;
+
+  before(async () => {
+    root = await mkdtemp(join(tmpdir(), 'motto-lint-'));
+    await writeFile(join(root, 'motto.yaml'), VALID_CONFIG);
+
+    // Malformed SKILL.md — broken YAML frontmatter (unterminated string)
+    await mkdir(join(root, 'skills', 'malformed-skill'), { recursive: true });
+    await writeFile(
+      join(root, 'skills', 'malformed-skill', 'SKILL.md'),
+      '---\nname: "unterminated string\n---\n# malformed-skill\n\n**Role:** Helper.\n',
+    );
+
+    // Valid skill that depends on nothing
+    await mkdir(join(root, 'skills', 'clean-skill'), { recursive: true });
+    await writeFile(join(root, 'skills', 'clean-skill', 'SKILL.md'), makeSkillMd('clean-skill'));
+  });
+
+  after(async () => {
+    await rm(root, { recursive: true, force: true });
+  });
+
+  it("the malformed skill's YAML parse error appears exactly once (loadSkillAudiences must not double-report)", async () => {
+    const result = await lintProject(root);
+    const parseErrors = result.errors.filter(
+      (e) => e.skill === 'malformed-skill' && /missing closing/i.test(e.message),
+    );
+    assert.strictEqual(
+      parseErrors.length,
+      1,
+      `expected exactly 1 parse error, got ${parseErrors.length}: ${JSON.stringify(parseErrors)}`,
+    );
+  });
+
+  it('the clean skill contributes zero errors', async () => {
+    const result = await lintProject(root);
+    const cleanErrors = result.errors.filter((e) => e.skill === 'clean-skill');
+    assert.deepStrictEqual(cleanErrors, []);
   });
 });
