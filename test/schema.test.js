@@ -16,7 +16,7 @@ import {
 // - All other checks (description, audience, body Title, body Role, each
 //   shared_references entry) are INDEPENDENT and collected together (D-13).
 
-const VALID_BODY = "# My Skill\n\n**Role:** You are a helper.\n\nDo things.\n";
+const VALID_BODY = "# My Skill\n\n<role>\nYou are a helper.\n</role>\n\nDo things.\n";
 
 describe("validateSkill", () => {
   // B1: happy path — valid skill returns []
@@ -55,7 +55,7 @@ describe("validateSkill", () => {
     const skill = {
       dirName: "0bad",
       data: { name: "0bad", description: "use when X", audience: "public" },
-      body: "# Title\n\n**Role:** helper.\n",
+      body: "# Title\n\n<role>\nhelper.\n</role>\n",
     };
     const errors = validateSkill(skill);
     assert.equal(errors.length, 1, `expected 1 error, got: ${JSON.stringify(errors)}`);
@@ -72,7 +72,7 @@ describe("validateSkill", () => {
     const skill = {
       dirName: "My_Skill",
       data: { name: "My_Skill", description: "use when X", audience: "public" },
-      body: "# Title\n\n**Role:** helper.\n",
+      body: "# Title\n\n<role>\nhelper.\n</role>\n",
     };
     const errors = validateSkill(skill);
     assert.ok(errors.length >= 1, "should report at least 1 error");
@@ -87,7 +87,7 @@ describe("validateSkill", () => {
     const skill = {
       dirName: "claude-helper",
       data: { name: "claude-helper", description: "use when X", audience: "public" },
-      body: "# Title\n\n**Role:** helper.\n",
+      body: "# Title\n\n<role>\nhelper.\n</role>\n",
     };
     const errors = validateSkill(skill);
     assert.equal(errors.length, 1, `expected 1 error, got: ${JSON.stringify(errors)}`);
@@ -103,7 +103,7 @@ describe("validateSkill", () => {
     const skill = {
       dirName: "my-skill",
       data: { name: "other", description: "use when X", audience: "public" },
-      body: "# Title\n\n**Role:** helper.\n",
+      body: "# Title\n\n<role>\nhelper.\n</role>\n",
     };
     const errors = validateSkill(skill);
     assert.equal(errors.length, 1, `expected 1 error, got: ${JSON.stringify(errors)}`);
@@ -529,6 +529,56 @@ describe("validateSkill", () => {
   });
 });
 
+describe("validateSkill — role spine (D-01, D-02, D-05, D-08)", () => {
+  const baseData = { name: "my-skill", description: "use when X", audience: "public" };
+
+  it("a body with an empty <role></role> section reports the distinct empty-role error and NOT the missing-role error (D-08)", () => {
+    const skill = {
+      dirName: "my-skill",
+      data: baseData,
+      body: "# My Skill\n\n<role>\n</role>\n",
+    };
+    const errors = validateSkill(skill);
+    assert.ok(
+      errors.some((e) => e.message.includes("section must not be empty")),
+      `expected empty-role error, got: ${JSON.stringify(errors)}`
+    );
+    assert.ok(
+      !errors.some((e) => e.message.startsWith("body must contain <")),
+      `missing-role error must NOT also fire (D-08), got: ${JSON.stringify(errors)}`
+    );
+  });
+
+  it("a body carrying only the legacy **Role:** bold-line convention (no <role> tag) reports the missing-role error — the legacy line is inert (D-01/D-02 hard break)", () => {
+    const skill = {
+      dirName: "my-skill",
+      data: baseData,
+      body: "# My Skill\n\n**Role:** You are a helper.\n",
+    };
+    const errors = validateSkill(skill);
+    assert.ok(
+      errors.some((e) => e.message.startsWith("body must contain <")),
+      `expected missing-role error, got: ${JSON.stringify(errors)}`
+    );
+  });
+
+  it("validateSkill never throws for a null/non-string body and still reports the missing-role error (D-01 never-throw)", () => {
+    for (const bad of [null, undefined, 123, {}, []]) {
+      const skill = { dirName: "my-skill", data: baseData, body: bad };
+      assert.doesNotThrow(
+        () => validateSkill(skill),
+        `must not throw for body: ${JSON.stringify(bad)}`
+      );
+      const errors = validateSkill(skill);
+      assert.ok(Array.isArray(errors), `result must be an array for body ${JSON.stringify(bad)}`);
+      assert.ok(
+        errors.some((e) => e.message.startsWith("body must contain <")),
+        `expected missing-role error for body ${JSON.stringify(bad)}, got: ${JSON.stringify(errors)}`
+      );
+    }
+  });
+});
+
 describe("hasClosedSection", () => {
   // Line-anchored open + close tags, each on their own line -> true
   it("returns true for a matched, line-anchored <process>...</process> pair", () => {
@@ -651,9 +701,9 @@ describe("hasNonEmptyClosedSection", () => {
 
 describe("validateSkill — template cascade (TMPL-01, TMPL-04, TMPL-05)", () => {
   const PROCEDURE_BODY_MISSING_SUCCESS =
-    "# My Skill\n\n**Role:** helper.\n\n<process>\ndo it\n</process>\n";
+    "# My Skill\n\n<role>\nhelper.\n</role>\n\n<process>\ndo it\n</process>\n";
   const PROCEDURE_BODY_VALID =
-    "# My Skill\n\n**Role:** helper.\n\n<process>\ndo it\n</process>\n\n<success_criteria>\ndone\n</success_criteria>\n";
+    "# My Skill\n\n<role>\nhelper.\n</role>\n\n<process>\ndo it\n</process>\n\n<success_criteria>\ndone\n</success_criteria>\n";
 
   // template: procedure missing <success_criteria> -> one named error quoting SECTIONS description
   it("template: procedure missing <success_criteria> reports one named error with the SECTIONS description (D-07)", () => {
@@ -847,6 +897,7 @@ describe("validateSkill — template cascade (TMPL-01, TMPL-04, TMPL-05)", () =>
     TEMPLATES: {
       "no-role-needed": { requiredSections: ["process"], waives: ["role"] },
     },
+    BASE_SPINE: ["role"],
   };
 
   it("waives: a fixture template waiving 'role' suppresses the Role error for a role-less body", () => {

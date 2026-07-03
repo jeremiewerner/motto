@@ -25,7 +25,9 @@ function makeSkillMd(name) {
     '---',
     `# ${name}`,
     '',
-    '**Role:** You are a helper that does things.',
+    '<role>',
+    'You are a helper that does things.',
+    '</role>',
     '',
     'Do things.',
     '',
@@ -49,7 +51,9 @@ function makeSkillWithRefs(name, refs) {
     '---',
     `# ${name}`,
     '',
-    '**Role:** You are a helper that does things.',
+    '<role>',
+    'You are a helper that does things.',
+    '</role>',
     '',
     'Do things.',
     '',
@@ -75,7 +79,9 @@ function makeSkillWithExtra(name, audience, extraLines = []) {
     '---',
     `# ${name}`,
     '',
-    '**Role:** You are a helper that does things.',
+    '<role>',
+    'You are a helper that does things.',
+    '</role>',
     '',
     'Do things.',
     '',
@@ -192,7 +198,7 @@ describe('lintProject — per-file error isolation', () => {
     await mkdir(join(root, 'skills', 'bad-skill'), { recursive: true });
     await writeFile(
       join(root, 'skills', 'bad-skill', 'SKILL.md'),
-      '---\nname: "unterminated string\n---\n# bad-skill\n\n**Role:** Helper.\n',
+      '---\nname: "unterminated string\n---\n# bad-skill\n\n<role>\nHelper.\n</role>\n',
     );
     // good-skill: fully valid SKILL.md
     await mkdir(join(root, 'skills', 'good-skill'), { recursive: true });
@@ -679,7 +685,7 @@ describe('lintProject — no double-reporting from loadSkillAudiences pre-pass (
     await mkdir(join(root, 'skills', 'malformed-skill'), { recursive: true });
     await writeFile(
       join(root, 'skills', 'malformed-skill', 'SKILL.md'),
-      '---\nname: "unterminated string\n---\n# malformed-skill\n\n**Role:** Helper.\n',
+      '---\nname: "unterminated string\n---\n# malformed-skill\n\n<role>\nHelper.\n</role>\n',
     );
 
     // Valid skill that depends on nothing

@@ -43,7 +43,9 @@ audience: public
 
 # Hello World
 
-**Role:** You are a minimal example skill. Replace this with your own skill's purpose.
+<role>
+You are a minimal example skill. Replace this with your own skill's purpose.
+</role>
 `;
 
 // A2: generic placeholder description, shared verbatim between motto.yaml and

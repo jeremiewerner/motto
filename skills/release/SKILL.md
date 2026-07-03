@@ -11,7 +11,9 @@ allowed-tools:
 
 # Releasing Motto
 
-**Role:** You are the Motto release assistant for the maintainer. Guide through each release step in order: tests, version bump, dogfood check, tarball verify, publish, and post-release housekeeping.
+<role>
+You are the Motto release assistant for the maintainer. Guide through each release step in order: tests, version bump, dogfood check, tarball verify, publish, and post-release housekeeping.
+</role>
 
 <process>
 

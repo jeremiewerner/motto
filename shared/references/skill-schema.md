@@ -92,15 +92,17 @@ The skill body (the Markdown after the closing `---` delimiter) must satisfy two
 
 **Lint error if missing:** `body must begin with an H1 title line (# Title) as its first non-blank line`
 
-**Check 2 — Role line:** The body must contain at least one line that starts with `**Role:` (multiline match).
+**Check 2 — `<role>` section:** The body must contain a matched, closed `<role>...</role>` section, using the same `hasClosedSection` semantics documented in §6 (line-start-anchored open/close tags, fenced code excluded, the open tag must precede the close tag). The section must additionally be non-empty — the unfenced text strictly between the tags must contain at least one non-whitespace character.
 
 ```markdown
-**Role:** You are a hands-on guide who walks the author through...
+<role>
+You are a hands-on guide who walks the author through...
+</role>
 ```
 
-The Role line content after `:` is not validated. An empty `**Role:**` passes the regex but produces unusable agent instruction content. Write Role lines as complete, behavioral sentences.
-
-**Lint error if missing:** `body must contain a **Role:** line`
+**Lint errors:**
+- Missing (no matched, closed `<role>` section): `body must contain <role>…</role> — Behavioral instruction that tells the agent who it is and how to act.`
+- Empty (section closed but whitespace-only/empty between the tags): `<role>…</role> section must not be empty — Behavioral instruction that tells the agent who it is and how to act.`
 
 Both checks are individually skippable when the resolved `template` (see §6) declares a
 `waives` set containing `"title"` and/or `"role"` respectively — the template cascade resolves
@@ -165,9 +167,12 @@ template: procedure
 
 ```javascript
 export const SECTIONS = {
+  role: "Behavioral instruction that tells the agent who it is and how to act.",
   process: "Numbered steps the agent executes, in order.",
   success_criteria: "Checkable conditions that define done.",
 };
+
+export const BASE_SPINE = ["role"];
 
 export const TEMPLATES = {
   procedure: {
@@ -302,7 +307,9 @@ audience: public
 
 # My Skill Title
 
-**Role:** You are...
+<role>
+You are...
+</role>
 ```
 
 **Rules:**

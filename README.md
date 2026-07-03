@@ -105,13 +105,15 @@ audience: public        # public → dist/public/; private → dist/private/
 
 # My Skill
 
-**Role:** You are a guide who walks the author through X step by step.
+<role>
+You are a guide who walks the author through X step by step.
+</role>
 ```
 
 - `name` — letter-start kebab-case; must equal the folder name exactly.
 - `description` — non-empty, under 1024 characters, no XML tags; tells the agent what to do and when.
 - `audience` — `public` or `private`; routes the skill to the correct plugin bucket.
-- Body spine: first non-blank line is an H1 title; body contains at least one `**Role:**` line.
+- Body spine: first non-blank line is an H1 title; body contains a non-empty `<role>...</role>` section.
 
 Run `motto lint` at any time to see all errors in one pass.
 

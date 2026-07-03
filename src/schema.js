@@ -17,7 +17,7 @@
 
 import { normalize, sep, isAbsolute } from "node:path";
 
-import { SECTIONS, TEMPLATES } from "./templates.js";
+import { SECTIONS, TEMPLATES, BASE_SPINE } from "./templates.js";
 
 /**
  * Canonical letter-start kebab-case regex for skill and plugin names.
@@ -242,7 +242,7 @@ const RESERVED = ["anthropic", "claude"];
  * @param {Set<string>} [sharedRefs]
  *   Set of available shared-reference basenames (without `.md`). Defaults to
  *   an empty Set; entries in data.shared_references are resolved against it.
- * @param {{ SECTIONS: object, TEMPLATES: object }} [templatesRegistry]
+ * @param {{ SECTIONS: object, TEMPLATES: object, BASE_SPINE: string[] }} [templatesRegistry]
  *   Injectable template registry, defaulting to the real `./templates.js`
  *   exports. Tests use this to exercise the `waives` merge logic via a
  *   fixture template without mutating `src/templates.js` (TMPL-02).
@@ -260,13 +260,13 @@ const RESERVED = ["anthropic", "claude"];
 export function validateSkill(
   skill,
   sharedRefs = new Set(),
-  templatesRegistry = { SECTIONS, TEMPLATES },
+  templatesRegistry = { SECTIONS, TEMPLATES, BASE_SPINE },
   skillNames = new Set(),
   audienceMap = new Map()
 ) {
   const { dirName, data, body } = skill;
   const errors = [];
-  const { SECTIONS: SEC, TEMPLATES: TPL } = templatesRegistry;
+  const { SECTIONS: SEC, TEMPLATES: TPL, BASE_SPINE: SPINE } = templatesRegistry;
 
   /** Push one error attributed to this skill's dirName. */
   const err = (message) => errors.push({ skill: dirName, message });
@@ -337,7 +337,11 @@ export function validateSkill(
     err("audience must be public|private");
   }
 
-  const bodyStr = body || "";
+  // Coerce via a typeof guard (not `body || ""`), which only replaces FALSY
+  // values — a truthy non-string (e.g. `123`, `{}`, `[]`) would otherwise
+  // reach `.split()` below unguarded and throw. Same fix shape as
+  // hasNonEmptyClosedSection's own body coercion (Plan 18-01 deviation).
+  const bodyStr = typeof body === "string" ? body : "";
   const bodyLines = bodyStr.split("\n");
 
   // ── TEMPLATE (TMPL-01, TMPL-02, TMPL-04, TMPL-05) ──────────────────────────
@@ -386,12 +390,22 @@ export function validateSkill(
     }
   }
 
-  // Role check: body must contain at least one line starting with "**Role:".
-  // Anchored multiline regex; `^` matches start of any line with the `m` flag
-  // (T-02-01). Skipped when a template waives "role".
-  if (!waivedSections.has("role")) {
-    if (!/^\*\*Role:/m.test(bodyStr)) {
-      err("body must contain a **Role:** line");
+  // Role check: driven by the BASE_SPINE registry (D-03), not a hardcoded
+  // regex. For each base-spine tag (today: only "role"), skipped when the
+  // resolved template waives it; otherwise the tag's <tag>...</tag> section
+  // must be present and closed (else the missing-section error) and, if
+  // present, must be non-empty (else the distinct empty-section error,
+  // D-05). Exactly one of the two errors fires per tag — never both (D-08).
+  // The legacy **Role:** bold-line convention is no longer recognized at all
+  // (D-01 hard break) — any leftover line is inert body text (D-02).
+  for (const s of SPINE) {
+    if (waivedSections.has(s)) continue;
+    if (!hasClosedSection(bodyStr, s)) {
+      err(`body must contain <${s}>…</${s}> — ${SEC[s] ?? ""}`);
+      continue;
+    }
+    if (!hasNonEmptyClosedSection(bodyStr, s)) {
+      err(`<${s}>…</${s}> section must not be empty — ${SEC[s] ?? ""}`);
     }
   }
 

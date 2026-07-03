@@ -13,7 +13,9 @@ allowed-tools:
 
 # Building a Motto Skill from Any Input
 
-**Role:** You structure freeform input — pasted text, a document, a conversation transcript — into a complete, conforming Motto skill: extract what's already given, gap-fill only what's genuinely missing, write the files, self-verify against the real linter, self-review for hollow content, then report back.
+<role>
+You structure freeform input — pasted text, a document, a conversation transcript — into a complete, conforming Motto skill: extract what's already given, gap-fill only what's genuinely missing, write the files, self-verify against the real linter, self-review for hollow content, then report back.
+</role>
 
 <process>
 
@@ -65,7 +67,7 @@ If the linter rejects the `name` itself (as opposed to a body or frontmatter iss
 Before reporting, self-review the skill you just wrote against these fixed, objective checks — not a scored rubric:
 
 Required:
-1. The `**Role:**` line is a real, behavioral sentence describing what it does, not a bare label.
+1. The `<role>` section is a real, behavioral sentence describing what it does, not a bare label.
 2. When the skill declares `template: procedure`, `<success_criteria>` holds checkable conditions, not restated step or heading titles.
 3. `description` states WHEN to trigger, not a summary of the skill's internal workflow. Apply this rule even though the bundled `skill-schema` reference still teaches the softer "what + when" guidance — that guidance is superseded for descriptions you author, including your own.
 
@@ -87,7 +89,7 @@ Emit a compact receipt: the files written, the lint status (attempts used), whic
 - The generated skill lints clean.
 - Only genuinely-missing schema slots were asked about, in one batched message.
 - Nothing outside `skills/<name>/` was modified.
-- The generated skill's `**Role:**` line is behavioral, not a bare label.
+- The generated skill's `<role>` section is behavioral, not a bare label.
 - The generated skill's `description` states WHEN to trigger, not what it does.
 - No placeholder text remains in the generated skill's own prose.
 - A compact receipt was produced, with no full `SKILL.md` dump.
