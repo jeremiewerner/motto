@@ -79,7 +79,12 @@ Full phase details: [milestones/v0.0.5-ROADMAP.md](milestones/v0.0.5-ROADMAP.md)
   4. CI surfaces a non-blocking warning when the npm registry's latest version lags `package.json` — the v0.0.4/v0.0.5 silent-drift failure mode becomes visible.
   5. The husky `prepare` script no-ops outside a git checkout (tarball installs, `npm ci`) without failing CI.
 
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 20-01-PLAN.md — Husky prepare guard (`scripts/prepare.mjs`) + explicit `.git`-less proof script (CIW-05, closes the D-15 gap)
+- [ ] 20-02-PLAN.md — Pack-install E2E script + never-red npm-drift check script (CIW-03, CIW-04)
+- [ ] 20-03-PLAN.md — `.github/workflows/ci.yml` with 4 parallel jobs + live green-run verification (CIW-01, CIW-02)
 
 ### Phase 21: Publish Automation & Release Rewrite
 
