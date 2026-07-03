@@ -36,7 +36,7 @@ Maintainer-facing milestone: no end-user feature work. "User" below = maintainer
 
 ### Build-Skill Verification (BSKV)
 
-- [ ] **BSKV-01**: One real skill is authored end-to-end through `build-skill` from freeform input — closing the v0.0.5 human-verify debt: live gap-fill fidelity (BSKL-01), quality gate on real hollow output (BSKL-05), name-recovery path at runtime (WR-01); findings recorded, divergences fixed or ticketed
+- [x] **BSKV-01**: One real skill is authored end-to-end through `build-skill` from freeform input — closing the v0.0.5 human-verify debt: live gap-fill fidelity (BSKL-01), quality gate on real hollow output (BSKL-05), name-recovery path at runtime (WR-01); findings recorded, divergences fixed or ticketed
 
 ## Future Requirements (deferred)
 

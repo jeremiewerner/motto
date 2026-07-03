@@ -42,7 +42,7 @@ Full phase details: [milestones/v0.0.5-ROADMAP.md](milestones/v0.0.5-ROADMAP.md)
 
 **Pre-milestone operator action (not a phase):** catch-up publish of `0.0.5` to npm via the existing `release` skill — npm is stuck at 0.0.3 (v0.0.4/v0.0.5 never shipped). This happens manually before Phase 21's CI publish job lands.
 
-- [ ] **Phase 19: CLI Ergonomics & Build-Skill Verification** - Machine-readable, pipe-safe CLI output that CI can assert against, plus one real skill proven through build-skill
+- [x] **Phase 19: CLI Ergonomics & Build-Skill Verification** - Machine-readable, pipe-safe CLI output that CI can assert against, plus one real skill proven through build-skill (completed 2026-07-03)
 - [ ] **Phase 20: CI Workflow** - Every push/PR gated by a Node 20/22/24 matrix, dogfood, and pack-install E2E — proven while the repo is still private
 - [ ] **Phase 21: Publish Automation & Release Rewrite** - Tags publish themselves to npm idempotently; local release flow shrinks to bump-tag-push
 - [ ] **Phase 22: Public Flip & Token Hardening** - The repo crosses the one-way door to public, verified clean and stranger-usable, ending with zero long-lived publish tokens
@@ -61,10 +61,10 @@ Full phase details: [milestones/v0.0.5-ROADMAP.md](milestones/v0.0.5-ROADMAP.md)
   3. Diagnostics and errors write to stderr while results write to stdout, so `--format json` output is pipe-safe (Pitfall 7 fixed).
   4. One real skill is authored end-to-end through `build-skill` from freeform input — gap-fill fidelity (BSKL-01), quality gate on hollow output (BSKL-05), and runtime name-recovery (WR-01) are observed; findings recorded and divergences fixed or ticketed.
 
-**Plans**: 1/2 plans executed
+**Plans**: 2/2 plans complete
 
 - [x] 19-01-PLAN.md — CLI ergonomics: `--quiet` + `--format text|json` + stdout/stderr split in bin/motto.js (CLIX-01/02/03)
-- [ ] 19-02-PLAN.md — build-skill live verification on one real skill; 19-BSKV-FINDINGS.md (BSKV-01)
+- [x] 19-02-PLAN.md — build-skill live verification on one real skill; 19-BSKV-FINDINGS.md (BSKV-01)
 
 ### Phase 20: CI Workflow
 
@@ -121,7 +121,7 @@ Phases execute in numeric order: 19 → 20 → 21 → 22
 | 16. build-skill & author-skill Retirement | v0.0.5 | 2/2 | Complete | 2026-07-03 |
 | 17. Docs Audit | v0.0.5 | 2/2 | Complete | 2026-07-03 |
 | 18. Role Section Tag Migration | v0.0.5 | 2/2 | Complete | 2026-07-03 |
-| 19. CLI Ergonomics & Build-Skill Verification | v0.0.6 | 1/2 | In Progress|  |
+| 19. CLI Ergonomics & Build-Skill Verification | v0.0.6 | 2/2 | Complete   | 2026-07-03 |
 | 20. CI Workflow | v0.0.6 | 0/TBD | Not started | - |
 | 21. Publish Automation & Release Rewrite | v0.0.6 | 0/TBD | Not started | - |
 | 22. Public Flip & Token Hardening | v0.0.6 | 0/TBD | Not started | - |

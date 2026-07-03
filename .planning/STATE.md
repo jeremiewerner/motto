@@ -4,17 +4,17 @@ milestone: v0.0.6
 milestone_name: Prove & Publish
 current_phase: 19
 current_phase_name: cli-ergonomics-build-skill-verification
-status: executing
+status: verifying
 stopped_at: Completed 19-01-PLAN.md
-last_updated: "2026-07-03T17:56:00.187Z"
+last_updated: "2026-07-03T20:22:50.426Z"
 last_activity: 2026-07-03
 last_activity_desc: Phase 19 execution started
 progress:
   total_phases: 4
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 2
-  completed_plans: 1
-  percent: 0
+  completed_plans: 2
+  percent: 25
 ---
 
 # Project State
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-07-02 after v0.0.4)
 
 Phase: 19 (cli-ergonomics-build-skill-verification) — EXECUTING
 Plan: 2 of 2
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-07-03 — Phase 19 execution started
 
 **Milestone shape (v0.0.6, coarse):**
@@ -82,6 +82,7 @@ Ordering (research-locked): CLI flags first (pack-E2E consumes them) → CI prov
 | Phase 18 P01 | 7min | 2 tasks | 3 files |
 | Phase 18 P02 | 20min | 3 tasks | 10 files |
 | Phase 19 P01 | 30min | 2 tasks | 2 files |
+| Phase 19 P02 | 45min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -121,6 +122,9 @@ Recent decisions affecting current work:
 - [Phase 19]: [Phase 19-01] init rejects --format/--quiet as unknown options via a post-parse scoped check in the init branch (parseArgs options are global, not per-subcommand)
 - [Phase 19]: [Phase 19-01] renderResult(result, {format, quiet, successLine}) extracted as a shared lint/build result-rendering helper (structurally identical branches per RESEARCH.md)
 - [Phase 19]: [Phase 19-01] TDD RED/GREEN commits sequenced with GREEN code already in the working tree before either commit, since husky's pre-commit hook runs the full suite against disk state (not git index) and --no-verify is prohibited
+- [Phase 19-02]: BSKV-01 closed by a real operator-run /build-skill session; all three targets (BSKL-01, BSKL-05, WR-01) verdict-ed conforms; WR-01 via the Step 5.1 pre-write path (Step 6 not exercised, acceptable per RESEARCH OQ1)
+- [Phase 19-02]: build-skill Step 6 prefers repo-local node bin/motto.js lint when the checkout IS the Motto source repo; outdated-schema lint errors are a stale-binary signal to fall through, not real errors
+- [Phase 19-02]: changelog skill ships as audience: private; dogfood tests updated count/skillCount 2->3 in the same commit as the skill (husky pre-commit runs suite against disk state)
 
 ### Pending Todos
 
@@ -156,7 +160,7 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-03T17:56:00.183Z
+Last session: 2026-07-03T20:22:17.993Z
 Stopped at: Completed 19-01-PLAN.md
 Resume file: None
 
