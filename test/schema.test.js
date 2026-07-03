@@ -1187,6 +1187,24 @@ describe("validateSkill — allowed-tools (VAL-05)", () => {
     );
   });
 
+  // Phase-15 review WR-03: the Empty-field policy must apply identically to
+  // both shapes — a whitespace-only SCALAR already errored, but a
+  // whitespace-only ARRAY ENTRY passed because the array branch checked
+  // `entry === ""` without trim().
+  it('WR-03: a whitespace-only array entry ["   "] reports an indexed error (same trim() policy as the scalar branch)', () => {
+    const skill = {
+      dirName: "my-skill",
+      data: { ...baseData, "allowed-tools": ["   "] },
+      body: VALID_BODY,
+    };
+    const errors = validateSkill(skill);
+    assert.equal(errors.length, 1, `expected 1 error, got: ${JSON.stringify(errors)}`);
+    assert.ok(
+      errors[0].message.includes("allowed-tools[0]"),
+      `expected an indexed error for index 0, got: "${errors[0].message}"`
+    );
+  });
+
   it("a non-string/non-array value (number, object, null) reports a 'must be a string or array' error and never throws", () => {
     for (const bad of [5, {}, null]) {
       const skill = {

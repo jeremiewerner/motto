@@ -443,7 +443,10 @@ export function validateSkill(
       // "Bash(git add *)" is one valid permission rule by construction.
     } else if (Array.isArray(val)) {
       val.forEach((entry, i) => {
-        if (typeof entry !== "string" || entry === "") {
+        // trim() mirrors the scalar branch above (phase-15 review WR-03):
+        // a whitespace-only entry is as meaningless as a whitespace-only
+        // scalar — the Empty-field policy applies to both shapes.
+        if (typeof entry !== "string" || entry.trim() === "") {
           err(`allowed-tools[${i}] must be a non-empty string (got ${typeof entry})`);
         }
       });
