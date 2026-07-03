@@ -36,6 +36,7 @@ However, the review found one critical defect and several warnings. The critical
 ### CR-01: `npx motto` falls back to installing the unrelated public `motto` package in CI, masking bin-linking regressions and executing untrusted code
 
 **File:** `scripts/pack-install-e2e.mjs:97` (also `:102`, `:114`)
+**Status:** fixed (e0427d0 — Option B: direct `node_modules/.bin/motto` invocation)
 **Issue:** The E2E's core purpose is to prove the real consumer path — bin linking via the `files` allowlist and tarball install. But `run('npx', ['motto', ...])` relies on npm resolving `motto` from `consumerDir/node_modules`. Per npm's documentation for `npm exec`/`npx`: *"If any requested packages are not present in the local project dependencies, then a prompt is printed... When standard input is not a TTY or a CI environment is detected, `--yes` is assumed"* — i.e., in GitHub Actions, npx auto-installs from the public registry without prompting. An unrelated package named `motto` (v1.0.2, "Show your motto in an amazing way!") exists on npmjs.org (verified against `registry.npmjs.org/motto` during this review). Consequences if bin linking ever breaks (missing `bin` entry, `files` allowlist regression, install failure):
 1. CI downloads and executes a third-party, attacker-updatable package inside the runner instead of failing on the missing bin — a supply-chain execution path.
 2. The failure mode becomes a confusing error from the wrong package (or, worst case, a false green), masking the exact regression this E2E was built to detect.
@@ -57,6 +58,7 @@ Apply the same change to the `lint` (line 102) and `build` (line 114) invocation
 ### WR-01: npm-drift-check's never-red guarantee has an uncovered throw path; the "structurally incapable of exiting non-zero" comment is false
 
 **File:** `scripts/npm-drift-check.mjs:22` (also `:48-50`)
+**Status:** fixed (38f0d6e)
 **Issue:** The stated invariant (D-10) is that this script can never fail CI red. But line 22 — `JSON.parse(readFileSync('package.json', 'utf8'))` — sits *before* the `try` block that begins at line 24, and the top-level `await main()` at line 48 has no catch. If `package.json` is unreadable, malformed (bad merge), or absent (script run from a cwd other than repo root — the path is relative), `main()` rejects, the top-level await propagates, and Node exits non-zero → the drift job goes red. The closing comment ("the script is structurally incapable of exiting non-zero") and the header comment ("The entire network+parse body is wrapped in one try/catch") are both contradicted by this path: no branch *sets* a non-zero code, but an uncaught throw *exits* with one.
 **Fix:**
 ```js
@@ -80,6 +82,7 @@ The final `.catch` makes the guarantee actually structural instead of aspiration
 ### WR-02: `prepare.mjs` uses bare `npx husky`, which auto-installs husky from the registry in CI and masks the broken-install failure D-13 claims to surface
 
 **File:** `scripts/prepare.mjs:26`
+**Status:** fixed (237ec28)
 **Issue:** The header comment states the design intent: *"a genuinely broken husky install there still fails loudly (no `husky || true` always-succeed masking, D-13)."* But `npx husky` defeats that intent through a different door: if husky is missing from `node_modules` (broken/partial install, `npm ci --omit=dev` in a git checkout), npx in a CI/non-TTY environment assumes `--yes` and silently fetches the latest `husky` from the public registry, then succeeds. The broken install is masked — the exact failure mode D-13 was written to prevent — and the fetched version is unpinned (ignores the `^9.1.7` devDependency). Same npx-fallback class as CR-01, lower blast radius (the package name `husky` at least resolves to the intended project).
 **Fix:**
 ```js
@@ -89,6 +92,7 @@ execSync('npx --no husky', { stdio: 'inherit' }); // fail loudly if husky is not
 ### WR-03: Shell interpolation of tmp-dir path in `execSync` — unquoted `${dir}` breaks on spaces and is injectable via TMPDIR
 
 **File:** `scripts/prepare-guard-check.mjs:29`
+**Status:** fixed (db62f3d — argv-form spawnSync, per-stage status checks)
 **Issue:** `execSync(\`git archive HEAD | tar -x -C ${dir}\`)` interpolates the mkdtemp path into a shell string with no quoting. `dir` derives from `os.tmpdir()`, i.e. the `TMPDIR` environment variable: a path containing spaces (common on macOS self-hosted runners or local dev runs) splits the `-C` argument, and shell metacharacters in `TMPDIR` would be executed (environment-mediated command injection — low likelihood in hosted CI, but this is exactly the shell-injection shape the phase flagged for attention). Additionally, the pipeline runs under `/bin/sh` (dash on ubuntu) with no `pipefail`, so the pipeline's exit status is `tar`'s alone; a `git archive` failure that still produces partial output is only detected indirectly and misattributed.
 **Fix:** Avoid the shell string entirely:
 ```js
@@ -102,6 +106,7 @@ if (untar.status !== 0) { /* fail with untar.stderr */ }
 ### WR-04: ci.yml comment falsely claims `npm ci` fires `prepublishOnly` — npm docs say it runs ONLY on `npm publish`
 
 **File:** `.github/workflows/ci.yml:29-33`
+**Status:** fixed (3037a3a — comment corrected, job behavior unchanged)
 **Issue:** The comment states: *"npm ci fires both the `prepare` guard ... and `prepublishOnly` (node bin/motto.js build) on every leg of this matrix."* This is factually wrong. Per npm's lifecycle documentation (verified against `npm help scripts`): `prepublishOnly` *"Runs BEFORE the package is prepared and packed, ONLY on npm publish."* `npm ci` runs `preinstall`/`install`/`postinstall`/`prepare` — never `prepublishOnly`. The comment exists specifically to guide future maintainers on lifecycle idempotency (Pitfall 1); it creates the false belief that `node bin/motto.js build` is exercised on every matrix leg (it is not — only the `dogfood` job and the E2E's internal `npm pack` exercise the build), so a future `prepublishOnly` regression that only manifests at publish time would be wrongly assumed to be covered by the test matrix.
 **Fix:** Correct the comment:
 ```yaml
@@ -115,6 +120,7 @@ if (untar.status !== 0) { /* fail with untar.stderr */ }
 ### WR-05: `spawnSync` failure diagnostics omit `error`/`signal` — an ENOENT or signal kill prints "stdout: null stderr: null", defeating the stated debuggability bar
 
 **File:** `scripts/pack-install-e2e.mjs:36-44` (also `scripts/prepare-guard-check.mjs:38-45`)
+**Status:** fixed (d3effc2)
 **Issue:** Both scripts correctly treat `status: null` as failure (`r.status !== 0` catches spawn failure and signal termination — good). But the diagnostic message only includes `stdout`/`stderr`, which are `null` in the ENOENT case and empty/truncated in the signal case. The actual root cause lives in `r.error` (spawn failure, e.g. `npm` not on PATH) and `r.signal` (OOM-killer SIGKILL, timeout SIGTERM). Both files explicitly claim failures must be "debuggable from CI logs alone" (Pitfall 3); `npm pack --json\nstdout: null\nstderr: null` is not.
 **Fix:** In `run()`:
 ```js
