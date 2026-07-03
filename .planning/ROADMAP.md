@@ -178,7 +178,7 @@ Phases execute in numeric order: 14 → 15 → 16 → 17 → 18
 | 15. Field Validation & Integrity Guards | v0.0.5 | 2/2 | Complete    | 2026-07-03 |
 | 16. build-skill & author-skill Retirement | v0.0.5 | 2/2 | Complete    | 2026-07-03 |
 | 17. Docs Audit | v0.0.5 | 2/2 | Complete    | 2026-07-03 |
-| 18. Role Section Tag Migration | v0.0.5 | 2/2 | Complete   | 2026-07-03 |
+| 18. Role Section Tag Migration | v0.0.5 | 2/2 | Complete    | 2026-07-03 |
 
 ## Backlog
 
