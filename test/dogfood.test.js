@@ -89,14 +89,14 @@ describe('dogfood build (DOG-03)', () => {
   });
 
   // ── Public bucket skill files ─────────────────────────────────────────────────
-  it('dist/public/author-skill/SKILL.md exists', async () => {
-    await stat(join(tempDir, 'dist', 'public', 'author-skill', 'SKILL.md'));
+  it('dist/public/build-skill/SKILL.md exists', async () => {
+    await stat(join(tempDir, 'dist', 'public', 'build-skill', 'SKILL.md'));
     // stat throws ENOENT if missing; test fails with a clear error code
   });
 
   // ── Shared reference bundling ─────────────────────────────────────────────────
-  it('author-skill has references/skill-schema.md bundled', async () => {
-    await stat(join(tempDir, 'dist', 'public', 'author-skill', 'references', 'skill-schema.md'));
+  it('build-skill has references/skill-schema.md bundled', async () => {
+    await stat(join(tempDir, 'dist', 'public', 'build-skill', 'references', 'skill-schema.md'));
   });
 
   // ── Private bucket ────────────────────────────────────────────────────────────
