@@ -140,7 +140,7 @@ CR-01, WR-01, WR-02, WR-03, and IN-01 fixed by gsd-code-fixer before phase verif
 | WR-02 | fixed — `hasClosedSection` uses the typeof guard (`body || ""` → `typeof body === "string" ? body : ""`); never-throw test extended to `123`/`{}`/`[]`/`true`; the stale `hasNonEmptyClosedSection` docblock paragraph advertising the throw path rewritten | `515f676` |
 | WR-03 | fixed — doc-sync reads `src/templates.js` and guards `'Behavioral instruction that tells the agent who it is and how to act.'` and `'BASE_SPINE = ["role"]'` (code→doc direction preserved) | `0c39187` |
 | IN-01 | fixed — README reworded: "a body spine — an H1 title line plus a non-empty `<role>…</role>` section" | `2027a15` |
-| IN-02 | deferred — fence-loop duplication is a documented D-06 decision; extracting a shared `collectUnfencedLines` helper is a structural refactor out of fix scope. Do it when next touching src/schema.js to keep the D-08 missing/empty verdicts computed from one unfenced-line set. | — |
+| IN-02 | fixed — shared `collectUnfencedLines` helper now backs both `hasClosedSection` and `hasNonEmptyClosedSection`, so the D-08 missing/empty verdicts are computed from one unfenced-line set; divergence risk structurally eliminated | `fdede19` |
 
 _Reviewed: 2026-07-03T15:00:46Z_
 _Reviewer: Claude (gsd-code-reviewer)_
