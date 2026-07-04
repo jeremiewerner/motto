@@ -139,7 +139,7 @@ After Step 6 confirms the release is live:
 - The local flow ends at `git push --follow-tags` — no local `npm publish`, no local registry-auth check.
 - CI performs the publish: the tag-triggered Actions run passes `test`/`dogfood`/`pack-install-e2e` (including the D-05 tarball-leak assertion), then the `publish` job runs `npm publish` and `gh release create --generate-notes`, each independently guarded against re-running on an already-published version/release.
 - The maintainer verifies the Actions run is green, the registry has the new version (`npm view`), and the GitHub Release exists (`gh release view`) before doing any Post-Release Housekeeping.
-- If CI publish fails, recovery is always `gh run rerun <id> --failed` (or, as an emergency-only escape hatch, a manual `npm publish` from the tagged commit) — never deleting or recreating the git tag.
+- If CI publish fails, recovery is `gh run rerun <id> --failed` for transient/config failures (or, as an emergency-only escape hatch, a manual `npm publish` from the tagged commit), or a new version bump + new matching tag for tag/version-mismatch guard failures — never deleting or recreating the git tag.
 - `PROJECT.md` and `MILESTONES.md` are updated to reflect the new shipped state.
 
 </success_criteria>
