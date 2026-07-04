@@ -4,9 +4,9 @@ milestone: v0.0.6
 milestone_name: Prove & Publish
 current_phase: 21
 current_phase_name: Publish Automation & Release Rewrite
-status: verifying
+status: executing
 stopped_at: Completed 20-02-PLAN.md
-last_updated: "2026-07-03T21:59:28.941Z"
+last_updated: "2026-07-04T17:40:10.899Z"
 last_activity: 2026-07-03
 last_activity_desc: Phase 20 complete, transitioned to Phase 21
 progress:
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-07-02 after v0.0.4)
 
 Phase: 21 — Publish Automation & Release Rewrite
 Plan: Not started
-Status: Phase complete — ready for verification
+Status: Ready to execute
 Last activity: 2026-07-03 — Phase 20 complete, transitioned to Phase 21
 
 **Milestone shape (v0.0.6, coarse):**
