@@ -44,7 +44,7 @@ Full phase details: [milestones/v0.0.5-ROADMAP.md](milestones/v0.0.5-ROADMAP.md)
 
 - [x] **Phase 19: CLI Ergonomics & Build-Skill Verification** - Machine-readable, pipe-safe CLI output that CI can assert against, plus one real skill proven through build-skill (completed 2026-07-03)
 - [x] **Phase 20: CI Workflow** - Every push/PR gated by a Node 20/22/24 matrix, dogfood, and pack-install E2E — proven while the repo is still private (completed 2026-07-03)
-- [ ] **Phase 21: Publish Automation & Release Rewrite** - Tags publish themselves to npm idempotently; local release flow shrinks to bump-tag-push (3/3 plans executed; verification found 1 gap — see 21-VERIFICATION.md)
+- [x] **Phase 21: Publish Automation & Release Rewrite** - Tags publish themselves to npm idempotently; local release flow shrinks to bump-tag-push (3/3 plans executed; verification found 1 gap — see 21-VERIFICATION.md) (completed 2026-07-04)
 - [ ] **Phase 22: Public Flip & Token Hardening** - The repo crosses the one-way door to public, verified clean and stranger-usable, ending with zero long-lived publish tokens
 
 ## Phase Details
@@ -103,7 +103,7 @@ Plans:
   3. The D-05 tarball-leak assertion runs from a committed script in the CI pack-E2E job — no longer an inline release-skill heredoc.
   4. Each published version gets a GitHub Release with auto-generated notes (`gh release create --generate-notes`) from the publish job.
 
-**Plans**: 3/4 plans complete (21-04 gap closure pending)
+**Plans**: 4/4 plans complete
 
 **Wave 1**
 
@@ -116,7 +116,7 @@ Plans:
 
 **Wave 3** *(gap closure — verification found the publish job never cross-checks tag name vs package.json version)*
 
-- [ ] 21-04-PLAN.md — Gap closure (CR-01 / Truth #6): add a `version_guard` step to ci.yml that hard-fails before npm_guard when the pushed tag ≠ `v<package.json version>`, an ordering-aware structural test, and a runbook accuracy update — closes the phantom-green-release drift path (PUB-01)
+- [x] 21-04-PLAN.md — Gap closure (CR-01 / Truth #6): add a `version_guard` step to ci.yml that hard-fails before npm_guard when the pushed tag ≠ `v<package.json version>`, an ordering-aware structural test, and a runbook accuracy update — closes the phantom-green-release drift path (PUB-01)
 
 ### Phase 22: Public Flip & Token Hardening
 
@@ -146,7 +146,7 @@ Phases execute in numeric order: 19 → 20 → 21 → 22
 | 18. Role Section Tag Migration | v0.0.5 | 2/2 | Complete | 2026-07-03 |
 | 19. CLI Ergonomics & Build-Skill Verification | v0.0.6 | 2/2 | Complete    | 2026-07-03 |
 | 20. CI Workflow | v0.0.6 | 3/3 | Complete    | 2026-07-03 |
-| 21. Publish Automation & Release Rewrite | v0.0.6 | 3/3 | Gap closure | - |
+| 21. Publish Automation & Release Rewrite | v0.0.6 | 4/4 | Complete   | 2026-07-04 |
 | 22. Public Flip & Token Hardening | v0.0.6 | 0/TBD | Not started | - |
 
 ## Backlog

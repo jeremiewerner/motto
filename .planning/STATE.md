@@ -6,15 +6,15 @@ current_phase: 21
 current_phase_name: publish-automation-release-rewrite
 status: executing
 stopped_at: Completed 21-01-PLAN.md
-last_updated: "2026-07-04T18:11:53.549Z"
+last_updated: "2026-07-04T20:05:05.434Z"
 last_activity: 2026-07-04
-last_activity_desc: Phase 21 execution started
+last_activity_desc: Completed 21-04-PLAN.md (CR-01 tag/version guard gap closure)
 progress:
   total_phases: 4
-  completed_phases: 2
-  total_plans: 8
-  completed_plans: 7
-  percent: 50
+  completed_phases: 3
+  total_plans: 9
+  completed_plans: 9
+  percent: 75
 ---
 
 # Project State
@@ -29,9 +29,9 @@ See: .planning/PROJECT.md (updated 2026-07-02 after v0.0.4)
 ## Current Position
 
 Phase: 21 (publish-automation-release-rewrite) — EXECUTING
-Plan: 3 of 3
-Status: Ready to execute
-Last activity: 2026-07-04 — Phase 21 execution started
+Plan: 4 of 4
+Status: All plans complete (CR-01 gap closure done)
+Last activity: 2026-07-04 — Completed 21-04-PLAN.md (CR-01 tag/version guard gap closure)
 
 **Milestone shape (v0.0.6, coarse):**
 
@@ -90,6 +90,7 @@ Ordering (research-locked): CLI flags first (pack-E2E consumes them) → CI prov
 | Phase 20-ci-workflow P03 | 5min | 2 tasks | 1 files |
 | Phase 21 P01 | 6min | 2 tasks | 3 files |
 | Phase 21 P02 | 1min | 1 tasks | 1 files |
+| Phase 21 P04 | 2min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -142,6 +143,8 @@ Recent decisions affecting current work:
 - [Phase 21-01]: publish job pinned to node-version: 24 (not the 20 used by every other job) ahead of the PUB-05 OIDC migration
 - [Phase 21-01]: npm-drift gated to github.ref == 'refs/heads/main' -- advisory main-branch backstop only, does not gate publish
 - [Phase 21-02]: release skill's terminal local command is git push --follow-tags; local npm publish/whoami fully removed and replaced with CI Handoff/Verify CI Published/If CI Publish Fails sections
+- [Phase 21-04]: version_guard reads $GITHUB_REF_NAME as the default runner env var, not ${{ github.ref_name }} interpolation, avoiding the WR-01 injection pattern for the new step
+- [Phase 21-04]: ci-workflow.test.js asserts array-index ordering (findIndex + <), not substring grep, so a version_guard reorder that reopens the phantom-release drift path fails loudly
 
 ### Pending Todos
 
@@ -177,7 +180,7 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-04T18:11:37.277Z
+Last session: 2026-07-04T20:04:21.151Z
 Stopped at: Completed 21-01-PLAN.md
 Resume file: None
 

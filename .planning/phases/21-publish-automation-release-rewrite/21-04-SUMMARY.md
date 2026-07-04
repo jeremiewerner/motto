@@ -129,3 +129,11 @@ The live end-to-end verification deferred in 21-VERIFICATION.md ("first real rel
 ---
 *Phase: 21-publish-automation-release-rewrite*
 *Completed: 2026-07-04*
+
+## Self-Check: PASSED
+
+- FOUND: test/ci-workflow.test.js
+- FOUND: .planning/phases/21-publish-automation-release-rewrite/21-04-SUMMARY.md
+- FOUND commit: d3227f1
+- FOUND commit: 6a39b45
+- FOUND commit: 934c05d (this summary's own commit, verified post-hoc)
