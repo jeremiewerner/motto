@@ -22,14 +22,41 @@ describe('ci.yml publish job structural contract (CR-01 / Truth #6)', () => {
     );
   });
 
-  it('version_guard runs before npm_guard (ordering)', () => {
-    const versionGuardIndex = steps.findIndex((s) => s.id === 'version_guard');
-    const npmGuardIndex = steps.findIndex((s) => s.id === 'npm_guard');
+  it('version_guard runs before every guard and side-effect step (ordering)', () => {
+    // CR-01's failure mode was "publish nothing to npm while still creating a
+    // GitHub Release" — so version_guard must precede BOTH guards, not just
+    // npm_guard. The `npm publish` / "Create GitHub Release" steps are also
+    // pinned directly: they are coupled to their guards via
+    // `if: steps.<guard>.outputs.* == 'false'` (an unset output never equals
+    // 'false'), but pinning them here costs nothing and guards against a
+    // future decoupling edit.
+    const idxById = (id) => steps.findIndex((s) => s.id === id);
+    const idxByName = (name) => steps.findIndex((s) => s.name === name);
+    const versionGuardIndex = idxById('version_guard');
+    const npmGuardIndex = idxById('npm_guard');
+    const ghGuardIndex = idxById('gh_guard');
+    const npmPublishIndex = idxByName('npm publish');
+    const releaseCreateIndex = idxByName('Create GitHub Release');
     assert.notEqual(versionGuardIndex, -1, 'version_guard step not found');
     assert.notEqual(npmGuardIndex, -1, 'npm_guard step not found');
+    assert.notEqual(ghGuardIndex, -1, 'gh_guard step not found');
+    assert.notEqual(npmPublishIndex, -1, 'npm publish step not found');
+    assert.notEqual(releaseCreateIndex, -1, 'Create GitHub Release step not found');
     assert.ok(
       versionGuardIndex < npmGuardIndex,
       `version_guard (index ${versionGuardIndex}) must run before npm_guard (index ${npmGuardIndex})`,
+    );
+    assert.ok(
+      versionGuardIndex < ghGuardIndex,
+      `version_guard (index ${versionGuardIndex}) must run before gh_guard (index ${ghGuardIndex})`,
+    );
+    assert.ok(
+      versionGuardIndex < npmPublishIndex,
+      `version_guard (index ${versionGuardIndex}) must run before npm publish (index ${npmPublishIndex})`,
+    );
+    assert.ok(
+      versionGuardIndex < releaseCreateIndex,
+      `version_guard (index ${versionGuardIndex}) must run before Create GitHub Release (index ${releaseCreateIndex})`,
     );
   });
 
