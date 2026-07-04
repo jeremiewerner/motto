@@ -3,6 +3,7 @@ name: CI
 on:
   push:
     branches: [main]
+    tags: ['v*']
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -70,6 +71,9 @@ jobs:
         run: node scripts/prepare-guard-check.mjs
 
   npm-drift:
+    # Advisory main-branch backstop only — skip on tag-triggered and PR runs
+    # (the publish job's own npm_guard is the real idempotency check for tags).
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -77,3 +81,54 @@ jobs:
         with:
           node-version: 20
       - run: node scripts/npm-drift-check.mjs
+
+  publish:
+    # NOT npm-drift — advisory, never gates. Gated on the exact same tagged
+    # commit's own sibling jobs re-validating (needs: only resolves within
+    # a single workflow run; the tag-triggered run pays for its own full
+    # test/dogfood/pack-install-e2e pass, per PUB-01 research).
+    needs: [test, dogfood, pack-install-e2e]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # scoped to this job only — workflow default stays contents: read
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          # Pinned to 24 (not the 20 used by every other job): ships npm
+          # >=11.5.1, satisfying the trusted-publishing floor ahead of the
+          # PUB-05 OIDC migration, so that later swap is a same-Node diff.
+          node-version: 24
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'npm'
+      - run: npm ci
+      - name: Guard — skip npm publish if version already exists
+        id: npm_guard
+        run: |
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          if npm view "@jeremiewerner/motto@$PKG_VERSION" version >/dev/null 2>&1; then
+            echo "already_published=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "already_published=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: npm publish
+        if: steps.npm_guard.outputs.already_published == 'false'
+        run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Guard — skip GitHub Release if it already exists
+        id: gh_guard
+        run: |
+          if gh release view "${{ github.ref_name }}" >/dev/null 2>&1; then
+            echo "already_released=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "already_released=false" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - name: Create GitHub Release
+        if: steps.gh_guard.outputs.already_released == 'false'
+        run: gh release create "${{ github.ref_name }}" --generate-notes
+        env:
+          GH_TOKEN: ${{ github.token }}
