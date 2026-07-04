@@ -30,13 +30,18 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-// D-05 tarball-leak allowlist (PUB-03). Ported verbatim from the release
-// skill's former Step 4 heredoc — any packed file whose path is not covered
-// by AUTO_INCLUDED (npm's own always-included files) or does not start with
-// one of ALLOWED_PREFIXES (note the trailing slash: 'bin/' does NOT match
-// 'binary/x' — a partial-prefix match is deliberately NOT allowed) is a leak.
+// D-05 tarball-leak allowlist (PUB-03). Ported from the release skill's
+// former Step 4 heredoc — any packed file whose path is not an npm
+// auto-included root file or does not start with one of ALLOWED_PREFIXES
+// (note the trailing slash: 'bin/' does NOT match 'binary/x' — a
+// partial-prefix match is deliberately NOT allowed) is a leak.
 const ALLOWED_PREFIXES = ['bin/', 'src/', 'dist/public/'];
-const AUTO_INCLUDED = ['package.json', 'README', 'LICENSE', 'CHANGELOG'];
+// npm's auto-include rule is "package.json plus README/LICENSE/LICENCE/
+// CHANGELOG files (any case, optional extension) at the package ROOT" — not
+// "any path prefixed by those words". A bare startsWith() here would admit
+// leak paths like 'README-secrets/dump.txt' or 'package.json.bak' (WR-04),
+// so the match is anchored: the optional extension may not contain '/'.
+const AUTO_INCLUDED_RE = /^(README|LICENSE|LICENCE|CHANGELOG)(\.[^/]*)?$/i;
 
 /**
  * Assert every packed file falls inside the npm package boundary (D-05).
@@ -46,9 +51,9 @@ const AUTO_INCLUDED = ['package.json', 'README', 'LICENSE', 'CHANGELOG'];
  * @param {{path: string}[]} files - the `files` array from `npm pack --json`
  */
 function assertTarballClean(files) {
+  const isAutoIncluded = (p) => p === 'package.json' || AUTO_INCLUDED_RE.test(p);
   const isAllowed = (p) =>
-    AUTO_INCLUDED.some((a) => p === a || p.startsWith(a)) ||
-    ALLOWED_PREFIXES.some((a) => p.startsWith(a));
+    isAutoIncluded(p) || ALLOWED_PREFIXES.some((a) => p.startsWith(a));
   const leaks = files.filter((f) => !isAllowed(f.path));
   if (leaks.length) {
     throw new Error(

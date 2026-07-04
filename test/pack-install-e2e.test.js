@@ -41,4 +41,31 @@ describe('assertTarballClean (D-05, PUB-03)', () => {
     const files = [{ path: 'binary/x' }];
     assert.throws(() => assertTarballClean(files), /TARBALL LEAK/);
   });
+
+  it('bounds the auto-included match to root files (WR-04) — README-prefixed paths and package.json.bak are leaks', () => {
+    for (const path of [
+      'README-secrets/dump.txt',
+      'CHANGELOG.d/notes.env',
+      'package.json.bak',
+      'LICENSE-x/key.pem',
+    ]) {
+      assert.throws(
+        () => assertTarballClean([{ path }]),
+        /TARBALL LEAK/,
+        `expected TARBALL LEAK for ${path}`,
+      );
+    }
+  });
+
+  it('still allows legit auto-included variants (any case, optional extension, LICENCE spelling)', () => {
+    const files = [
+      { path: 'readme.md' },
+      { path: 'README' },
+      { path: 'README.txt' },
+      { path: 'LICENCE' },
+      { path: 'license.md' },
+      { path: 'ChangeLog.md' },
+    ];
+    assert.doesNotThrow(() => assertTarballClean(files));
+  });
 });
