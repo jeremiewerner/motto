@@ -103,7 +103,7 @@ Plans:
   3. The D-05 tarball-leak assertion runs from a committed script in the CI pack-E2E job — no longer an inline release-skill heredoc.
   4. Each published version gets a GitHub Release with auto-generated notes (`gh release create --generate-notes`) from the publish job.
 
-**Plans**: 1/3 plans executed
+**Plans**: 2/3 plans executed
 
 **Wave 1**
 
@@ -111,7 +111,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1)*
 
-- [ ] 21-02-PLAN.md — Rewrite `skills/release/SKILL.md`: local flow shrinks to tests → bump → push; CI-handoff, Verify-CI-Published, never-re-tag recovery sections; `Bash(gh *)` added to allowed-tools (PUB-02)
+- [x] 21-02-PLAN.md — Rewrite `skills/release/SKILL.md`: local flow shrinks to tests → bump → push; CI-handoff, Verify-CI-Published, never-re-tag recovery sections; `Bash(gh *)` added to allowed-tools (PUB-02)
 - [ ] 21-03-PLAN.md — Maintainer checkpoint: create granular publish-only `NPM_TOKEN` secret so the publish job can authenticate (PUB-01)
 
 ### Phase 22: Public Flip & Token Hardening
@@ -142,7 +142,7 @@ Phases execute in numeric order: 19 → 20 → 21 → 22
 | 18. Role Section Tag Migration | v0.0.5 | 2/2 | Complete | 2026-07-03 |
 | 19. CLI Ergonomics & Build-Skill Verification | v0.0.6 | 2/2 | Complete    | 2026-07-03 |
 | 20. CI Workflow | v0.0.6 | 3/3 | Complete    | 2026-07-03 |
-| 21. Publish Automation & Release Rewrite | v0.0.6 | 1/3 | In Progress|  |
+| 21. Publish Automation & Release Rewrite | v0.0.6 | 2/3 | In Progress|  |
 | 22. Public Flip & Token Hardening | v0.0.6 | 0/TBD | Not started | - |
 
 ## Backlog
