@@ -73,7 +73,7 @@ This is the **last maintainer-run command in the local flow** — no local regis
 
 ## Step 5 — CI Handoff
 
-`git push --follow-tags` updates two refs (`refs/heads/main` and `refs/tags/vX.Y.Z`) in one push, which triggers **two separate GitHub Actions workflow runs**. The tag-scoped run (`ref = refs/tags/vX.Y.Z`) re-runs the full `test` / `dogfood` / `pack-install-e2e` suite against the exact tagged commit — including the D-05 tarball-leak assertion (`assertTarballClean`, now enforced inside `pack-install-e2e` on every push, not just at release time). If, and only if, all three of those jobs pass within that same tag-triggered run, the `publish` job runs:
+`git push --follow-tags` updates two refs (`refs/heads/main` and `refs/tags/vX.Y.Z`) in one push, which triggers **two separate GitHub Actions workflow runs**. The tag-scoped run (`ref = refs/tags/vX.Y.Z`) re-runs the full `test` / `dogfood` / `pack-install-e2e` suite against the exact tagged commit — including the D-05 tarball-leak assertion (`assertTarballClean`, now enforced inside `pack-install-e2e` on every push, not just at release time). Before either idempotency guard runs, the `publish` job first asserts the pushed tag `vX.Y.Z` matches `package.json`'s version and hard-fails (with a `::error::` annotation) if they disagree — so a tag pushed on an un-bumped or wrong-version commit fails fast instead of publishing nothing to npm while still creating a GitHub Release. If, and only if, that guard and all three of those jobs pass within that same tag-triggered run, the `publish` job runs:
 
 1. `npm publish` (guarded by a `npm view <pkg>@<version>` existence check — skipped if that version is already on the registry).
 2. `gh release create --generate-notes` (guarded independently by a `gh release view <tag>` existence check — skipped if the release already exists).
@@ -104,16 +104,17 @@ Only proceed to Step 8 (Post-Release Housekeeping) once all three confirm. Do no
 ## Step 7 — If CI Publish Fails
 
 1. **Do NOT delete or recreate the git tag.** Tags are permanent handoff markers — deleting and re-pushing one rewrites a ref other clones may have already fetched and destroys the audit trail.
-2. Diagnose the failure:
+2. **If the failure is the tag/version-mismatch guard** (the pushed tag does not match `package.json`'s version), it is **not transient and not fixable by `gh run rerun <id> --failed`** — the same ref will fail identically every time. The correct recovery is to publish a corrected version: bump `package.json` to the intended version and cut a new, matching tag on a new commit. Never delete or re-push the existing mismatched tag.
+3. Diagnose other failures:
    ```
    gh run view <run-id> --log-failed
    ```
-3. If the failure is transient (network, registry hiccup) or a fixable config issue (rotate `NPM_TOKEN`, fix a permissions typo), fix the root cause if needed, then re-run only the failed job(s):
+4. If the failure is transient (network, registry hiccup) or a fixable config issue (rotate `NPM_TOKEN`, fix a permissions typo), fix the root cause if needed, then re-run only the failed job(s):
    ```
    gh run rerun <run-id> --failed
    ```
    This resumes at the failed job on the same ref — no new commit, no new tag. Both guard steps (`npm view` / `gh release view`) make this safe even if `npm publish` already succeeded before a later step failed — only the step(s) that didn't complete will actually run.
-4. **Emergency escape hatch only** (CI unrecoverable in a reasonable window):
+5. **Emergency escape hatch only** (CI unrecoverable in a reasonable window):
    ```
    git checkout vX.Y.Z && npm publish
    ```
