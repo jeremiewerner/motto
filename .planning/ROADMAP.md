@@ -44,7 +44,7 @@ Full phase details: [milestones/v0.0.5-ROADMAP.md](milestones/v0.0.5-ROADMAP.md)
 
 - [x] **Phase 19: CLI Ergonomics & Build-Skill Verification** - Machine-readable, pipe-safe CLI output that CI can assert against, plus one real skill proven through build-skill (completed 2026-07-03)
 - [x] **Phase 20: CI Workflow** - Every push/PR gated by a Node 20/22/24 matrix, dogfood, and pack-install E2E — proven while the repo is still private (completed 2026-07-03)
-- [ ] **Phase 21: Publish Automation & Release Rewrite** - Tags publish themselves to npm idempotently; local release flow shrinks to bump-tag-push
+- [x] **Phase 21: Publish Automation & Release Rewrite** - Tags publish themselves to npm idempotently; local release flow shrinks to bump-tag-push (completed 2026-07-04)
 - [ ] **Phase 22: Public Flip & Token Hardening** - The repo crosses the one-way door to public, verified clean and stranger-usable, ending with zero long-lived publish tokens
 
 ## Phase Details
@@ -103,7 +103,7 @@ Plans:
   3. The D-05 tarball-leak assertion runs from a committed script in the CI pack-E2E job — no longer an inline release-skill heredoc.
   4. Each published version gets a GitHub Release with auto-generated notes (`gh release create --generate-notes`) from the publish job.
 
-**Plans**: 2/3 plans executed
+**Plans**: 3/3 plans complete
 
 **Wave 1**
 
@@ -112,7 +112,7 @@ Plans:
 **Wave 2** *(blocked on Wave 1)*
 
 - [x] 21-02-PLAN.md — Rewrite `skills/release/SKILL.md`: local flow shrinks to tests → bump → push; CI-handoff, Verify-CI-Published, never-re-tag recovery sections; `Bash(gh *)` added to allowed-tools (PUB-02)
-- [ ] 21-03-PLAN.md — Maintainer checkpoint: create granular publish-only `NPM_TOKEN` secret so the publish job can authenticate (PUB-01)
+- [x] 21-03-PLAN.md — Maintainer checkpoint: create granular publish-only `NPM_TOKEN` secret so the publish job can authenticate (PUB-01)
 
 ### Phase 22: Public Flip & Token Hardening
 
@@ -142,7 +142,7 @@ Phases execute in numeric order: 19 → 20 → 21 → 22
 | 18. Role Section Tag Migration | v0.0.5 | 2/2 | Complete | 2026-07-03 |
 | 19. CLI Ergonomics & Build-Skill Verification | v0.0.6 | 2/2 | Complete    | 2026-07-03 |
 | 20. CI Workflow | v0.0.6 | 3/3 | Complete    | 2026-07-03 |
-| 21. Publish Automation & Release Rewrite | v0.0.6 | 2/3 | In Progress|  |
+| 21. Publish Automation & Release Rewrite | v0.0.6 | 3/3 | Complete   | 2026-07-04 |
 | 22. Public Flip & Token Hardening | v0.0.6 | 0/TBD | Not started | - |
 
 ## Backlog
