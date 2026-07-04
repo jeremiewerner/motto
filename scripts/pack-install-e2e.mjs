@@ -28,6 +28,35 @@ import { spawnSync } from 'node:child_process';
 import { mkdtemp, mkdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
+
+// D-05 tarball-leak allowlist (PUB-03). Ported verbatim from the release
+// skill's former Step 4 heredoc — any packed file whose path is not covered
+// by AUTO_INCLUDED (npm's own always-included files) or does not start with
+// one of ALLOWED_PREFIXES (note the trailing slash: 'bin/' does NOT match
+// 'binary/x' — a partial-prefix match is deliberately NOT allowed) is a leak.
+const ALLOWED_PREFIXES = ['bin/', 'src/', 'dist/public/'];
+const AUTO_INCLUDED = ['package.json', 'README', 'LICENSE', 'CHANGELOG'];
+
+/**
+ * Assert every packed file falls inside the npm package boundary (D-05).
+ * Throws — never calls process.exit — so main()'s finally-block tmp-dir
+ * cleanup still runs on a failure path (matches the run() convention above).
+ *
+ * @param {{path: string}[]} files - the `files` array from `npm pack --json`
+ */
+function assertTarballClean(files) {
+  const isAllowed = (p) =>
+    AUTO_INCLUDED.some((a) => p === a || p.startsWith(a)) ||
+    ALLOWED_PREFIXES.some((a) => p.startsWith(a));
+  const leaks = files.filter((f) => !isAllowed(f.path));
+  if (leaks.length) {
+    throw new Error(
+      `TARBALL LEAK — ${leaks.length} file(s) outside allowlist:\n` +
+        leaks.map((f) => `  ${f.path}`).join('\n'),
+    );
+  }
+}
 
 /**
  * Run a command, echoing the command line + status/signal/spawn-error +
@@ -90,6 +119,10 @@ async function main() {
     const [{ filename, files: packedFiles }] = packManifest;
     const tarballPath = join(packDir, filename);
 
+    // Fail fast (D-05, PUB-03) — before spending time on the rest of the E2E
+    // flow (npm install/init/lint/build), assert the tarball itself is clean.
+    assertTarballClean(packedFiles);
+
     // (3) Real consumer path: npm init -y + npm install <tarball> in a
     // separate throwaway project — exercises bin linking, the `files`
     // allowlist, and dependency resolution exactly as a stranger would.
@@ -122,9 +155,6 @@ async function main() {
     }
 
     // (6) motto build --format json — assert .ok === true, .skillCount >= 1.
-    // Kept as a variable (packedFiles / packManifest) so Phase 21's D-05
-    // tarball-leak assertion (PUB-03) can slot in as one more step cleanly —
-    // NOT added here by design (deferred).
     const buildResult = run(mottoBin, ['build', '--format', 'json'], { cwd: projectDir });
     const buildJson = parseJsonOrFail(buildResult.stdout, 'build');
     if (buildJson.ok !== true || !(buildJson.skillCount >= 1)) {
@@ -132,8 +162,6 @@ async function main() {
         `build JSON assertion failed (.ok===true, .skillCount>=1) — got: ${buildResult.stdout}`,
       );
     }
-
-    void packedFiles; // reserved for Phase 21's PUB-03 tarball-leak assertion — not used yet.
 
     console.log('pack-install-e2e: OK');
   } finally {
@@ -144,9 +172,17 @@ async function main() {
   }
 }
 
-try {
-  await main();
-} catch (err) {
-  console.error(`pack-install-e2e FAILED: ${err.message}`);
-  process.exitCode = 1;
+// Only run main() when this module is the entry point (`node
+// scripts/pack-install-e2e.mjs`) — importing the module (e.g. from a unit
+// test exercising assertTarballClean, or via dynamic `import()` where
+// process.argv[1] is undefined) must NOT trigger the real E2E run.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  try {
+    await main();
+  } catch (err) {
+    console.error(`pack-install-e2e FAILED: ${err.message}`);
+    process.exitCode = 1;
+  }
 }
+
+export { assertTarballClean };
