@@ -5,8 +5,8 @@ milestone_name: Prove & Publish
 current_phase: 21
 current_phase_name: publish-automation-release-rewrite
 status: executing
-stopped_at: Completed 21-01-PLAN.md
-last_updated: "2026-07-04T20:05:05.434Z"
+stopped_at: Phase 22 context gathered
+last_updated: "2026-07-04T20:51:48.858Z"
 last_activity: 2026-07-04
 last_activity_desc: Completed 21-04-PLAN.md (CR-01 tag/version guard gap closure)
 progress:
@@ -180,9 +180,9 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-04T20:04:21.151Z
-Stopped at: Completed 21-01-PLAN.md
-Resume file: None
+Last session: 2026-07-04T20:51:48.854Z
+Stopped at: Phase 22 context gathered
+Resume file: .planning/phases/22-public-flip-token-hardening/22-CONTEXT.md
 
 ## Operator Next Steps
 
