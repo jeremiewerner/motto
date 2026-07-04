@@ -3,17 +3,17 @@ gsd_state_version: 1.0
 milestone: v0.0.6
 milestone_name: Prove & Publish
 current_phase: 21
-current_phase_name: Publish Automation & Release Rewrite
+current_phase_name: publish-automation-release-rewrite
 status: executing
-stopped_at: Completed 20-02-PLAN.md
-last_updated: "2026-07-04T17:40:10.899Z"
-last_activity: 2026-07-03
-last_activity_desc: Phase 20 complete, transitioned to Phase 21
+stopped_at: Completed 21-01-PLAN.md
+last_updated: "2026-07-04T18:07:05.406Z"
+last_activity: 2026-07-04
+last_activity_desc: Phase 21 execution started
 progress:
   total_phases: 4
   completed_phases: 2
-  total_plans: 5
-  completed_plans: 5
+  total_plans: 8
+  completed_plans: 6
   percent: 50
 ---
 
@@ -24,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-02 after v0.0.4)
 
 **Core value:** A strict schema + linter that guarantees authored skills conform before they ship, then packages them into self-contained standard Agent Skill plugins.
-**Current focus:** Phase 20 — ci-workflow
+**Current focus:** Phase 21 — publish-automation-release-rewrite
 
 ## Current Position
 
-Phase: 21 — Publish Automation & Release Rewrite
-Plan: Not started
+Phase: 21 (publish-automation-release-rewrite) — EXECUTING
+Plan: 2 of 3
 Status: Ready to execute
-Last activity: 2026-07-03 — Phase 20 complete, transitioned to Phase 21
+Last activity: 2026-07-04 — Phase 21 execution started
 
 **Milestone shape (v0.0.6, coarse):**
 
@@ -88,6 +88,7 @@ Ordering (research-locked): CLI flags first (pack-E2E consumes them) → CI prov
 | Phase 20 P01 | 4min | 2 tasks | 3 files |
 | Phase 20 P02 | 12min | 2 tasks | 2 files |
 | Phase 20-ci-workflow P03 | 5min | 2 tasks | 1 files |
+| Phase 21 P01 | 6min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -136,6 +137,9 @@ Recent decisions affecting current work:
 - [Phase 20-02]: pack-install-e2e.mjs's run()/parseJsonOrFail() throw Error instead of calling process.exit(1) directly, so main()'s finally block still removes both tmp dirs on a failure path
 - [Phase 20-03]: workflow_dispatch requires the workflow file on the default branch first -- used a PR-against-main (not merged) to trigger a live pull_request-event CI run instead
 - [Phase 20-03]: CI PR opened solely to prove the gate live is closed without merging -- milestone branch merges to main at milestone completion via the standard ship flow
+- [Phase 21-01]: assertTarballClean call placed immediately after packedFiles capture (fail fast, before slower install/init/lint/build steps)
+- [Phase 21-01]: publish job pinned to node-version: 24 (not the 20 used by every other job) ahead of the PUB-05 OIDC migration
+- [Phase 21-01]: npm-drift gated to github.ref == 'refs/heads/main' -- advisory main-branch backstop only, does not gate publish
 
 ### Pending Todos
 
@@ -171,8 +175,8 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-03T21:40:27.525Z
-Stopped at: Completed 20-02-PLAN.md
+Last session: 2026-07-04T18:07:05.402Z
+Stopped at: Completed 21-01-PLAN.md
 Resume file: None
 
 ## Operator Next Steps

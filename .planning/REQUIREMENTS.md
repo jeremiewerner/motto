@@ -22,10 +22,10 @@ Maintainer-facing milestone: no end-user feature work. "User" below = maintainer
 
 ### Publish Automation (PUB)
 
-- [ ] **PUB-01**: Pushing a `v*` tag triggers a CI publish job — gated on all other jobs green, pinned to Node 24 (npm ≥11.5.1), idempotent via version-existence guard (`npm view` before publish; re-runs safe)
+- [x] **PUB-01**: Pushing a `v*` tag triggers a CI publish job — gated on all other jobs green, pinned to Node 24 (npm ≥11.5.1), idempotent via version-existence guard (`npm view` before publish; re-runs safe)
 - [ ] **PUB-02**: `release` skill rewritten — local flow is tests → bump → tag → `git push --follow-tags` only; publish step removed from laptop; skill documents the CI handoff and the publish-failure recovery runbook (re-run job; never re-tag)
-- [ ] **PUB-03**: D-05 tarball leak assertion moves from the release skill's inline heredoc to a committed script run by the CI pack-E2E job
-- [ ] **PUB-04**: Each published version gets a GitHub Release with auto-generated notes (`gh release create --generate-notes` from the publish job)
+- [x] **PUB-03**: D-05 tarball leak assertion moves from the release skill's inline heredoc to a committed script run by the CI pack-E2E job
+- [x] **PUB-04**: Each published version gets a GitHub Release with auto-generated notes (`gh release create --generate-notes` from the publish job)
 - [ ] **PUB-05**: After the repo is public, CI publish migrates from `NPM_TOKEN` to npm trusted publishing (OIDC) with `--provenance` — milestone ends with zero long-lived publish tokens
 
 ### Public Flip (OPEN)
