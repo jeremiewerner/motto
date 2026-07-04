@@ -103,7 +103,7 @@ Plans:
   3. The D-05 tarball-leak assertion runs from a committed script in the CI pack-E2E job — no longer an inline release-skill heredoc.
   4. Each published version gets a GitHub Release with auto-generated notes (`gh release create --generate-notes`) from the publish job.
 
-**Plans**: 3/3 plans complete
+**Plans**: 3/4 plans complete (21-04 gap closure pending)
 
 **Wave 1**
 
@@ -113,6 +113,10 @@ Plans:
 
 - [x] 21-02-PLAN.md — Rewrite `skills/release/SKILL.md`: local flow shrinks to tests → bump → push; CI-handoff, Verify-CI-Published, never-re-tag recovery sections; `Bash(gh *)` added to allowed-tools (PUB-02)
 - [x] 21-03-PLAN.md — Maintainer checkpoint: create granular publish-only `NPM_TOKEN` secret so the publish job can authenticate (PUB-01)
+
+**Wave 3** *(gap closure — verification found the publish job never cross-checks tag name vs package.json version)*
+
+- [ ] 21-04-PLAN.md — Gap closure (CR-01 / Truth #6): add a `version_guard` step to ci.yml that hard-fails before npm_guard when the pushed tag ≠ `v<package.json version>`, an ordering-aware structural test, and a runbook accuracy update — closes the phantom-green-release drift path (PUB-01)
 
 ### Phase 22: Public Flip & Token Hardening
 
