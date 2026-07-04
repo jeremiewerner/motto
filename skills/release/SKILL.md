@@ -120,6 +120,12 @@ Only proceed to Step 8 (Post-Release Housekeeping) once all three confirm. Do no
    ```
    This is a last resort, not a normal path — it bypasses the CI-enforced D-05 tarball-leak assertion. Document that it was used and why.
 
+   **Never use this escape hatch after a tag/version-mismatch guard failure** — `npm publish` publishes whatever version `package.json` declares, so from a mismatched tagged commit it would publish the wrong version, perpetuating the exact npm/git drift the guard exists to prevent. Before running it, verify the checked-out commit's version matches the tag:
+   ```
+   node -p "require('./package.json').version"
+   ```
+   Proceed only if the output equals `X.Y.Z`. If it doesn't, use the point-2 recovery instead (bump to a new version + new matching tag).
+
 ## Step 8 — Post-Release Housekeeping
 
 After Step 6 confirms the release is live:
