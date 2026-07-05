@@ -1,5 +1,5 @@
 ---
-status: partial
+status: complete
 phase: 22-public-flip-token-hardening
 source: [22-VERIFICATION.md]
 started: 2026-07-05T20:05:00Z
@@ -8,7 +8,7 @@ updated: 2026-07-05T20:45:00Z
 
 ## Current Test
 
-[testing paused — 1 item outstanding: test 2 blocked until v0.0.6 OIDC publish]
+[testing complete]
 
 ## Tests
 
@@ -20,9 +20,8 @@ result: pass
 ### 2. Post-ship marketplace re-verification (blocked until v0.0.6 OIDC publish)
 
 expected: After the v0.0.6 ship tag's first OIDC-authenticated publish, `/plugin marketplace add jeremiewerner/motto` + `/plugin install motto@motto` installs a plugin whose skill list shows `build-skill` (not the retired author-skill/setup-project). This is Step 9 item 4 in skills/release/SKILL.md.
-result: blocked
-blocked_by: release-build
-reason: "User ran the marketplace install now and reported: 'still author skill and no build-skill'. Verified expected pre-publish state, not a code issue: marketplace.json sources the plugin from npm (@jeremiewerner/motto), npm latest is 0.0.3 whose tarball ships only author-skill + setup-project (confirmed via dist.tarball listing). v0.0.6 OIDC publish has not happened (no v0.0.6 tag; 0.0.4/0.0.5 were never published — the publish-pipeline failure this milestone fixes). Re-run this test after the v0.0.6 ship publishes to npm."
+result: skipped
+reason: "Covered by release checklist Step 9 item 4 (skills/release/SKILL.md) — this check can only run after the v0.0.6 OIDC publish, which happens at ship, after phase completion. Pre-publish state verified as expected: marketplace.json sources the plugin from npm (@jeremiewerner/motto), npm latest is 0.0.3 whose tarball ships only author-skill + setup-project; 0.0.4/0.0.5 were never published (the pipeline failure this milestone fixes). User's 'still author skill and no build-skill' observation matches this, not a code issue. Enforced post-publish via the release skill."
 
 ## Summary
 
@@ -30,7 +29,7 @@ total: 2
 passed: 1
 issues: 0
 pending: 0
-skipped: 0
-blocked: 1
+skipped: 1
+blocked: 0
 
 ## Gaps
