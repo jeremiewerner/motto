@@ -1,7 +1,8 @@
 ---
 phase: 21-publish-automation-release-rewrite
 verified: 2026-07-04T21:00:00Z
-status: human_needed
+human_verified: 2026-07-05T18:50:00Z
+status: passed
 score: 6/6 must-haves verified
 behavior_unverified: 0
 overrides_applied: 0
@@ -16,13 +17,14 @@ human_verification:
   - test: "First real tag-triggered publish run: after this verification, push a real vX.Y.Z tag (with package.json bumped to match) and observe the tag-scoped Actions run end-to-end."
     expected: "version_guard passes silently (versions match); npm_guard/npm publish/gh_guard/gh release create all run and succeed; npm view @jeremiewerner/motto version and gh release view vX.Y.Z both confirm the new version is live. Separately, at some point verify (in a throwaway branch/fork, or by reasoning from the executed bash logic — already spot-checked in this report) that a deliberately mismatched tag would abort the job at version_guard before npm_guard/gh_guard run."
     why_human: "External service integration (real npm registry write, real GitHub Release creation via a brand-new automated path) has never been exercised for real — no v* tag has been pushed since this automation landed. This is explicitly deferred to ship time by the plan's own <verification> section and cannot be exercised on this branch (tag-push trigger requires a real tag ref). While the guard's bash logic was directly executed and confirmed correct in this verification (see Behavioral Spot-Checks), the live GitHub Actions execution path (needs-gating across sibling jobs, secrets, real registry write) is still unproven in production."
+    result: "PASSED 2026-07-05 — tag v0.0.6 pushed (package.json bumped 0.0.3→0.0.6); Actions run 28751135062 publish job green end-to-end (version_guard silent pass → npm_guard → npm publish --provenance → gh_guard → gh release create); npm view @jeremiewerner/motto version = 0.0.6 (dist-tag latest); gh release view v0.0.6 published 2026-07-05T18:47:47Z. See 21-UAT.md test 1."
 ---
 
 # Phase 21: Publish Automation & Release Rewrite Verification Report
 
 **Phase Goal:** Tagging a release publishes Motto to npm automatically and safely, and the local release flow shrinks to bump-tag-push with the publish responsibility (and the D-05 tarball assertion) handed to CI.
 **Verified:** 2026-07-04T21:00:00Z
-**Status:** human_needed
+**Status:** passed (human verification completed 2026-07-05 — live v0.0.6 publish run green; see frontmatter `result`)
 **Re-verification:** Yes — after gap-closure plan 21-04 executed (previous run found 1 blocking gap: Truth #6 / CR-01)
 
 ## Goal Achievement
