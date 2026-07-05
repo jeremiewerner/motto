@@ -1,15 +1,24 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { resolve, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { parse } from 'yaml';
+
+// Anchor REPO_ROOT at load time via import.meta.url — NEVER derive it from
+// the current working directory (that shifts with invocation directory;
+// import.meta.url is stable). test/ci-workflow.test.js lives one level inside
+// the repo root, so '..' resolves correctly.
+const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const CI_YML = resolve(REPO_ROOT, '.github/workflows/ci.yml');
 
 // Ordering-aware structural regression guard for CR-01 / Truth #6: the publish
 // job's tag-vs-package.json-version consistency guard must exist AND run
 // strictly before npm_guard. A substring grep cannot catch a reordering that
 // re-opens the phantom-release drift path — only an index comparison can.
 describe('ci.yml publish job structural contract (CR-01 / Truth #6)', () => {
-  const workflow = parse(readFileSync('.github/workflows/ci.yml', 'utf8'));
+  const workflow = parse(readFileSync(CI_YML, 'utf8'));
   const steps = workflow?.jobs?.publish?.steps;
   assert.ok(Array.isArray(steps), 'jobs.publish.steps must exist and be an array');
 
@@ -81,7 +90,7 @@ describe('ci.yml publish job structural contract (CR-01 / Truth #6)', () => {
 // secret. Scoped to the "npm publish" step's own env object (not a whole-file
 // grep) so this stays a precise contract check, not a brittle text search.
 describe('ci.yml publish job OIDC contract (PUB-05)', () => {
-  const workflow = parse(readFileSync('.github/workflows/ci.yml', 'utf8'));
+  const workflow = parse(readFileSync(CI_YML, 'utf8'));
   const steps = workflow?.jobs?.publish?.steps;
   assert.ok(Array.isArray(steps), 'jobs.publish.steps must exist and be an array');
   const npmPublishStep = steps.find((s) => s.name === 'npm publish');
