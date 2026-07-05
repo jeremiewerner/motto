@@ -130,7 +130,21 @@ Plans:
   3. The repo `jeremiewerner/motto` flips public and a logged-out stranger can follow the README, npm links, and marketplace install path successfully.
   4. After the flip, CI publish migrates from `NPM_TOKEN` to npm trusted publishing (OIDC) with `--provenance`, leaving zero long-lived publish tokens.
 
-**Plans**: TBD
+**Plans**: 5 plans
+
+**Wave 1**
+
+- [ ] 22-01-PLAN.md — Initial gitleaks scan + PII sweep + `.planning/` visibility decision recorded in PROJECT.md (OPEN-01 triage, OPEN-02)
+- [ ] 22-02-PLAN.md — CI publish job migrates to OIDC (`id-token: write`, `--provenance`, no NPM_TOKEN) + structural test + release-skill zero-tokens runbook (PUB-05)
+- [ ] 22-03-PLAN.md — Branch protection on `main` (enforce_admins: false) + maintainer checkpoint: npmjs.com Trusted Publisher config (OPEN-03, PUB-05)
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [ ] 22-04-PLAN.md — FINAL pre-flip gitleaks rescan (D-08) + maintainer checkpoint: flip `jeremiewerner/motto` to public (OPEN-01, OPEN-03)
+
+**Wave 3** *(blocked on Wave 2)*
+
+- [ ] 22-05-PLAN.md — Maintainer checkpoint: stranger walkthrough + README accuracy pass (badges, stale publish-flow fix) (OPEN-03)
 
 ## Progress
 
