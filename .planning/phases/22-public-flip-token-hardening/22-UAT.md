@@ -17,19 +17,19 @@ updated: 2026-07-05T20:45:00Z
 expected: Record for @jeremiewerner/motto shows org=jeremiewerner, repo=motto, workflow=ci.yml, no environment, allowed action=npm publish (as attested in 22-03-SUMMARY.md)
 result: pass
 
-### 2. Post-ship marketplace re-verification (blocked until v0.0.6 OIDC publish)
+## Deferred to release checklist (not a UAT test — cannot run pre-ship)
 
-expected: After the v0.0.6 ship tag's first OIDC-authenticated publish, `/plugin marketplace add jeremiewerner/motto` + `/plugin install motto@motto` installs a plugin whose skill list shows `build-skill` (not the retired author-skill/setup-project). This is Step 9 item 4 in skills/release/SKILL.md.
-result: skipped
-reason: "Covered by release checklist Step 9 item 4 (skills/release/SKILL.md) — this check can only run after the v0.0.6 OIDC publish, which happens at ship, after phase completion. Pre-publish state verified as expected: marketplace.json sources the plugin from npm (@jeremiewerner/motto), npm latest is 0.0.3 whose tarball ships only author-skill + setup-project; 0.0.4/0.0.5 were never published (the pipeline failure this milestone fixes). User's 'still author skill and no build-skill' observation matches this, not a code issue. Enforced post-publish via the release skill."
+**Post-ship marketplace re-verification.** After the v0.0.6 ship tag's first OIDC-authenticated publish, `/plugin marketplace add jeremiewerner/motto` + `/plugin install motto@motto` must install a plugin whose skill list shows `build-skill` (not the retired author-skill/setup-project). Enforced as Step 9 item 4 in skills/release/SKILL.md — it can only run after the ship that follows phase completion, so keeping it here as a test would deadlock phase advancement.
+
+Pre-publish state was verified during this session as expected, not a code issue: marketplace.json sources the plugin from npm (@jeremiewerner/motto); npm latest is 0.0.3 whose tarball ships only author-skill + setup-project; 0.0.4/0.0.5 were never published (the pipeline failure this milestone fixes). The maintainer ran the marketplace install pre-publish and observed "still author skill and no build-skill", which matches this exactly.
 
 ## Summary
 
-total: 2
+total: 1
 passed: 1
 issues: 0
 pending: 0
-skipped: 1
+skipped: 0
 blocked: 0
 
 ## Gaps

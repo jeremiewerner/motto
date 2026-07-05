@@ -1,14 +1,16 @@
 ---
 phase: 22-public-flip-token-hardening
 verified: 2026-07-05T20:00:00Z
-status: human_needed
+status: passed
 score: 5/6 must-haves verified
 behavior_unverified: 0
 overrides_applied: 0
 human_verification:
+
   - test: "Confirm the npmjs.com Trusted Publisher record for @jeremiewerner/motto still shows org=jeremiewerner, repo=motto, workflow=ci.yml, no environment, allowed action=npm publish"
     expected: "Record exists exactly as attested in 22-03-SUMMARY.md; this has no CLI/API surface so only a maintainer can re-confirm it in the npmjs.com web UI"
     why_human: "npmjs.com Trusted Publisher configuration is not readable via gh/npm CLI — the agent cannot independently verify this artifact, only the maintainer's prior attestation"
+
   - test: "After the v0.0.6 ship tag's first OIDC-authenticated publish, re-run the marketplace walkthrough (`/plugin marketplace add jeremiewerner/motto`, `/plugin install motto@motto`) and confirm `build-skill` appears in Claude Code's skill list"
     expected: "build-skill (not the retired author-skill/setup-project) appears in the installed plugin's skill list"
     why_human: "Requires a live Claude Code session and cannot be exercised until the actual OIDC publish updates npm's `latest` tag past 0.0.3 — this is the documented, already-scheduled Step 9 item 4 follow-through, not a new finding"
