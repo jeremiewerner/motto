@@ -98,8 +98,9 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           # Pinned to 24 (not the 20 used by every other job): ships npm
-          # >=11.5.1, satisfying the trusted-publishing floor ahead of the
-          # PUB-05 OIDC migration, so that later swap is a same-Node diff.
+          # >=11.5.1, the floor for OIDC trusted publishing (PUB-05), which
+          # authenticates the `npm publish --provenance` step below — no
+          # NPM_TOKEN/NODE_AUTH_TOKEN anywhere in this workflow.
           node-version: 24
           registry-url: 'https://registry.npmjs.org'
           cache: 'npm'
