@@ -1,5 +1,24 @@
 # Motto — Milestones
 
+## v0.0.6 Prove & Publish (Shipped: 2026-07-05)
+
+**Shipped:** 2026-07-05 · **Closeout:** verified (4/4 phases verified passed, 17/17 requirements complete, open-artifact audit clear — Phase 21's deferred live-publish check closed by this release itself; retro-wrote the v0.0.5 carry-over `260630-vzh-review-fixes` SUMMARY)
+
+Motto's ship path is now automated and trustworthy: CI gates every push, pushing a version tag publishes to npm and creates a GitHub Release with zero long-lived tokens, and the repo is public. Proven live at close — v0.0.6 itself shipped through the new pipeline end-to-end (Actions run 28751135062: version_guard → npm publish --provenance → gh release create; npm `latest` = 0.0.6).
+
+**Phases completed:** 4 (19–22) · **Plans:** 14 · **Tasks:** 25 · **Commits:** 109 · **Tests:** 243 (was 213)
+
+**Key accomplishments:**
+
+- Single `.github/workflows/ci.yml` gating every push/PR with four parallel jobs — Node 20/22/24 test matrix, `--quiet` dogfood, pack-install E2E (npm pack → tmp-dir install → init/lint/build), never-red npm-drift warning.
+- Tag-triggered publish job: `version_guard` hard-fails on tag/package.json mismatch before any side effect, idempotent npm/gh guards make re-runs safe, auth migrated from a stored `NPM_TOKEN` to OIDC trusted publishing with `--provenance` — zero long-lived publish tokens.
+- `release` skill rewritten — the maintainer's local flow terminates at `git push --follow-tags`; CI handoff, Verify-CI-Published, and never-re-tag recovery runbooks close the tag-pushed-assumed-published drift gap.
+- Repo flipped public through the one-way door: two full-history gitleaks scans (405 and 415 commits, both clean), mechanical PII sweep, explicit `.planning/`-public-as-is decision, and `main` branch protection requiring the 5 real CI checks.
+- CLI gained `--quiet` and `--format text|json` with a clean stdout/stderr split (presentation layer only — never-throw core untouched); build-skill proven end-to-end on a real skill, closing the v0.0.5 human-verify debt.
+- Live publish proven at milestone close: v0.0.6 published to npm + GitHub Release purely by tag push, also unblocking the 22-05 stranger-walkthrough marketplace check (was stuck on stale npm `latest` = 0.0.3).
+
+---
+
 ## v0.0.5 Skill Builder (Shipped: 2026-07-03)
 
 **Shipped:** 2026-07-03 · **Closeout:** override (5/5 phases verified passed, audit tech_debt accepted; 1 acknowledged carry-over artifact — `260630-vzh-review-fixes` missing SUMMARY, work verified complete at v0.0.4 close; see STATE.md Deferred Items)

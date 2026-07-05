@@ -2,12 +2,12 @@
 gsd_state_version: 1.0
 milestone: v0.0.6
 milestone_name: Prove & Publish
-current_phase: 22
-status: verifying
-stopped_at: Completed 22-04-PLAN.md
-last_updated: "2026-07-05T18:40:05.329Z"
+current_phase: 0.6
+status: Awaiting next milestone
+stopped_at: v0.0.6 shipped + closed (verified closeout, live publish proven) — Step 9 operator items open, next milestone not yet defined
+last_updated: "2026-07-05T18:51:02.144Z"
 last_activity: 2026-07-05
-last_activity_desc: Phase 22 complete
+last_activity_desc: Milestone v0.0.6 completed and archived
 progress:
   total_phases: 4
   completed_phases: 4
@@ -21,26 +21,17 @@ current_phase_name: public-flip-token-hardening
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-07-05 after Phase 22)
+See: .planning/PROJECT.md (updated 2026-07-05 after v0.0.6 milestone)
 
 **Core value:** A strict schema + linter that guarantees authored skills conform before they ship, then packages them into self-contained standard Agent Skill plugins.
-**Current focus:** Complete milestone v0.0.6 (all phases done — ship next)
+**Current focus:** Planning next milestone (/gsd-new-milestone)
 
 ## Current Position
 
-Phase: 22
-Plan: Not started
-Status: Phase complete — ready for verification
-Last activity: 2026-07-05 — Phase 22 complete
-
-**Milestone shape (v0.0.6, coarse):**
-
-- Phase 19: CLI Ergonomics & Build-Skill Verification (CLIX-01..03, BSKV-01)
-- Phase 20: CI Workflow (CIW-01..05)
-- Phase 21: Publish Automation & Release Rewrite (PUB-01..04)
-- Phase 22: Public Flip & Token Hardening (OPEN-01..03, PUB-05)
-
-Ordering (research-locked): CLI flags first (pack-E2E consumes them) → CI proven while private → publish job + release rewrite → pre-public gate + flip → OIDC last. BSKV-01 folded into Phase 19 (independent, do-early). Manual 0.0.5 catch-up publish is a pre-milestone operator action, not a phase.
+Phase: Milestone v0.0.6 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-07-05 — Milestone v0.0.6 completed and archived
 
 ## Performance Metrics
 
@@ -173,7 +164,7 @@ None yet.
 
 - **Phase 15 gate override (plan-phase 13a):** decision-coverage gate returned `could-not-parse` (15-CONTEXT.md decisions use bold-category bullets, not `- **D-NN:**` form; zero uncovered). Operator chose "Proceed anyway" after plan-checker Dimension 7 verified all context decisions honored in plans. Verify-phase should re-check decision compliance manually, not via the mechanical gate.
 - **Phase 16 gate override (plan-phase 13a):** decision-coverage gate returned `could-not-parse` (16-CONTEXT.md decisions use category bullets, not `- **D-NN:**` form; zero uncovered). Operator chose "Proceed anyway" after planner and plan-checker both verified all locked decisions honored in the plan. Verify-phase should re-check decision compliance manually, not via the mechanical gate.
-- **[Phase 22] Deferred to ship:** first OIDC publish + marketplace re-verify (release SKILL.md Step 9) — npm latest still 0.0.3 until the v0.0.6 ship tag publishes; marketplace install serves stale (author-skill) content until then. Also at ship: revoke residual `NPM_TOKEN` secret (Step 9 zero-tokens follow-through).
+- ~~[Phase 22] Deferred to ship: first OIDC publish~~ — DONE 2026-07-05: v0.0.6 published via tag-push OIDC (run 28751135062); provenance attestation verified on the registry (SLSA v1, 1 signature). **Remaining Step 9 operator items:** (1) revoke the granular npm token on npmjs.com + `gh secret delete NPM_TOKEN` (secret still present, confirmed 2026-07-05); (2) lock npm publishing to trusted-publisher-only on npmjs.com; (3) marketplace stranger re-walk (`/plugin marketplace add jeremiewerner/motto` → install → build-skill visible) now that npm `latest` = 0.0.6.
 - ~~Carried from prior milestones: no CI; repo still private~~ — both resolved: CI live (Phase 20), repo public (Phase 22).
 
 ### Quick Tasks Completed
@@ -192,13 +183,18 @@ None yet.
 
 | Category | Item | Status | Deferred At |
 |----------|------|--------|-------------|
-| quick_task | 260630-vzh-review-fixes | missing SUMMARY.md (work verified complete: commits 7e740c8, 3fa2c6f, 1b3f4a2, ddcc45d; acknowledged at v0.0.4 close 2026-07-02) | v0.0.4 |
+| quick_task | 260630-vzh-review-fixes | ✅ Resolved at v0.0.6 close — SUMMARY.md retro-written 2026-07-05 from commit trail | v0.0.4 |
 | Build feature | `--zip` output | Dropped (documented one-liner instead) | v0.0.3 |
-| CLI | `--quiet`, `--format json` | Deferred | v0.0.3 |
-| CI | GitHub Actions workflow | Deferred | v0.0.3 |
+| CLI | `--quiet`, `--format json` | ✅ Shipped v0.0.6 (Phase 19, CLIX-01..03) | v0.0.3 |
+| CI | GitHub Actions workflow | ✅ Shipped v0.0.6 (Phase 20, CIW-01..05) | v0.0.3 |
 
 ## Session Continuity
 
 Last session: 2026-07-05
-Stopped at: Phase 22 complete (UAT 1/1 passed, security verified, post-ship check deferred to release Step 9) — milestone v0.0.6 100%, ready for /gsd-complete-milestone
+Stopped at: v0.0.6 shipped + archived — live publish proven (npm 0.0.6 + GitHub Release via tag push), milestone closed verified. Step 9 operator items open (token revoke, trusted-publisher lock, marketplace re-walk).
 Resume file: None
+
+## Operator Next Steps
+
+- Release Step 9 zero-tokens follow-through (one-time): revoke npm granular token on npmjs.com + `gh secret delete NPM_TOKEN`; lock publishing to trusted-publisher-only; marketplace stranger re-walk (provenance already verified 2026-07-05)
+- Start the next milestone with /gsd-new-milestone

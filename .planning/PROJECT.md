@@ -10,29 +10,30 @@ The **strict schema + linter**. Skills that always conform to one rigid-yet-crea
 
 ## Current State
 
-**Shipped: v0.0.5 (2026-07-03)** — Skill Builder complete. A user describes a procedure in any form and Motto structures it into a validated, conforming, distributable skill: the `template:` mechanism enforces real rules from the pure-data `src/templates.js` registry (`procedure` ships, fence-aware section matching); `outputs:`/`dependencies:`/`allowed-tools` are validated with integrity guards (path-safety + symlink-escape, resolution + self-dep + audience-direction, format-only), all never-throw; the `build-skill` Agent Skill ingests any input, gap-fills, generates, and self-verifies against the real linter (`author-skill` retired); `skill-schema.md` matches the live validator with a doc-sync test that breaks the suite on drift; and the base spine migrated from `**Role:**` bold-lines to a registry-driven `<role>…</role>` section tag (hard break, two distinct lint errors). 19/19 requirements + Phase 18's 9-decision contract, 213 tests, 1,964 LOC, single dep `yaml`. See `milestones/v0.0.5-ROADMAP.md`.
+**Shipped: v0.0.6 (2026-07-05)** — Prove & Publish complete. Motto's ship path is automated and trustworthy: `.github/workflows/ci.yml` gates every push/PR (Node 20/22/24 matrix, `--quiet` dogfood, pack-install E2E, never-red npm-drift advisory); pushing a `v*` tag publishes to npm and creates a GitHub Release with zero long-lived tokens (`version_guard` tag/version cross-check → idempotent npm/gh guards → OIDC trusted publishing with `--provenance`); the repo is **public** (two clean full-history gitleaks scans, PII sweep, branch protection with 5 required checks); CLI gained `--quiet`/`--format json` with a stdout/stderr split; build-skill proven live on `skills/changelog`. Proven end-to-end at close: v0.0.6 itself shipped purely by tag push (npm `latest` = 0.0.6, GitHub Release live). 17/17 requirements, 243 tests, ~2,450 LOC (src+bin+scripts), single dep `yaml`. See `milestones/v0.0.6-ROADMAP.md`.
 
-**Prior:** v0.0.4 (2026-07-02) — project bootstrap: `motto init`, `--help`/`[path]` ergonomics, README ship flow, setup-project retired (10 reqs, 131 tests). · v0.0.3 (2026-07-01) — installable + distributable: npm `@jeremiewerner/motto`, self-hosted marketplace, real `release` publish flow (13 reqs). · v0.0.2 (2026-07-01) — Motto self-hosts: own `skills/` tree + dogfood guard + spec-complete `validateSkill` (10 reqs). · v0.0.1 (2026-06-30) — core `motto lint` + `motto build` CLI (22 reqs). Archives in `milestones/`.
+**Prior v0.0.5 (2026-07-03)** — Skill Builder complete. A user describes a procedure in any form and Motto structures it into a validated, conforming, distributable skill: the `template:` mechanism enforces real rules from the pure-data `src/templates.js` registry (`procedure` ships, fence-aware section matching); `outputs:`/`dependencies:`/`allowed-tools` are validated with integrity guards (path-safety + symlink-escape, resolution + self-dep + audience-direction, format-only), all never-throw; the `build-skill` Agent Skill ingests any input, gap-fills, generates, and self-verifies against the real linter (`author-skill` retired); `skill-schema.md` matches the live validator with a doc-sync test that breaks the suite on drift; and the base spine migrated from `**Role:**` bold-lines to a registry-driven `<role>…</role>` section tag (hard break, two distinct lint errors). 19/19 requirements + Phase 18's 9-decision contract, 213 tests, 1,964 LOC, single dep `yaml`. See `milestones/v0.0.5-ROADMAP.md`.
+
+**Earlier:** v0.0.4 (2026-07-02) — project bootstrap: `motto init`, `--help`/`[path]` ergonomics, README ship flow, setup-project retired (10 reqs, 131 tests). · v0.0.3 (2026-07-01) — installable + distributable: npm `@jeremiewerner/motto`, self-hosted marketplace, real `release` publish flow (13 reqs). · v0.0.2 (2026-07-01) — Motto self-hosts: own `skills/` tree + dogfood guard + spec-complete `validateSkill` (10 reqs). · v0.0.1 (2026-06-30) — core `motto lint` + `motto build` CLI (22 reqs). Archives in `milestones/`.
 
 **Hardening note:** post-v0.0.2 `/code-review high` caught 3 D-01 never-throw violations the milestone tests missed; fixed + guarded. v0.0.4 continued the pattern (adversarial scaffold-path tests). v0.0.5 made it structural: phase 18's review caught a Critical never-throw registry-shape crash (CR-01) *before* verification instead of after ship, and the twice-deferred WR-04 shape guard was closed at milestone close — zero known never-throw gaps at ship for the first time.
 
-## Current Milestone: v0.0.6 Prove & Publish
+## Next Milestone Goals
 
-**Goal:** Motto's ship path becomes automated and trustworthy — CI gates every push, tags publish themselves to npm, repo goes public, and build-skill is proven on a real skill.
-
-**Progress:** All 4 phases complete (2026-07-05) — Phase 22 (public flip & token hardening) closed the milestone: two clean full-history gitleaks scans (Scan #2 at the literal pre-flip HEAD) gated the one-way PRIVATE→PUBLIC flip of jeremiewerner/motto; publish auth migrated NPM_TOKEN→OIDC trusted publishing (id-token: write, token-free publish env, structural regression test, maintainer-attested npmjs.com Trusted Publisher record); live branch protection on main (5 exact CI checks, enforce_admins: false); README publish-flow rewritten from a logged-out walkthrough + CI/npm badges. Security review: 8 threats, all closed, 0 open (22-SECURITY.md). Deferred to ship: first OIDC publish itself + marketplace re-verify (release SKILL.md Step 9 — npm latest still 0.0.3 until then). Prior: Phase 21 (publish job + release rewrite: local = bump+tag+push, CI publishes), Phase 20 (CI gate live, proven green on real PR runs, 231 tests), Phase 19 (pipe-safe CLI `--quiet`/`--format json`; build-skill proven live on `skills/changelog`). Next: ship v0.0.6 (`/gsd-complete-milestone`).
-
-**Target features:**
-- CI workflow: Node 20/22/24 test matrix + dogfood lint/build + pack-install E2E (tarball → tmp dir → init/lint/build) + publish-on-tag + npm-drift warning
-- Release skill rewrite: local = bump + tag + push only; publish + D-05 tarball assertion move to CI
-- Pre-public gate: git-history secrets scan + explicit `.planning/` visibility decision → repo flips public
-- Build-skill human-verify via authoring one real skill (BSKL-01, BSKL-05, WR-01 — closes v0.0.5 tech debt)
-- CLI ergonomics: `--quiet`, `--format json` (CLIX-01..02 — CI is first real consumer)
-- Changelog surface: release flow gains GitHub Release notes step
-
-**Key context:** npm stuck at 0.0.3 — v0.0.4/v0.0.5 were never published (release skill never ran; drift confirmed against registry 2026-07-03). Catch-up publish of 0.0.5 happens manually via the existing `release` skill before this milestone's CI work lands. Trusted publishing (OIDC) is sequenced after the public flip; `NPM_TOKEN` secret is the interim if CI publishes earlier. Repo public is a one-way door — secrets scan and `.planning/` decision are explicit gates, not assumptions. Remaining backlog (not this milestone): `motto ship`, design-ledger items (action section tags, skill-calls-skill, `{var}` interpolation, multi-template, `agent` template).
+Not yet defined — run `/gsd-new-milestone`. Backlog candidates in `ROADMAP.md ## Backlog` (motto ship, OS matrix, Node 20 EOL decision, design-ledger items, marketplace re-walk now that npm `latest` is current).
 
 **Standing principles (every step):** heavy research; design for unknown purpose; lightweight (readable code/md, no doc sprawl); agentic best practice (skills + agents + subagents + API/MCP are first-class); simple to adapt, creativity free; rigor in a small easy spine.
+
+<details>
+<summary>Shipped: v0.0.6 — Prove & Publish (2026-07-05)</summary>
+
+**Goal:** Motto's ship path becomes automated and trustworthy — CI gates every push, tags publish themselves to npm, repo goes public, and build-skill is proven on a real skill. ✅ Shipped — see `milestones/v0.0.6-ROADMAP.md`.
+
+**Delivered:** `.github/workflows/ci.yml` (4 parallel jobs: Node 20/22/24 matrix, dogfood, pack-install E2E, npm-drift advisory) + tag-triggered publish job (`version_guard` → idempotent npm/gh guards → OIDC `--provenance` publish → GitHub Release); `release` skill local flow shrunk to bump+tag+push; repo flipped public behind two clean gitleaks scans + PII sweep + branch protection; CLI `--quiet`/`--format json` + stdout/stderr split; build-skill proven on `skills/changelog`; zero long-lived publish tokens.
+
+**Proven live at close:** v0.0.6 published to npm + GitHub Release purely by tag push (Actions run 28751135062), closing Phase 21's deferred first-real-publish check and unblocking the 22-05 marketplace re-walk.
+
+</details>
 
 <details>
 <summary>Shipped: v0.0.5 — Skill Builder (2026-07-03)</summary>
@@ -95,10 +96,15 @@ The **strict schema + linter**. Skills that always conform to one rigid-yet-crea
 - [x] `build-skill` structures any freeform input into a lint-clean conforming skill, self-verifying against the real linter; `author-skill` retired atomically — Validated in Phase 16 (v0.0.5, BSKL-01..06; live-behavior fidelity pending human-verify)
 - [x] `skill-schema.md` matches the live validator, guarded by a doc-sync test that breaks the suite on drift; README documents the build-skill flow — Validated in Phase 17 (v0.0.5, DOC-06..07)
 - [x] Base spine = `# Title` + non-empty `<role>…</role>` section tag, registry-driven (BASE_SPINE), template-waivable — Validated in Phase 18 (v0.0.5, hard break from `**Role:**`)
+- [x] CLI `--quiet` + `--format text|json` with stdout/stderr split, presentation-layer only — v0.0.6 (CLIX-01..03)
+- [x] build-skill proven end-to-end on a real skill (`skills/changelog`) — v0.0.6 (BSKV-01, closes v0.0.5 human-verify debt)
+- [x] CI gates every push/PR: Node 20/22/24 matrix, dogfood, pack-install E2E, npm-drift advisory, git-less prepare guard — v0.0.6 (CIW-01..05)
+- [x] Tag push publishes to npm idempotently + creates a GitHub Release; local release flow = bump+tag+push; D-05 tarball assertion in CI — v0.0.6 (PUB-01..04, live-proven by the v0.0.6 release itself)
+- [x] Repo public behind explicit gates: clean full-history gitleaks scans, recorded `.planning/` visibility decision, stranger-usable README/npm path, OIDC trusted publishing with zero long-lived tokens — v0.0.6 (OPEN-01..03, PUB-05)
 
 ### Active
 
-(v0.0.6 — defined in `.planning/REQUIREMENTS.md`; validated entries move here at phase transitions.)
+(None — next milestone requirements defined via `/gsd-new-milestone`.)
 
 ### Out of Scope
 
@@ -114,8 +120,8 @@ The **strict schema + linter**. Skills that always conform to one rigid-yet-crea
 - Output is **standard Agent Skills** (`SKILL.md` + frontmatter + `references/`). The tooling is Claude-Code-specific; the output is portable.
 - A full design spec and a 6-task TDD implementation plan already exist: `.planning/superpowers/specs/2026-06-29-motto-design.md` and `.planning/superpowers/plans/2026-06-30-motto-core-cli.md`.
 - Repo layout for a Motto project: `skills/<name>/` (SKILL.md, references/, scripts/) + `shared/references/` → generated `dist/{public,private}/`.
-- Codebase state after v0.0.6 phases: plain ESM JS (`bin/` + `src/`), `node --test` suite, single dep `yaml`, husky pre-commit full-suite hook, CI live (`.github/workflows/ci.yml`: Node 20/22/24 matrix + dogfood + pack-install E2E + OIDC publish-on-tag + npm-drift advisory). Repo **public** (flipped 2026-07-05 after two clean gitleaks scans). Three live skills (`release`, `build-skill`, `changelog`), doc-sync test pins `skill-schema.md` to the validator source.
-- Known debt: npm latest still 0.0.3 until the first OIDC publish at v0.0.6 ship (marketplace install serves stale skills until then — re-verify is release SKILL.md Step 9); 1 info-level build-skill prose gap (see `milestones/v0.0.5-MILESTONE-AUDIT.md` tech_debt).
+- Codebase state at v0.0.6 ship: plain ESM JS (`bin/` + `src/` + `scripts/`, ~2,450 LOC), 243-test `node --test` suite, single dep `yaml`, husky pre-commit full-suite hook, CI live (`.github/workflows/ci.yml`: Node 20/22/24 matrix + dogfood + pack-install E2E + OIDC publish-on-tag + npm-drift advisory). Repo **public** (flipped 2026-07-05 after two clean gitleaks scans). npm `latest` = 0.0.6 (published via tag-push automation 2026-07-05). Three live skills (`release`, `build-skill`, `changelog`), doc-sync test pins `skill-schema.md` to the validator source.
+- Known debt: marketplace/skill-list stranger walkthrough still unverified against a current npm `latest` (was blocked on 0.0.3 staleness, unblocked at v0.0.6 ship — re-walk queued in ROADMAP Backlog); 1 info-level build-skill prose gap (see `milestones/v0.0.5-MILESTONE-AUDIT.md` tech_debt); versions 0.0.4/0.0.5 intentionally never published to npm (0.0.3 → 0.0.6 jump).
 
 ## Constraints
 
@@ -147,6 +153,7 @@ The **strict schema + linter**. Skills that always conform to one rigid-yet-crea
 | No RESERVED-word check on `plugins.public/private` names (doc fix only, DEBT-01) | Over-strictness would reject spec-conformant names like `claude-notes-sync` | ✅ v0.0.4 |
 | No `motto ship` command | After init + build, shipping is two git commands; marketplace.json already scaffolded | ✅ v0.0.4 (backlog SHIP-01 until real friction) |
 | Publish auth = OIDC trusted publishing, zero stored tokens | Short-lived workflow-scoped OIDC token replaces the standing `NPM_TOKEN` credential; exact org/repo/workflow match on npmjs.com; residual secret revoked at ship (release Step 9) | ✓ Phase 22 — token-free publish path live in ci.yml, structural test guards it |
+| `version_guard` cross-checks tag vs package.json before any publish side effect | A mismatched tag must abort before npm/gh guards — closes the phantom-green-release drift path (Phase 21 CR-01) | ✓ v0.0.6 — proven live: guard passed silently on the real v0.0.6 publish; abort path proven by executed bash spot-checks |
 | `.planning/` ships public as-is (no history rewrite) | 2026-07-05: Tags stay valid, history stays honest, the planning record is a feature for a dev-tooling repo (D-01). Accepted with informed knowledge of the PII sweep's commit-metadata-email finding — `jeremie@studiometa.fr` is the git-config author/committer email on the large majority of commits and is invisible to gitleaks (which scans diff content, not commit headers); D-06 already forbids purging it via history rewrite, so this exposure is knowingly accepted, not a silent default (see `.planning/phases/22-public-flip-token-hardening/22-SECRETS-SCAN.md` PII Sweep section) | ✓ Accepted — Phase 22 |
 
 ## Evolution
@@ -167,4 +174,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-05 after Phase 22 (repo public, OIDC publish path live — v0.0.6 phases all complete)*
+*Last updated: 2026-07-05 after v0.0.6 milestone (shipped + live-proven publish; next milestone not yet defined)*

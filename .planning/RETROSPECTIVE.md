@@ -85,6 +85,46 @@
 
 ---
 
+## Milestone: v0.0.6 — Prove & Publish
+
+**Shipped:** 2026-07-05
+**Phases:** 4 | **Plans:** 14 | **Commits:** 109
+
+### What Was Built
+- `.github/workflows/ci.yml` — four parallel jobs (Node 20/22/24 matrix, `--quiet` dogfood, pack-install E2E, never-red npm-drift advisory) gating every push/PR
+- Tag-triggered publish job: `version_guard` (tag vs package.json, hard-fail before any side effect) → idempotent npm/gh guards → OIDC trusted publishing with `--provenance` → `gh release create --generate-notes`; zero long-lived tokens (NPM_TOKEN minted in 21-03, retired in 22-02)
+- `release` skill rewritten — local flow terminates at `git push --follow-tags`; CI-handoff, Verify-CI-Published, never-re-tag recovery runbooks
+- Public flip behind explicit gates: two full-history gitleaks scans (405/415 commits, clean), mechanical PII sweep, recorded `.planning/`-public decision, branch protection with 5 required checks
+- CLI `--quiet` + `--format text|json` + stdout/stderr split (presentation layer only); build-skill proven live on `skills/changelog`
+
+### What Worked
+- Live-proof-at-close: the milestone close itself exercised the deliverable — bumping to 0.0.6 and pushing the tag was exactly Phase 21's deferred UAT scenario, so shipping and verifying were one motion (verified closeout, no override)
+- Structural tests on ci.yml (ordering-aware `findIndex` assertions, OIDC 4-case contract) — workflow regressions break the suite locally, not in a failed publish
+- Executing the guard's literal bash body with match/mismatch/prerelease scenarios during verification — behavioral proof without needing a throwaway tag
+- One-way-door discipline: rescan at the literal pre-flip HEAD, decisions recorded before the flip, standing review caught the never-red CI script + npx substitution issues pre-verification
+
+### What Was Inefficient
+- The `260630-vzh-review-fixes` SUMMARY.md gap (v0.0.4-era) surfaced at a THIRD milestone close — commit e81641c claimed "PLAN + SUMMARY" but staged only PLAN.md; retro-written at this close. Artifact claims in commit messages need the same reality-check as side-effect claims.
+- Auto-extracted MILESTONES.md accomplishments pulled a review-finding line ("[Rule 1 - Bug] …") as a one-liner — summary-extract grabbed the wrong field from 19-02's SUMMARY; needed manual curation (repeat of v0.0.5's asterisk truncation)
+- npm versions 0.0.4/0.0.5 never shipped (release skill never ran in two milestones) — the 0.0.3→0.0.6 jump is harmless but the two-milestone silent drift is exactly what the new npm-drift CI job now makes visible
+
+### Patterns Established
+- Ship-then-close: when a milestone's deliverable IS the release pipeline, the close sequence (bump → merge → tag → watch) doubles as the final UAT — deferred "first live run" checks resolve at close, not after
+- Guards ordered hard-fail-first: version_guard before any idempotency guard or side effect; proven by ordering-aware tests, not step order convention
+- Token lifecycle inside one milestone: mint the narrow interim credential only when needed, migrate to OIDC, retire it before ship
+
+### Key Lessons
+1. Deferred-to-ship verification items should be wired INTO the close workflow, not parked as pending UAT — this close only caught them because the artifact audit blocked on them.
+2. Commit messages claiming artifacts ("PLAN + SUMMARY") can lie by omission; the audit's per-directory SUMMARY check is the real guard, and it took three closes to fire because earlier closes acknowledged instead of fixing.
+3. A guard proven by executing its extracted bash body ≠ proven in the live runner — both were needed: spot-checks caught the logic, the real v0.0.6 run proved the wiring (needs-gating, OIDC exchange, registry write).
+
+### Cost Observations
+- Model profile: adaptive
+- Timeline: 2 days (2026-07-03 → 2026-07-05, 4 phases + live release at close)
+- Notable: 3 maintainer checkpoints (npm token, trusted-publisher config, repo flip) — first milestone where human-in-the-loop steps were plan-level tasks
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -96,6 +136,7 @@
 | v0.0.3 | 3 | Distribution; release-flow gap exposed (publish/tag didn't run) |
 | v0.0.4 | 4 | Tech-debt phase inserted pre-close; audit re-run to passed |
 | v0.0.5 | 5 | Review-before-verify systematized; quick tasks close debt same-day; D-NN decision format makes coverage gate mechanical |
+| v0.0.6 | 4 | Ship-then-close: milestone close doubles as the pipeline's live UAT; artifact audit blocks close until deferred items resolve or get fixed |
 
 ### Cumulative Quality
 
@@ -106,6 +147,7 @@
 | v0.0.3 | 75 | 1 |
 | v0.0.4 | 131 | 1 |
 | v0.0.5 | 213 | 1 |
+| v0.0.6 | 243 | 1 |
 
 ### Top Lessons (Verified Across Milestones)
 
