@@ -150,6 +150,7 @@ Run this step **once** — the first time a tag-triggered publish succeeds via O
    npm view @jeremiewerner/motto --json
    ```
    and look for attestation data. Record what was observed (do not just assume `--provenance` worked because `npm publish` exited 0).
+4. **Re-verify the public marketplace path.** The marketplace plugin sources skills from whatever npm currently publishes as `latest` (`.claude-plugin/marketplace.json` → `"source": "npm"`), so an install run before this first OIDC publish would have installed a stale tarball. From a logged-out browser and clean shell, re-run the Phase 22 Plan 05 stranger-walkthrough marketplace steps: `/plugin marketplace add jeremiewerner/motto` then `/plugin install motto@motto`, and confirm `build-skill` (not the retired `author-skill`/`setup-project`) appears in Claude Code's skill list. Record pass/fail.
 
 **Troubleshooting:** if the OIDC publish 404s or 401s despite a correctly-configured Trusted Publisher, check `package.json`'s `repository` field. It currently uses the `github:jeremiewerner/motto` shorthand form — try expanding it to `git+https://github.com/jeremiewerner/motto.git` as a first troubleshooting step.
 
