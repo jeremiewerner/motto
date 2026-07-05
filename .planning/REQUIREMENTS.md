@@ -26,7 +26,7 @@ Maintainer-facing milestone: no end-user feature work. "User" below = maintainer
 - [x] **PUB-02**: `release` skill rewritten — local flow is tests → bump → tag → `git push --follow-tags` only; publish step removed from laptop; skill documents the CI handoff and the publish-failure recovery runbook (re-run job; never re-tag)
 - [x] **PUB-03**: D-05 tarball leak assertion moves from the release skill's inline heredoc to a committed script run by the CI pack-E2E job
 - [x] **PUB-04**: Each published version gets a GitHub Release with auto-generated notes (`gh release create --generate-notes` from the publish job)
-- [ ] **PUB-05**: After the repo is public, CI publish migrates from `NPM_TOKEN` to npm trusted publishing (OIDC) with `--provenance` — milestone ends with zero long-lived publish tokens
+- [x] **PUB-05**: After the repo is public, CI publish migrates from `NPM_TOKEN` to npm trusted publishing (OIDC) with `--provenance` — milestone ends with zero long-lived publish tokens
 
 ### Public Flip (OPEN)
 
