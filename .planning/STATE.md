@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v0.0.6
 milestone_name: Prove & Publish
-current_phase: 21
-current_phase_name: publish-automation-release-rewrite
+current_phase: 22
+current_phase_name: public-flip-token-hardening
 status: executing
 stopped_at: Phase 22 context gathered
-last_updated: "2026-07-04T20:51:48.858Z"
-last_activity: 2026-07-04
-last_activity_desc: Completed 21-04-PLAN.md (CR-01 tag/version guard gap closure)
+last_updated: "2026-07-05T08:05:21.596Z"
+last_activity: 2026-07-05
+last_activity_desc: Phase 22 execution started
 progress:
   total_phases: 4
   completed_phases: 3
-  total_plans: 9
-  completed_plans: 9
-  percent: 75
+  total_plans: 14
+  completed_plans: 10
+  percent: 71
 ---
 
 # Project State
@@ -24,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-02 after v0.0.4)
 
 **Core value:** A strict schema + linter that guarantees authored skills conform before they ship, then packages them into self-contained standard Agent Skill plugins.
-**Current focus:** Phase 21 — publish-automation-release-rewrite
+**Current focus:** Phase 22 — public-flip-token-hardening
 
 ## Current Position
 
-Phase: 21 (publish-automation-release-rewrite) — EXECUTING
-Plan: 4 of 4
-Status: All plans complete (CR-01 gap closure done)
-Last activity: 2026-07-04 — Completed 21-04-PLAN.md (CR-01 tag/version guard gap closure)
+Phase: 22 (public-flip-token-hardening) — EXECUTING
+Plan: 2 of 5
+Status: Ready to execute
+Last activity: 2026-07-05 — Phase 22 execution started
 
 **Milestone shape (v0.0.6, coarse):**
 
@@ -91,6 +91,7 @@ Ordering (research-locked): CLI flags first (pack-E2E consumes them) → CI prov
 | Phase 21 P01 | 6min | 2 tasks | 3 files |
 | Phase 21 P02 | 1min | 1 tasks | 1 files |
 | Phase 21 P04 | 2min | 2 tasks | 3 files |
+| Phase 22 P01 | 4min | 3 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -145,6 +146,9 @@ Recent decisions affecting current work:
 - [Phase 21-02]: release skill's terminal local command is git push --follow-tags; local npm publish/whoami fully removed and replaced with CI Handoff/Verify CI Published/If CI Publish Fails sections
 - [Phase 21-04]: version_guard reads $GITHUB_REF_NAME as the default runner env var, not ${{ github.ref_name }} interpolation, avoiding the WR-01 injection pattern for the new step
 - [Phase 21-04]: ci-workflow.test.js asserts array-index ordering (findIndex + <), not substring grep, so a version_guard reorder that reopens the phantom-release drift path fails loudly
+- [Phase 22-01]: gitleaks git . full-history scan #1 (of 2, per D-08) recorded clean: 405 commits, HEAD 1b1814c, exit 0, 0 findings
+- [Phase 22-01]: jeremie@studiometa.fr commit-metadata email flagged as a gitleaks-blind-spot PII finding, accepted (not purged) per D-01/D-06, and cited in the PROJECT.md decision row
+- [Phase 22-01]: .planning/ visibility decision (public as-is, no history rewrite) now an explicit, dated, rationale-backed PROJECT.md Key Decisions row -- OPEN-02 fully closed
 
 ### Pending Todos
 
@@ -180,7 +184,7 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-04T20:51:48.854Z
+Last session: 2026-07-05T08:04:48.907Z
 Stopped at: Phase 22 context gathered
 Resume file: .planning/phases/22-public-flip-token-hardening/22-CONTEXT.md
 

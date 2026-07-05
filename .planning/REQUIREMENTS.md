@@ -30,8 +30,8 @@ Maintainer-facing milestone: no end-user feature work. "User" below = maintainer
 
 ### Public Flip (OPEN)
 
-- [ ] **OPEN-01**: Full git history passes a secrets scan (`gitleaks git .`) — any hit is triaged and rotated before the flip; scan result recorded
-- [ ] **OPEN-02**: `.planning/` visibility is an explicit recorded decision (public as-is, or excluded via history rewrite) — not a default
+- [x] **OPEN-01**: Full git history passes a secrets scan (`gitleaks git .`) — any hit is triaged and rotated before the flip; scan result recorded
+- [x] **OPEN-02**: `.planning/` visibility is an explicit recorded decision (public as-is, or excluded via history rewrite) — not a default
 - [ ] **OPEN-03**: Repo `jeremiewerner/motto` flips public — README, npm links, and marketplace install path verified working for a logged-out stranger
 
 ### Build-Skill Verification (BSKV)
