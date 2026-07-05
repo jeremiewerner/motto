@@ -130,7 +130,7 @@ Plans:
   3. The repo `jeremiewerner/motto` flips public and a logged-out stranger can follow the README, npm links, and marketplace install path successfully.
   4. After the flip, CI publish migrates from `NPM_TOKEN` to npm trusted publishing (OIDC) with `--provenance`, leaving zero long-lived publish tokens.
 
-**Plans**: 3/5 plans executed
+**Plans**: 4/5 plans executed
 
 **Wave 1**
 
@@ -140,7 +140,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1)*
 
-- [ ] 22-04-PLAN.md — FINAL pre-flip gitleaks rescan (D-08) + maintainer checkpoint: flip `jeremiewerner/motto` to public (OPEN-01, OPEN-03)
+- [x] 22-04-PLAN.md — FINAL pre-flip gitleaks rescan (D-08) + maintainer checkpoint: flip `jeremiewerner/motto` to public (OPEN-01, OPEN-03)
 
 **Wave 3** *(blocked on Wave 2)*
 
@@ -161,7 +161,7 @@ Phases execute in numeric order: 19 → 20 → 21 → 22
 | 19. CLI Ergonomics & Build-Skill Verification | v0.0.6 | 2/2 | Complete    | 2026-07-03 |
 | 20. CI Workflow | v0.0.6 | 3/3 | Complete    | 2026-07-03 |
 | 21. Publish Automation & Release Rewrite | v0.0.6 | 4/4 | Complete   | 2026-07-04 |
-| 22. Public Flip & Token Hardening | v0.0.6 | 3/5 | In Progress|  |
+| 22. Public Flip & Token Hardening | v0.0.6 | 4/5 | In Progress|  |
 
 ## Backlog
 

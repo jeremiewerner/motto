@@ -5,15 +5,15 @@ milestone_name: Prove & Publish
 current_phase: 22
 current_phase_name: public-flip-token-hardening
 status: executing
-stopped_at: Completed 22-03-PLAN.md
-last_updated: "2026-07-05T08:18:53.018Z"
+stopped_at: Completed 22-04-PLAN.md
+last_updated: "2026-07-05T17:19:22.856Z"
 last_activity: 2026-07-05
 last_activity_desc: Phase 22 execution started
 progress:
   total_phases: 4
   completed_phases: 3
   total_plans: 14
-  completed_plans: 12
+  completed_plans: 13
   percent: 75
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-02 after v0.0.4)
 ## Current Position
 
 Phase: 22 (public-flip-token-hardening) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 Status: Ready to execute
 Last activity: 2026-07-05 — Phase 22 execution started
 
@@ -94,6 +94,7 @@ Ordering (research-locked): CLI flags first (pack-E2E consumes them) → CI prov
 | Phase 22 P01 | 4min | 3 tasks | 2 files |
 | Phase 22 P02 | 15min | 3 tasks | 3 files |
 | Phase 22 P03 | 20min | 2 tasks | 0 files |
+| Phase 22 P04 | checkpoint-spanning | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -156,6 +157,8 @@ Recent decisions affecting current work:
 - [Phase 22-02]: Zero-tokens follow-through (D-15/D-16/D-17) documented as a distinct one-time release/SKILL.md Step 9, explicitly not a per-release step
 - [Phase 22]: [Phase 22-03] enforce_admins pinned false to preserve the release skill's solo-maintainer git push --follow-tags direct-to-main flow — Pitfall 1: enforcing branch protection on admins would break the already-shipped release flow
 - [Phase 22]: [Phase 22-03] npm-drift deliberately excluded from required-status-checks list — Its job-level if: github.ref == 'refs/heads/main' guard means it never reports on a PR-triggered run, which would leave a required check permanently pending
+- [Phase 22-04]: gitleaks git . full-history scan #2 (final, of 2 per D-08) recorded clean: 415 commits, HEAD e85c410, exit 0, 0 findings
+- [Phase 22-04]: jeremiewerner/motto flipped PRIVATE -> PUBLIC via gh repo edit --visibility public --accept-visibility-change-consequences, performed by the maintainer only after Scan #2 confirmed 0 unresolved findings
 
 ### Pending Todos
 
@@ -191,10 +194,10 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-05T08:18:53.014Z
-Stopped at: Completed 22-03-PLAN.md
-Resume file: None
+Last session: 2026-07-05T17:19:08.308Z
+Stopped at: Completed 22-04-PLAN.md
+Resume file: 
 
-## Operator Next Steps
+None
 
 - Start the next milestone with /gsd-new-milestone
