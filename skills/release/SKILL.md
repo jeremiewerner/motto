@@ -109,7 +109,7 @@ Only proceed to Step 8 (Post-Release Housekeeping) once all three confirm. Do no
    ```
    gh run view <run-id> --log-failed
    ```
-4. If the failure is transient (network, registry hiccup) or a fixable config issue (rotate `NPM_TOKEN`, fix a permissions typo), fix the root cause if needed, then re-run only the failed job(s):
+4. If the failure is transient (network, registry hiccup) or a fixable config issue (fix the Trusted Publisher configuration on npmjs.com, fix a workflow permissions typo such as a missing `id-token: write` — never mint a new `NPM_TOKEN`; publishing is trusted-publisher-only per Step 9), fix the root cause if needed, then re-run only the failed job(s):
    ```
    gh run rerun <run-id> --failed
    ```
