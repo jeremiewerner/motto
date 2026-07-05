@@ -1,0 +1,142 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [20, 22, 24]
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+      # npm ci fires the `prepare` guard (scripts/prepare.mjs — no-ops on
+      # .git-less installs but runs here since checkout gives us a real .git)
+      # on every leg of this matrix. NOTE: `prepublishOnly` (node bin/motto.js
+      # build) does NOT run on npm ci — per npm's lifecycle docs it runs only
+      # on `npm publish`; the build is exercised by the dogfood job and by
+      # `npm pack` inside pack-install-e2e instead. `prepare` is idempotent
+      # today — re-check this comment if a non-idempotent lifecycle script is
+      # ever added (Pitfall 1).
+      - run: npm ci
+      - run: npm test
+
+  dogfood:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: 'npm'
+      - run: npm ci
+      - name: lint --quiet (empty stdout, exit 0)
+        run: |
+          out=$(node bin/motto.js lint --quiet)
+          if [ -n "$out" ]; then echo "expected empty stdout, got: $out" >&2; exit 1; fi
+      - name: build --quiet (empty stdout, exit 0)
+        run: |
+          out=$(node bin/motto.js build --quiet)
+          if [ -n "$out" ]; then echo "expected empty stdout, got: $out" >&2; exit 1; fi
+
+  pack-install-e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: 'npm'
+      - run: npm ci
+      - name: pack-install E2E (real npm consumer path)
+        run: node scripts/pack-install-e2e.mjs
+      - name: prepare guard proof (.git-less no-op, CIW-05)
+        run: node scripts/prepare-guard-check.mjs
+
+  npm-drift:
+    # Advisory main-branch backstop only — skip on tag-triggered and PR runs
+    # (the publish job's own npm_guard is the real idempotency check for tags).
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20
+      - run: node scripts/npm-drift-check.mjs
+
+  publish:
+    # NOT npm-drift — advisory, never gates. Gated on the exact same tagged
+    # commit's own sibling jobs re-validating (needs: only resolves within
+    # a single workflow run; the tag-triggered run pays for its own full
+    # test/dogfood/pack-install-e2e pass, per PUB-01 research).
+    needs: [test, dogfood, pack-install-e2e]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # scoped to this job only — workflow default stays contents: read
+      id-token: write # OIDC trusted publishing — authenticates npm publish below
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          # Pinned to 24 (not the 20 used by every other job): ships npm
+          # >=11.5.1, the floor for OIDC trusted publishing (PUB-05), which
+          # authenticates the `npm publish --provenance` step below — no
+          # NPM_TOKEN/NODE_AUTH_TOKEN anywhere in this workflow.
+          node-version: 24
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'npm'
+      - run: npm ci
+      - name: Guard — tag must match package.json version
+        id: version_guard
+        run: |
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          if [ "v$PKG_VERSION" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::tag $GITHUB_REF_NAME does not match package.json version $PKG_VERSION" >&2
+            exit 1
+          fi
+      - name: Guard — skip npm publish if version already exists
+        id: npm_guard
+        run: |
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          if npm view "@jeremiewerner/motto@$PKG_VERSION" version >/dev/null 2>&1; then
+            echo "already_published=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "already_published=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: npm publish
+        if: steps.npm_guard.outputs.already_published == 'false'
+        run: npm publish --provenance
+      - name: Guard — skip GitHub Release if it already exists
+        id: gh_guard
+        run: |
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            echo "already_released=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "already_released=false" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - name: Create GitHub Release
+        if: steps.gh_guard.outputs.already_released == 'false'
+        run: gh release create "$GITHUB_REF_NAME" --generate-notes
+        env:
+          GH_TOKEN: ${{ github.token }}

@@ -1,183 +1,280 @@
-# Architecture Research — v0.0.5 Skill Builder Integration
+# Architecture Research
 
-**Domain:** Integrating template mechanism + outputs/dependencies/allowed-tools validation + `build-skill` Agent Skill into Motto's existing 1,380-LOC ESM CLI
-**Researched:** 2026-07-02
-**Confidence:** HIGH (all findings cite actual current source, not speculation)
+**Domain:** CI/CD integration for an existing Node CLI (motto) — GitHub Actions, npm publish automation, CLI output-format flags
+**Researched:** 2026-07-03
+**Confidence:** HIGH (verified against current repo source: `src/lint.js`, `src/build.js`, `bin/motto.js`, `skills/release/SKILL.md`, `package.json`, `test/cli.test.js`; MEDIUM on npm trusted-publishing specifics — recent 2025 GA feature, verified via official docs + changelog)
 
-This is a **subsequent-milestone integration** research doc, not a greenfield domain survey. Every claim below is grounded in the real files: `src/schema.js`, `src/lint.js`, `src/build.js`, `test/dogfood.test.js`, `test/schema.test.js`, and the approved design spec `.planning/superpowers/specs/2026-07-02-skill-builder-design.md`.
+This is a **subsequent-milestone integration** doc, not a greenfield architecture doc. It answers exactly the four integration questions posed, plus a build order. It does not re-derive the existing lint/build/schema architecture (unchanged this milestone). It supersedes the previous `ARCHITECTURE.md` (v0.0.5 Skill Builder integration research), which is no longer current.
 
-## System Overview (current, unchanged by this milestone)
+## System Overview
+
+Five new pieces land this milestone. Four are additive; one (release skill) is a rewrite. None of them touch the never-throw validation core (`schema.js`, `lint.js`, `build.js` internals) — they wrap it.
 
 ```
-bin/motto.js  (CLI dispatch, no business logic)
-     │
-     ├── init.js ───────────────────────────────────────────── (untouched this milestone)
-     │
-     ├── lint.js ── lintProject(projectRoot)
-     │     │   1. processConfig      → loadConfig (config.js)
-     │     │   2. loadSharedRefs     → Set<string> of shared/references/*.md basenames
-     │     │   3. discoverSkillNames → sorted skills/ dir listing
-     │     │   4. processSkill(×N)   → parseFrontmatter (frontmatter.js)
-     │     │                           + validateSkill (schema.js) ← PURE, no I/O
-     │     └── aggregates {skill, message} errors, never throws
-     │
-     └── build.js ── buildProject(projectRoot)
-           1. lintProject gate (fail fast, zero writes)
-           2. re-read config + skill data from disk
-           3. pre-pack checks (D3-07 collision, D3-12 private-contradiction)
-           4. wipe dist/
-           5. cp() each skill dir verbatim (verbatimSymlinks:true) + bundle shared refs
-           6. emit plugin.json per bucket
+┌──────────────────────────────────────────────────────────────────────┐
+│ .github/workflows/ci.yml  (ONE workflow, multiple jobs, needs: graph) │
+│                                                                        │
+│  on: push [main, tags v*], pull_request [main]                        │
+│                                                                        │
+│  ┌─────────┐   ┌──────────┐   ┌───────────────────┐   ┌───────────┐  │
+│  │  test   │   │ dogfood  │   │ pack-install-e2e   │   │ npm-drift │  │
+│  │ 20/22/24│   │ lint+bld │   │ npm pack → tmp dir │   │  (warn)   │  │
+│  │ matrix  │   │          │   │ → install → lint/  │   │           │  │
+│  │         │   │          │   │   build             │   │           │  │
+│  └────┬────┘   └────┬─────┘   └─────────┬──────────┘   └───────────┘  │
+│       │             │                    │                            │
+│       └─────────────┴────────needs───────┘                            │
+│                      ▼                                                │
+│              ┌───────────────┐                                       │
+│              │    publish    │  if: refs/tags/v*                     │
+│              │ npm publish   │  needs: [test, dogfood,               │
+│              │ + GH Release  │          pack-install-e2e]             │
+│              └───────┬───────┘                                       │
+└──────────────────────┼────────────────────────────────────────────────┘
+                        │ (triggered by)
+                        ▼
+┌──────────────────────────────────────────────────────────────────────┐
+│ skills/release/SKILL.md  (rewritten — local half only)                │
+│                                                                        │
+│  Step 1 tests → Step 2 version bump → Step 3 dogfood → Step 4 tag +   │
+│  push  ──────────────────────────────────────────────────────────►   │
+│  (Steps "npm publish" + D-05 tarball assertion REMOVED — now live     │
+│   inside pack-install-e2e + publish jobs in ci.yml)                   │
+└──────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────┐
+│ bin/motto.js  (presentation layer only — unchanged boundary below)    │
+│                                                                        │
+│  --format json / --quiet   ─┐                                        │
+│                              ▼                                        │
+│         chooseRenderer(result) → text lines | JSON.stringify(result)  │
+│                              │                                        │
+│                              ▼  (result already fully structured)     │
+│  ┌────────────────────────────────────────────────────────────────┐  │
+│  │  src/lint.js lintProject()  →  { ok, errors[], count }         │  │
+│  │  src/build.js buildProject() →  { ok, outDir, errors[],        │  │
+│  │                                    skillCount, bucketCount }    │  │
+│  │  NEVER-THROW CORE — zero changes this milestone                │  │
+│  └────────────────────────────────────────────────────────────────┘  │
+└──────────────────────────────────────────────────────────────────────┘
 ```
 
-`schema.js` is the one file with a hard, explicitly documented purity contract (`src/schema.js:1-11`): *"Pure object validator — no filesystem, no YAML parsing, no imports beyond this file's own scope."* Every integration decision below is constrained by keeping that sentence true.
+### Component Responsibilities
 
-## Q1 — Where does `src/templates.js` plug into `validateSkill`?
+| Component | Responsibility | New / Modified |
+|-----------|-----------------|-----------------|
+| `.github/workflows/ci.yml` | Single workflow: test matrix, dogfood, pack-install E2E, npm-drift warning, tag-gated publish + GitHub Release | **New** |
+| `test/cli.test.js` pattern (reused, not modified) | Precedent for spawning `bin/motto.js` as a child process against tmp dirs — the pack-install E2E script follows this exact shape | Reused pattern, no change |
+| pack-install E2E script | `npm pack` → install tarball into a fresh tmp dir → run `motto init/lint/build` against it → assert tarball contents (absorbs the release skill's Step 4 D-05 assertion) | **New** — location decision below |
+| `bin/motto.js` output layer | Adds `--quiet` / `--format json` flags; renders `lintProject()`/`buildProject()` results as text (current) or JSON (new) | **Modified** (presentation only) |
+| `src/lint.js`, `src/build.js`, `src/schema.js` | Never-throw validation/build core | **Unchanged** |
+| `skills/release/SKILL.md` | Local maintainer checklist | **Rewritten** — Steps 4-5 (tarball verify, publish) removed/replaced with "push tag, CI takes over" + a failure-mode recovery section |
+| npm registry | Publish target | External — now reached from CI (`NPM_TOKEN` secret initially; OIDC trusted publishing after the repo goes public, per locked project decision) |
+| GitHub Releases API | Changelog surface | External — new consumer, written to by the `publish` job |
 
-**Recommendation: extend `validateSkill`'s signature with a new parameter carrying template data, sourced from a new `src/templates.js` module that `schema.js` does NOT import.**
+## Answering the Four Integration Questions
 
-Current signature (`src/schema.js:74`):
+### 1. Workflow file structure: one `ci.yml` vs separate `release.yml`
+
+**Recommendation: one `.github/workflows/ci.yml` with multiple jobs and a `needs:` graph. Do not create a separate `release.yml`.**
+
+Rationale:
+- `needs:` only gates jobs **within the same workflow run**. Cross-workflow gating requires the `workflow_run` trigger, which reacts to a *separate, already-completed* workflow run and has well-documented UX friction (default branch context quirks, artifacts must be re-downloaded across workflows, harder to reason about "did this exact commit's tests pass"). For a single-maintainer project whose explicit constraint is "keep the maintenance surface minimal," `needs:` in one file is strictly simpler and more correct than `workflow_run` across two files.
+- A separate `release.yml` would either (a) duplicate the `actions/checkout` + `setup-node` + `npm ci` boilerplate, or (b) re-run tests redundantly on the tag push (tags don't inherit branch-push job results). Both violate the project's "mechanism over features" philosophy.
+- Triggers: `on: push: { branches: [main], tags: ['v*'] }` plus `pull_request: { branches: [main] }`. Every push (branch or tag) runs the same `test` → `dogfood` → `pack-install-e2e` gate. The `publish` job alone is scoped with `if: startsWith(github.ref, 'refs/tags/v')`, and `needs: [test, dogfood, pack-install-e2e]` so a tag push that happens to break something still cannot publish.
+- `npm-drift` (warn-only) should run on `push` to `main` only (`if: github.ref == 'refs/heads/main'`), not on PRs or tags — it's a standing early-warning check, not a release gate, and should never fail the build (`continue-on-error: true` or a step that prints a warning without a non-zero exit).
+
+### 2. Where the pack-install E2E lives: CI-only script vs committed test file
+
+**Load-bearing finding:** Node's `node --test` runner auto-discovers **every** `.js`/`.cjs`/`.mjs` file inside any directory literally named `test` (or `tests`), regardless of filename — not just files matching `*.test.js`. This project's bare `npm test` script is `node --test` with no path argument, and husky's pre-commit hook runs `npm test` on every commit. That means **anything dropped into `test/` runs on every single commit**, unconditionally.
+
+The pack-install E2E is inherently slow relative to the rest of the suite (`npm pack`, a real `npm install` of the tarball into a fresh tmp dir, then spawning the CLI against it — likely several seconds, network/registry-cache dependent). Two real options:
+
+- **Option A — inside `test/`, accept the cost.** Simple, consistent with the existing `test/cli.test.js` / `test/init-dogfood.test.js` spawnSync-into-tmpdir pattern. Cost: every local commit (via husky) pays the E2E tax, even for unrelated one-line changes.
+- **Option B (recommended) — a dedicated script outside `test/`,** e.g. `scripts/pack-install-e2e.mjs`, wired to its own `npm run test:e2e` script, invoked as an explicit CI step (`node scripts/pack-install-e2e.mjs`). `npm test`/husky stays exactly as fast as it is today. There is direct precedent for this shape already in the codebase: the D-05 tarball-leak assertion currently lives as an **inline script embedded in the release skill**, not as a `node --test` file — it was never meant to run on every commit, only at release time. Lifting it into `scripts/pack-install-e2e.mjs` (absorbing the tarball-content assertion as one of its checks) is a natural, low-risk move: same script shape, same never-runs-on-every-commit intent, now triggered by CI instead of a human reading a skill step.
+
+Either way, reuse the `spawnSync(process.execPath, [CLI_PATH, ...args], { encoding: 'utf8', cwd })` pattern already proven in `test/cli.test.js`, and the `mkdtemp(join(tmpdir(), …))` pattern already proven in `test/init-dogfood.test.js` — this is not new machinery, just a new call site.
+
+**Decision to lock in phase planning:** Option B is the research recommendation; if the team prefers Option A's simplicity (one less npm script to remember) that's a legitimate but slower-commit tradeoff — call it out explicitly rather than defaulting silently.
+
+### 3. How `--format json` threads through lint.js's error shape without touching the never-throw core
+
+**Key finding: it doesn't need to touch the core at all — this is a pure presentation-layer change, entirely inside `bin/motto.js`.**
+
+`lintProject()` already returns a fully structured, JSON-serializable shape: `{ ok: boolean, errors: Array<{ skill: string, message: string }>, count: number }`. `buildProject()` returns `{ ok, outDir, errors, skillCount, bucketCount }` — same shape family. Neither function does any text formatting today; `bin/motto.js`'s dispatch blocks are solely what turn `result.errors` into `✗ ${e.skill}: ${e.message}\n` lines (see lines 242-249 and 270-275 of the current `bin/motto.js`).
+
+Adding `--format json` means:
+1. Add `format: { type: 'string' }` to the `parseArgs` options in `bin/motto.js` (mirrors how `force`/`help` are already declared). Validate the value is `'text'` or `'json'` (default `'text'`); an invalid value follows the same unknown-flag error shape already established (D-04/D-05 pattern) rather than inventing a new error format.
+2. Replace the current inline `for (const e of result.errors) { process.stdout.write(...) }` blocks (there are two — lint's and build's, structurally identical) with a small shared renderer, e.g. `renderResult(result, { format, quiet })`, called from both the `lint` and `build` dispatch branches. `format === 'json'` → `process.stdout.write(JSON.stringify(result) + '\n')`. `format === 'text'` (default) → today's exact lines, byte-for-byte, so the existing `cli.test.js` text-mode assertions keep passing unmodified.
+3. `--quiet` is orthogonal: it governs whether the **success** line (`✓ N skills OK`) prints at all — useful for scripts/hooks that only care about exit code + errors. It should not suppress error output in either mode (a silent failure is worse than a silent success). Whether `--quiet` also collapses JSON-mode success output to nothing, or `--format json` implies its own contract independent of `--quiet`, is a genuine open interaction to lock explicitly in phase planning — don't let it fall out as an implementation-detail accident.
+
+Because `errors[].skill` / `errors[].message` become a de facto JSON schema the moment `--format json` ships (CI/scripts will parse these field names), treat them as an external contract from day one — no field renames without a breaking-change note, even though nothing today enforces that externally.
+
+**Net effect on the never-throw core:** zero. `lint.js`, `build.js`, `schema.js` are not touched by this feature. The entire risk surface is `bin/motto.js`, which is already a thin, tested shell (`test/cli.test.js` already spawns it as a real child process, the correct test boundary for argv/exit-code/stdout-routing concerns — the same boundary the new flags live in).
+
+### 4. Release-skill / CI handshake, and failure modes when CI publish fails after the tag exists
+
+**Handshake shape:** the skill's local half ends at `git push --follow-tags` (Step 4 in the rewritten skill — tests → version bump → dogfood → tag + push). It does **not** wait for CI and does **not** know whether publish succeeded. The tag push is the sole handoff signal; CI's `publish` job (`if: startsWith(github.ref, 'refs/tags/v')`) picks it up asynchronously. This is a one-way, fire-and-forget handoff — the skill's "Post-Release Housekeeping" step (updating `PROJECT.md`/`MILESTONES.md`) currently assumes the release is done; after this rewrite it should explicitly tell the maintainer to **check the Actions run** before doing housekeeping, since "tag pushed" no longer means "published."
+
+**Failure mode: CI publish fails after the tag already exists and is pushed.** This is the sharp edge of moving publish out of the local, synchronous flow. Concretely:
+- The git tag `vX.Y.Z` and the release commit are already public (or at least pushed to the remote) — that part succeeded.
+- `npm publish` inside the `publish` job fails: bad `NPM_TOKEN`/OIDC misconfiguration, registry outage, `prepublishOnly` (`motto build`) failing in the CI environment for an environment-specific reason, or (self-inflicted) the same version already being published (npm rejects re-publishing an existing version — this is actually a *safe*, idempotent failure, not a dangerous one).
+- **Do not re-tag.** Deleting and recreating a git tag to "retry" is destructive (rewrites a ref other clones may have already fetched, and is exactly the kind of git operation this environment's own working agreements flag as needing extra caution). The correct recovery paths, in order of preference:
+  1. **Re-run the failed job from the GitHub Actions UI.** This re-uses the exact same tag/ref and the exact same `needs:` graph — no new commit, no new tag, safe to retry as many times as needed for transient failures (network, registry hiccup, expired token before rotation).
+  2. **Fix root cause, then re-run** (e.g. rotate `NPM_TOKEN`, fix an OIDC trust-relationship misconfiguration) — same re-run mechanism, now expected to succeed.
+  3. **Escape hatch — manual local publish from the tagged commit**, only if CI is unrecoverable in a reasonable window: `git checkout vX.Y.Z && npm publish` locally. This is exactly the flow the release skill supported before this milestone, so it's a true fallback, not new machinery — but the rewritten skill should document it explicitly as "emergency only," not as a normal path, otherwise the whole point of moving publish to CI (consistent environment, D-05 assertion enforced, no "works on my machine" tarball leaks) quietly erodes.
+- The `npm-drift` warning job (runs on every push to `main`) is the structural backstop for exactly this scenario — it is what would have caught the real-world v0.0.4/v0.0.5 drift (tag pushed, release skill never actually ran, npm stuck at 0.0.3) automatically instead of requiring a manual registry check months later, per the PROJECT.md context.
+
+**What the rewritten skill needs, concretely:** replace old Step 5 ("Publish" — `npm whoami` / `npm publish` / `git push --follow-tags`) with a Step 4 that ends at tag+push, and add a short "Step 5 — Verify CI Published" step: check the Actions run for the pushed tag, confirm the `publish` job succeeded (npm registry shows the new version, GitHub Release exists), and only then proceed to Post-Release Housekeeping. Add a "If CI publish failed" subsection covering the three recovery paths above.
+
+## Recommended Project Structure (additions only)
+
+```
+.github/
+└── workflows/
+    └── ci.yml                    # test matrix + dogfood + pack-install-e2e + npm-drift + publish (tag-gated)
+scripts/
+└── pack-install-e2e.mjs          # NEW — npm pack → tmp install → init/lint/build; absorbs D-05 tarball assertion
+                                   # (recommended: outside test/, its own `npm run test:e2e` script)
+bin/motto.js                      # MODIFIED — adds --format/--quiet parsing + shared result renderer
+skills/release/SKILL.md           # REWRITTEN — Steps 1-4 (test/version/dogfood/tag+push) stay local;
+                                   # old Steps 4-5 (tarball verify, publish) replaced by "CI takes over" +
+                                   # Step 5 "Verify CI Published" + failure-mode recovery subsection
+package.json                      # MODIFIED — new `test:e2e` script; publish-related scripts unchanged
+                                   # (prepublishOnly still runs `motto build`, now exercised inside CI's
+                                   #  publish job instead of a maintainer's local npm publish)
+```
+
+### Structure Rationale
+
+- `scripts/` is new — this project currently has no non-`bin/`/`src/` executable code. A single-purpose CI script here, not under `test/`, keeps `npm test` fast (see Q2 above) and is the natural home for future CI-only tooling without growing `test/`'s auto-discovery surface.
+- `.github/workflows/` is standard GitHub Actions location; one file only, per Q1.
+- No changes anywhere under `src/` — this is the architectural headline of the whole milestone: CI, publish automation, and CLI ergonomics are all additive/wrapping, not core-invasive.
+
+## Architectural Patterns
+
+### Pattern 1: Presentation-layer format switch over an already-structured core result
+
+**What:** When a pure/never-throw core function already returns a structured result object (`{ ok, errors[], ... }`), a new output format is implemented entirely at the CLI boundary by adding a renderer branch — never by changing the core's return shape or adding formatting concerns to it.
+**When to use:** Any time a "machine-readable output" feature is requested for a tool whose core already separates data from presentation (this project has done so since Phase 1 — `lintProject`/`buildProject` were designed error-object-first specifically so the CLI could format them, not the reverse).
+**Trade-offs:** None significant here — this is the reason the never-throw core was designed to return structured errors instead of throwing/printing directly. The only discipline required is treating the emitted JSON field names as a stable external contract once shipped.
+
 ```js
-export function validateSkill(skill, sharedRefs = new Set())
-```
-131 tests across `test/schema.test.js` call this with either zero or one extra argument (`validateSkill(skill)` or `validateSkill(skill, new Set([...]))` — confirmed at `test/schema.test.js:23,192,216`, etc.). Any signature change **must** default the new parameter so all ~120 existing call sites keep compiling unchanged.
-
-The design spec (§1) describes `src/templates.js` as pure data — `SECTIONS` (tag → description) and `TEMPLATES` (name → `{ requiredSections, ... }`). The natural instinct is `schema.js` does `import { TEMPLATES } from './templates.js'`, but that **violates the file's own documented invariant** ("no imports beyond this file's own scope") and — more importantly — breaks the existing architectural precedent: `schema.js` never imports sibling `src/*.js` modules; every piece of external context it needs (today: `sharedRefs`) is *injected as a parameter* by the caller (`lint.js`), which owns all I/O and cross-module wiring.
-
-So: mirror the `sharedRefs` pattern exactly.
-
-```js
-// src/schema.js
-export function validateSkill(skill, sharedRefs = new Set(), templates = {})
-```
-
-`lint.js` imports `TEMPLATES` from the new `src/templates.js` and passes it through at the one call site (`src/lint.js:159`):
-```js
-import { TEMPLATES } from './templates.js';
-...
-const schemaErrors = validateSkill({ dirName, data, body }, sharedRefs, TEMPLATES);
+// bin/motto.js — illustrative shape, not final code
+function renderResult(result, { format, quiet }) {
+  if (format === 'json') {
+    process.stdout.write(JSON.stringify(result) + '\n');
+    return;
+  }
+  if (result.ok) {
+    if (!quiet) process.stdout.write(`✓ ${result.count ?? result.skillCount} ...\n`);
+    return;
+  }
+  for (const e of result.errors) process.stdout.write(`✗ ${e.skill}: ${e.message}\n`);
+}
 ```
 
-Inside `validateSkill`, template validation is a **new independent check block**, following the existing D-13 aggregation model already used for description/audience/body (`src/schema.js:110-156`):
+### Pattern 2: Single-workflow job graph with `needs:` as the release gate
 
-- `data.template` absent → today's behavior exactly (design: "No `template:` → today's behavior exactly").
-- `data.template` present, not a key in the `templates` map → one error listing available templates (never throw on `typeof data.template !== 'string'` — guard exactly like the NAME cascade does at `src/schema.js:87-91`).
-- `data.template` present and known → look up `requiredSections` (array of tag names, e.g. `["process", "success_criteria"]`) and, for each, regex-test the body for a matching XML-tag-shaped section (`<process>` opening tag at minimum — presence-checked only, per design §2 "Presence-checked; content free"). Each missing section is its own independent error, not a cascade — consistent with how `shared_references` entries are checked independently today (`src/schema.js:158-175`).
+**What:** All CI concerns (test matrix, dogfood, E2E, drift warning, publish) live as jobs in one workflow file; `needs:` expresses "publish only if these jobs on this exact commit/ref succeeded," and `if:` expresses "this job only runs for this trigger type" (tag vs branch push).
+**When to use:** Any project where release/publish must be strictly gated on the same commit's CI results, and where the project explicitly values a minimal-surface-area CI setup (one file to read, one trigger model to reason about).
+**Trade-offs:** A single large workflow file is less "separable" than multiple files if the project later wants very different permission scopes per job (e.g. `id-token: write` should be scoped to the `publish` job only, not the whole workflow — GitHub Actions supports job-level `permissions:` overrides, so this is achievable within one file, not a reason to split).
 
-This keeps `validateSkill` pure (no fs, no imports, still never-throw) while giving it the template registry as data, exactly like `sharedRefs` is data. `SECTIONS` (the description registry) is not needed at validation time — it's documentation/authoring-time metadata (the design notes it "doubles as doc source") — so it doesn't need to flow into `validateSkill` at all; only `TEMPLATES` does.
+### Pattern 3: Fire-and-forget tag handoff with an idempotent, re-runnable receiver
 
-**Do not** create a second, separate "template validator" function/module called independently by `lint.js` and concatenated with `validateSkill`'s errors. That would fork the error-aggregation model (two arrays merged instead of one), duplicate the `{skill, message}` shaping logic, and create two places that both need the skill's `dirName`/`body`. A single `validateSkill` call with one more injected-data parameter is the smaller, more consistent change and matches D-13's stated aggregation philosophy ("all errors are collected together").
+**What:** The producer (release skill) does one irreversible-feeling thing (push a tag) and stops; the consumer (CI `publish` job) is designed to be safely re-run against the same ref without side effects from a partial prior run (npm publish is itself idempotent-safe — re-publishing an already-published version fails loudly rather than corrupting state).
+**When to use:** Whenever a human-triggered step hands off to an asynchronous automated step and the human has no synchronous confirmation of success. The design obligation this creates is: **never make the recovery path require destroying/recreating the trigger** (the tag). Recovery = re-run or fall back to manual, never re-tag.
 
-## Q2 — Outputs/dependencies validation needs filesystem context. Extend the `sharedRefs` pattern or new mechanism?
+## Data Flow
 
-**Recommendation: extend the same pattern, but split by whether the check is a cheap precomputed Set (pure) or requires per-skill I/O (impure, stays in `lint.js`).**
+### Release Flow (tag push → publish)
 
-Today, `lintProject` computes exactly one cross-cutting Set via I/O (`loadSharedRefs`, `src/lint.js:75-88`, called once at step 2, `src/lint.js:190`) and threads it through `processSkill` → `validateSkill` as a plain `Set<string>` for pure membership testing. This is the established, working pattern to copy.
-
-The three new fields split cleanly into two buckets:
-
-**Bucket A — pure membership test against an already-known Set (dependencies, allowed-tools):**
-- `dependencies:` bare kebab names must exist in the project's `skills/` tree. `lintProject` already computes `skillNames` via `discoverSkillNames` (`src/lint.js:194`) *before* the per-skill loop — turning that array into a `Set<string>` costs zero extra I/O (it's already been read off disk). Pass it into `processSkill`/`validateSkill` exactly like `sharedRefs`: `validateSkill({ dirName, data, body }, sharedRefs, templates, allSkillNames)`.
-  - Namespaced deps (`plugin:skill`) are format-checked only (design D-05) — no Set lookup needed, purely a string-shape regex, fully inside `validateSkill` already.
-- `allowed-tools:` is a pure format check (non-empty, whitespace-free strings) — needs **no filesystem context at all**, it's entirely self-contained inside `validateSkill`, same tier as the existing `NAME_KEBAB`/description regex checks.
-
-**Bucket B — requires per-skill file existence (outputs):**
-- `outputs:` values are file paths "relative to skill dir; must exist" (design §3). This is fundamentally different from `sharedRefs`/`allSkillNames`: it is not one Set shared across all skills, it is a *per-skill* existence check requiring a `stat()` (or scoped `readdir`) call against that specific skill's own directory on disk — I/O that only `lint.js` (which already does all the project's file I/O) is allowed to perform.
-- Split the check itself into two halves, consistent with how `shared_references` already separates "unsafe basename" (pure, `src/schema.js:166-169`) from "not found in the set" (Set lookup, `src/schema.js:171-173`):
-  - **Path-safety** (no `..`, no leading `/`, no escape) — pure, stays fully inside `validateSkill`, no I/O needed, same shape as the existing safe-basename check for `shared_references`.
-  - **Existence** — `lint.js`'s `processSkill` (`src/lint.js:135-165`), which already does inline I/O-error-pushing for the "missing SKILL.md" case (`src/lint.js:142-148`), does one `stat()` per declared `outputs` entry *before or after* calling `validateSkill`, and pushes `{skill: dirName, message: "outputs entry '<name>' file '<path>' not found"}` directly to the shared `errors` array on failure — the exact same pattern already used for the missing-SKILL.md check, not routed through `validateSkill` at all.
-
-**Signature note:** rather than growing `validateSkill(skill, sharedRefs, templates, allSkillNames, ...)` into an unbounded positional-parameter list as more context Sets get added over time, bundle the non-`sharedRefs` context into one options object from the start:
-```js
-validateSkill(skill, sharedRefs = new Set(), context = {})
-// context: { templates: {}, allSkillNames: new Set() }
 ```
-This is a one-time signature decision (Q1 and Q2 land in the *same* PR/phase for exactly this reason — see build order below) that avoids a second signature churn later when the evolution-ledger items (multi-template arrays, new action tags) need their own data. `sharedRefs` stays a positional parameter, unchanged, to avoid touching ~120 existing test call sites that pass it positionally today.
+maintainer runs release skill (local)
+    ↓ Step 1-3: tests, version bump, dogfood (unchanged)
+    ↓ Step 4: git push --follow-tags  ← HANDOFF POINT (fire-and-forget)
+GitHub receives tag push
+    ↓ triggers .github/workflows/ci.yml
+    ↓ jobs: test (matrix) ∥ dogfood ∥ pack-install-e2e   (all run, all must pass)
+    ↓ needs: [test, dogfood, pack-install-e2e]  AND  if: refs/tags/v*
+    ↓ publish job: prepublishOnly (motto build) → npm publish → create GitHub Release
+    ↓ (on failure: job fails visibly in Actions UI; tag/commit remain valid;
+    ↓  recovery = re-run job, never re-tag — see Q4)
+maintainer checks Actions run (NEW Step 5) → confirms npm + GH Release → Post-Release Housekeeping
+```
 
-## Q3 — Does `build.js` need ANY change?
+### CLI Output Flow (existing, extended)
 
-**Finding: no, `build.js` requires zero code changes for outputs/dependencies/allowed-tools, and this should be treated as a load-bearing architectural fact, not an assumption.**
+```
+motto lint/build [--format text|json] [--quiet]
+    ↓
+lintProject()/buildProject()  →  { ok, errors[], count/skillCount, ... }   ← UNCHANGED, never-throw
+    ↓
+bin/motto.js renderResult()  →  text lines (default, byte-identical to today)
+                              →  JSON.stringify(result)  (new)
+```
 
-Reasoning, cited against the actual code:
+## Suggested Build Order
 
-1. **Outputs files are already covered by verbatim copy.** Step 5 of `buildProject` (`src/build.js:157-167`) does `cp(skillsDir/<name>, dstSkillDir, { recursive: true, verbatimSymlinks: true })` — the *entire* skill source directory, unconditionally. Since design §3 defines `outputs:` paths as "relative to skill dir" and lint has already gated on their existence (`buildProject`'s Step 1 lint gate, `src/build.js:92-95`, runs *before* any dist/ write), any file an `outputs:` entry points at is, by construction, already inside the tree that gets copied. No new `cp()` call, no new loop.
+Ordered by real dependency, not by requirement-ID order. Items on the same numbered step have no dependency on each other and can be built in either order or in parallel.
 
-2. **`loadSkillData` (`src/build.js:56-71`) does not need to read `outputs` or `dependencies` at all.** It currently extracts only `audience` and `sharedRefs` — the two fields `buildProject` actually needs to *route* the copy (which bucket) and *supplement* it (bundle shared refs). `outputs`/`dependencies`/`allowed-tools` are pass-through frontmatter that verbatim-copies with the rest of `SKILL.md` — `build.js` never needs to parse or act on them.
+1. **CLI ergonomics — `--quiet` / `--format json` (CLIX-01/02).** Zero dependency on anything else this milestone. Build first: it's self-contained, low-risk (presentation-layer only, per Q3), and the pack-install E2E script (step 3) benefits from a machine-parseable output to assert against instead of fragile text matching — so it should exist before the E2E script is written, not after.
+2. **Build-skill human-verify (BSKL-01, BSKL-05, WR-01)** — fully independent of the CI/publish/CLI work; can run in parallel with step 1, anytime, by anyone. No ordering constraint with the rest of this list.
+3. **CI workflow: `test` + `dogfood` + `pack-install-e2e` + `npm-drift` jobs (no `publish` job wired live yet, or wired but never yet exercised by a real tag).** Depends on step 1 for the E2E script's output assertions. This can and should be built and iterated on while the repo is still **private** — GitHub Actions works fully on private repos (metered minutes, not a blocker for a solo project), so there's no reason to wait for the public flip to validate CI. Prove the whole non-publish gate is green on real pushes before touching the release skill.
+4. **Release skill rewrite (local = bump+tag+push only) + `publish` job wired live, tested against a real tag.** Must come **after** step 3, not before — removing local `npm publish` capability before the CI publish path is proven working would create a real gap where no path can ship a release. Recommend proving the `publish` job once (e.g. via the deferred catch-up publish of v0.0.5, or a controlled test) before deleting the skill's old Step 5 language. This step also adds the GitHub Release notes ("Changelog surface") — it's part of the same handshake, not a separate later phase.
+5. **Pre-public gate (git-history secrets scan + explicit `.planning/` visibility decision) → flip repo to public.** Independent of steps 1-2, but should sequence **after** step 3 (CI hardened privately first, so the repo's first public CI runs are already clean — a broken CI badge on a freshly-public repo is a bad look and avoidable) and can run before or after step 4 (publish-handshake correctness doesn't depend on repo visibility, only on the `NPM_TOKEN`/OIDC secret being configured). Recommend after step 4 for simplicity: fewer moving pieces changing state at once.
+6. **Trusted publishing (OIDC) migration**, replacing the interim `NPM_TOKEN` secret. Explicitly sequenced after the public flip per the already-locked project decision (PROJECT.md "Key context"). Not required for this milestone's `publish` job to function — `NPM_TOKEN` is a legitimate interim credential — but the `publish` job should be written so swapping the auth mechanism later (`id-token: write` permission, `registry-url` config, drop `NODE_AUTH_TOKEN`) is a small, isolated diff, not a rewrite. This can land as a fast-follow after step 5 rather than blocking milestone completion.
 
-3. **`dependencies:` explicitly does not trigger any build-time bundling.** PROJECT.md's Out-of-Scope list is explicit: *"MCP-dependency resolution — `dependencies` is linted as present but not resolved at build."* Design D-05 confirms: *"`dependencies:` resolve in-tree"* is a **lint**-time statement (does the named sibling skill exist?), not a build-time one. Each dependent skill continues to be built/packaged independently; `build.js` does not need to co-locate or bundle a skill with its declared dependencies.
+**Do not build in this order:** publish job before the CI test/dogfood/E2E gate exists (nothing to gate on); release-skill rewrite before the publish job is proven (creates a ship-capability gap); repo-public flip before the secrets scan (irreversible one-way door, per PROJECT.md's own framing).
 
-4. **Collision edge case — already covered by the existing D3-07 guard, but worth an explicit regression test.** The existing collision check (`src/build.js:116-131`) detects when a declared `shared_reference` name collides with a same-named file already present in the skill's own source `references/` directory. Because that check operates on *file paths in the source tree*, not on *how the file got there*, it transitively already catches the case where an `outputs:` entry happens to declare a file at `references/<ref>.md` that matches a `shared_references` name — the shared-ref bundling step (`src/build.js:169-181`) writing over an output file. **Recommendation for the roadmap:** add one dogfood/build test asserting this specific interaction (an `outputs:` path colliding with a `shared_references` basename) rather than assuming it — the current test suite has no fixture that exercises `outputs:` yet, so the transitive coverage claim above is a code-reading inference, not yet a verified regression guard.
+## Anti-Patterns
 
-**Net effect:** this is a genuine scope-reduction finding for the roadmap — one of the milestone's four mechanisms (build packaging) needs *zero* implementation work, only one new test case. Phases can be planned without a "wire outputs into build.js" task.
+### Anti-Pattern 1: Separate `release.yml` triggered by tag push, independent of the main CI workflow
 
-## Q4 — `build-skill` is a markdown skill in `skills/`. Impact on dogfood tests and dist.
+**What people do:** Create a second workflow file specifically for "the release," reasoning that publish logic is conceptually separate from "regular CI."
+**Why it's wrong:** Tags don't inherit the branch-push workflow's job results. A separate file either re-runs the full test matrix redundantly on every tag (wasted minutes, and now two sources of truth for "did tests pass") or — worse — skips re-running and trusts that "the branch CI must have passed at some point," which is exactly the drift risk (a tag can be pushed against a commit whose CI never ran or ran against different code, e.g. after a rebase). One workflow with `needs:` ties publish to the actual green state of the actual tagged ref.
+**Instead:** Single `ci.yml`, `publish` job gated with `needs:` + `if: startsWith(github.ref, 'refs/tags/v')` — see Q1.
 
-**Finding: `build-skill` replaces `author-skill` 1:1 in the skills tree (skill count stays 2), but every hardcoded `author-skill` path assertion in `test/dogfood.test.js` must be renamed, and this dogfood test becomes the mechanism's own end-to-end regression guard.**
+### Anti-Pattern 2: Re-tagging to retry a failed publish
 
-Current dogfood surface (`test/dogfood.test.js`):
-- `lintProject(REPO_ROOT)` asserts `result.count === 2` (line 42) — today's 2 skills are `author-skill` (public) + `release` (private). Design retires `author-skill` and adds `build-skill` (public) — count stays **2**, so the count assertion itself is untouched, but the *skill names* backing it change.
-- Hardcoded path assertions that must be renamed `author-skill` → `build-skill`:
-  - `'dist/public/author-skill/SKILL.md exists'` (line 92-93)
-  - `'author-skill has references/skill-schema.md bundled'` (line 98-100) — this one is not a cosmetic rename only: design §4 states `build-skill` bundles `skill-schema.md` as its own shared reference (*"teaching content already in `skill-schema.md` (bundled as build-skill shared ref)"*), so this assertion's *meaning* carries forward unchanged, only the skill name changes.
-  - `release` assertions (lines 103-137) are untouched — `release` is not part of this milestone.
-- `test/schema.test.js` and other unit tests do not reference `author-skill` by name (confirmed via repo-wide grep) — only `dogfood.test.js` has hardcoded skill-name path strings; the blast radius is contained to one file at the test layer.
+**What people do:** When `npm publish` fails in CI after a tag is already pushed, delete the tag locally and remotely, fix the issue, and push a new tag of the same name to "try again."
+**Why it's wrong:** Tag deletion/recreation rewrites a ref other clones/CI runs may have already observed; it's a destructive git operation and obscures the audit trail (two different commits briefly wore the same version tag).
+**Instead:** Re-run the existing failed Actions job (same ref, same tag, no git mutation) or, as a documented emergency-only fallback, publish manually from the already-tagged commit. See Q4.
 
-**New coverage this dogfood test should gain (not just renames):**
-- `build-skill` is declared `template: procedure` (design §4) — its `SKILL.md` body must carry `<process>` and `<success_criteria>` sections. Once template validation ships (Q1), `lintProject(REPO_ROOT)` passing becomes the **live, continuously-verified proof that the template mechanism works against a real skill** — design explicitly frames this as the point ("closes TMPL-01 with real consumer... the ultimate test is Motto building its own kind," design §4, line 73). No new test code is strictly required for this — the existing `lintProject(REPO_ROOT)` assertion (line 36-44) already exercises it — but it's worth calling out as a design property, not an accident: if `build-skill`'s SKILL.md ever drifts out of template compliance, the dogfood suite fails immediately.
-- If `build-skill` also declares `outputs:`, `dependencies:`, or `allowed-tools:` in its own frontmatter (plausible, since it self-verifies via `motto lint` per the design's flow description), the dogfood suite dogfoods those new validators too, for free, via the same mechanism.
+### Anti-Pattern 3: Threading `--format`/`--quiet` state into `lintProject`/`buildProject`
 
-**Wider blast radius outside `dogfood.test.js` (found via repo-wide grep, flagged for roadmap scoping, not architecture per se):** `README.md` has 6+ prose/example references to `author-skill` (skill table, slash-command examples, tree diagrams, zip one-liner example) that will go stale once the skill is retired. This is a docs-consistency task, not a code-architecture integration point, but should be sequenced into the same phase that retires `author-skill` so the repo doesn't carry a stale README between commits.
+**What people do:** Pass a `format` or `quiet` option down into the core orchestrator so it can "print less" or "return differently shaped data" for JSON mode.
+**Why it's wrong:** It reintroduces a presentation concern into functions whose entire design value (and this project's `D-01` never-throw discipline) rests on returning one stable, structured shape regardless of caller. It would also mean two code paths through the never-throw core to re-verify instead of one, undermining the "zero known never-throw gaps" state the project just reached at v0.0.5.
+**Instead:** Core stays untouched; `bin/motto.js` renders the one returned shape two ways. See Q3 / Pattern 1.
 
-**Sequencing implication:** because the milestone requirement text pairs the two ("`build-skill` Agent Skill... `author-skill` retired... closes AUTH-SKILL" — PROJECT.md lines 27-28), and because `dogfood.test.js`'s `count === 2` assertion would go transiently to 3 (or the suite would otherwise be red) if the add and the retire land in separate commits without care, the safest integration is one atomic change: add `skills/build-skill/`, delete `skills/author-skill/`, update `dogfood.test.js` assertions and README references, all in the same commit — mirroring exactly how the prior `setup-project` retirement was executed in v0.0.4 (`.planning/milestones/v0.0.4-phases/12-docs-cleanup/12-02-PLAN.md`: *"Stage both the deletion and the test edits together, then create a single commit"*). That is an established, already-proven pattern in this repo for skill retirement — reuse it verbatim.
+## Integration Points
 
-## Q5 — Suggested build order across phases
+### External Services
 
-Four mechanisms, three of which touch `validateSkill`'s signature and one of which (build.js) needs nothing. Sequencing is driven by two constraints: (a) `validateSkill`'s signature should change **once**, not three times, to avoid rewriting ~120 existing test call sites repeatedly; (b) `build-skill` is explicitly the design's *proof* that the mechanism works, so it must land **after** the mechanism exists, not alongside it.
+| Service | Integration Pattern | Notes |
+|---------|---------------------|-------|
+| npm registry (`registry.npmjs.org`) | `npm publish` from the CI `publish` job, authenticated via `NPM_TOKEN` secret initially, OIDC trusted publishing after the public flip (`id-token: write` permission, no long-lived token) | Trusted publishing does not support self-hosted runners (n/a here — `ubuntu-latest`); requires the publish job to have `id-token: write` scoped at job level, not workflow level, to avoid over-granting |
+| GitHub Actions | Hosted runner matrix (Node 20/22/24), `needs:`-graphed jobs, `if:`-gated tag trigger | Works fully on private repos today — no need to wait for the public flip to build/validate CI |
+| GitHub Releases API | `publish` job creates a Release with notes, likely via `gh release create` or an actions/`create-release`-style step | New consumer this milestone — "Changelog surface" requirement |
 
-**Phase 1 — Template mechanism (TMPL-01 core).**
-`src/templates.js` (SECTIONS + TEMPLATES data, per design §1) + the `validateSkill` signature change (Q1) landing together with the outputs/dependencies/allowed-tools signature needs (Q2) in **one** combined `context` parameter (see Q2's signature note) — even though outputs/deps/tools validation logic itself can be a separate task, decide and land the *final* signature shape here so it only changes once. `lint.js` wiring: import `TEMPLATES`, pass through `processSkill`. Pure unit tests in `schema.test.js` (no fixtures needed yet — no real skill uses `template:` until Phase 3). Adversarial malformed-input tests mandatory here (standing never-throw invariant: unknown `template` value types, non-array `requiredSections`, etc.).
+### Internal Boundaries
 
-**Phase 2 — New validated optional fields (outputs/dependencies/allowed-tools).**
-Layered onto the signature locked in Phase 1. Bucket A (dependencies, allowed-tools) is pure `validateSkill` logic + `lintProject` computing `allSkillNames` from the already-discovered `skillNames` array (zero new I/O). Bucket B (outputs existence) is `lint.js`'s `processSkill` doing the `stat()` calls, mirroring the existing missing-SKILL.md pattern. Can run in parallel with Phase 1 in principle (different check logic) but should merge into the same signature-landing commit/phase to satisfy constraint (a) above — recommend treating Phase 1+2 as one phase with two plan-tasks rather than two sequential phases, unless team capacity favors splitting.
-
-**Phase 3 — `build-skill` Agent Skill + `author-skill` retirement (dogfood proof).**
-Depends on Phase 1+2 being fully shipped and tested — this is the "real consumer" the design insists template validation be designed against (D-01), and it's also the acceptance test for outputs/dependencies/allowed-tools if `build-skill` itself declares any. Single atomic commit per the established retirement pattern (Q4): add `skills/build-skill/SKILL.md` (`template: procedure`, shared ref `skill-schema.md`), delete `skills/author-skill/`, update `test/dogfood.test.js` path assertions + add template-mechanism regression coverage, update `README.md` references. `skill-schema.md` updated in place (design §5) to document the three new fields + template mechanism as the single canonical rules doc.
-
-**Phase 4 (optional, can fold into Phase 3) — build.js verification test only.**
-Per Q3, no `build.js` code changes are needed, but add the one missing regression test: an `outputs:` path colliding with a `shared_references` basename, confirming the existing D3-07 collision guard (`src/build.js:116-131`) fires transitively for the new field. This is cheap enough to fold into Phase 3's test-writing work rather than standing alone.
-
-**Explicitly not a phase-ordering concern:** `build.js` itself. Because Q3 establishes it needs no code changes, it should not appear as a roadmap phase/task at all beyond the one test case above — including it as a separate phase would overstate the milestone's actual surface area.
-
-## Anti-Patterns to Avoid
-
-### Anti-Pattern 1: Importing `templates.js` into `schema.js`
-**What people might do:** `import { TEMPLATES } from './templates.js'` directly inside `schema.js` since it's "just data."
-**Why it's wrong:** Breaks `schema.js`'s explicit, documented contract ("no imports beyond this file's own scope," `src/schema.js:4`) and breaks the established architecture where all cross-module wiring lives in `lint.js`, not `schema.js`. It also makes `schema.js` untestable in isolation from `templates.js`'s existence — every existing `schema.test.js` call site constructs its own fixtures inline with zero imports beyond `schema.js` and `node:assert`.
-**Instead:** Inject as a parameter, exactly like `sharedRefs` today.
-
-### Anti-Pattern 2: Doing `stat()` calls inside `validateSkill` for `outputs:` existence
-**What people might do:** Since `outputs:` needs filesystem existence checks, reach for `fs.stat` inside `schema.js` directly — it's convenient, the path is right there.
-**Why it's wrong:** Violates "no filesystem" (`src/schema.js:4`) and the never-throw invariant becomes much harder to guarantee once real I/O (which can fail in more ways than pure logic) enters a function 131 tests assume is synchronous and side-effect-free. It would also make `validateSkill` async, breaking every existing synchronous call site in `schema.test.js`.
-**Instead:** `lint.js`'s `processSkill` (already async, already does I/O, already has the missing-SKILL.md precedent at `src/lint.js:142-148`) performs the stat and pushes the error directly.
-
-### Anti-Pattern 3: Splitting author-skill retirement and build-skill addition across two commits
-**What people might do:** Land `build-skill` first (skill count transiently 3), then retire `author-skill` in a follow-up commit (back to 2), treating them as independently reviewable changes.
-**Why it's wrong:** `dogfood.test.js`'s hardcoded count/path assertions (`result.count === 2`, `skillCount === 2`) would be red on `main` between the two commits, and this repo has already hit this exact failure mode once — the v0.0.2 milestone integration doc (`.planning/v0.0.2-MILESTONE-INTEGRATION.md:36`) records a near-miss where a skill rename happened after the dogfood test was written with hardcoded `stat()` paths.
-**Instead:** One atomic commit, matching the proven `setup-project` retirement pattern from v0.0.4 Phase 12.
+| Boundary | Communication | Notes |
+|----------|---------------|-------|
+| `bin/motto.js` ↔ `src/lint.js`/`src/build.js` | Direct function call, structured return object | Unchanged boundary — `--format`/`--quiet` live entirely on the `bin/motto.js` side, per Q3 |
+| release skill (local) ↔ `ci.yml` (remote) | Git tag push (async, fire-and-forget) | The only handshake mechanism; no synchronous confirmation — see Q4 and Pattern 3 |
+| `ci.yml` jobs ↔ each other | `needs:` (hard dependency, blocks on success) + `if:` (trigger-type gating) | All within one workflow file — see Q1 |
+| pack-install E2E script ↔ `bin/motto.js` | Spawns the CLI as a real child process against an installed tarball in a tmp dir | Same `spawnSync` pattern already proven in `test/cli.test.js`; new call site, not new machinery |
 
 ## Sources
 
-- `src/schema.js` (read in full, 178 lines) — `validateSkill` signature, purity contract, D-13 error-aggregation model.
-- `src/lint.js` (read in full, 207 lines) — `lintProject` orchestration, `processConfig`/`loadSharedRefs`/`discoverSkillNames`/`processSkill` decomposition, the `sharedRefs`-as-parameter pattern.
-- `src/build.js` (read in full, 214 lines) — `buildProject` steps, verbatim `cp()`, D3-07 collision check, D3-12 private-contradiction check.
-- `test/dogfood.test.js` (read in full, 138 lines) — current `author-skill`/`release` assertions, count/skillCount/bucketCount invariants.
-- `test/schema.test.js` (grepped for all `validateSkill(...)` call sites) — confirms ~120 call sites use zero or one extra argument, constraining any signature change to default new parameters.
-- `.planning/superpowers/specs/2026-07-02-skill-builder-design.md` — approved design spec, decisions D-01 through D-08, evolution ledger.
-- `.planning/PROJECT.md` — v0.0.5 milestone scope, requirements, Out-of-Scope list (MCP-dependency resolution not build-resolved).
-- `.planning/milestones/v0.0.4-phases/12-docs-cleanup/12-02-PLAN.md` — the proven atomic-retirement pattern for a `skills/` entry (`setup-project`), reused as precedent for `author-skill` retirement.
-- `.planning/v0.0.2-MILESTONE-INTEGRATION.md:36` — recorded near-miss of a skill rename landing after `dogfood.test.js` was written with hardcoded paths, motivating the atomic-commit recommendation.
-- Repo-wide `grep -rn "author-skill"` across `.js`/`.json`/`.md` — established the full blast radius (test file + README + skill dir), confirming no other `src/*.js` or unit test files reference it by name.
+- Repo source (read directly, HIGH confidence): `src/lint.js`, `src/build.js`, `bin/motto.js`, `skills/release/SKILL.md`, `package.json`, `test/cli.test.js`, `.planning/PROJECT.md`, `.planning/ROADMAP.md`, `.planning/STATE.md`
+- [Node.js Test Runner docs (v26)](https://nodejs.org/api/test.html) — confirms `node --test` auto-discovers any file inside a directory named `test`/`tests`, not just `*.test.js`-suffixed files. Verified 2026-07-03. Confidence: HIGH (official Node.js docs, cross-confirmed by community guides).
+- [npm Docs — Trusted publishing for npm packages](https://docs.npmjs.com/trusted-publishers/) — OIDC setup, `id-token: write` requirement, no self-hosted-runner support. Verified 2026-07-03. Confidence: MEDIUM (official docs, but the feature is recent — GA'd mid-2025 per GitHub changelog below).
+- [GitHub Changelog — npm trusted publishing with OIDC is generally available (2025-07-31)](https://github.blog/changelog/2025-07-31-npm-trusted-publishing-with-oidc-is-generally-available/) — confirms GA status and workflow permission requirements. Confidence: MEDIUM.
+- [GitHub community discussion #176761 — NPM publish using OIDC on GitHub Actions](https://github.com/orgs/community/discussions/176761) — practical workflow YAML shape (tag trigger, `id-token: write`, `registry-url`). Confidence: LOW-MEDIUM (community discussion, not official, but consistent with official docs above).
+- General `needs:`/`if:` job-gating and `workflow_run` cross-workflow-trigger tradeoffs — standard, stable GitHub Actions behavior; not independently re-verified this session (pre-existing HIGH-confidence platform knowledge, consistent with official GitHub Actions documentation structure).
 
 ---
-*Architecture research for: Motto v0.0.5 Skill Builder milestone — integration of template mechanism, outputs/dependencies/allowed-tools validation, and build-skill Agent Skill into existing codebase*
-*Researched: 2026-07-02*
+*Architecture research for: motto v0.0.6 "Prove & Publish" — CI/publish/CLI-format integration*
+*Researched: 2026-07-03*

@@ -1,168 +1,181 @@
 # Feature Research
 
-**Domain:** Skill-generator / meta-skill ("a skill that writes skills") + schema fields for declaring skill outputs and inter-skill dependencies
-**Researched:** 2026-07-02
-**Confidence:** HIGH (primary sources read in full: official spec + two real, widely-used skill-generators + Motto's own prior-art research target)
+**Domain:** CI/CD + release engineering + CLI ergonomics for a small single-maintainer OSS npm CLI (Node ≥20, plain ESM, `node --test`)
+**Researched:** 2026-07-03
+**Confidence:** MEDIUM (websearch cross-checked against official docs — GitHub Docs, npm Docs, ESLint docs, ShellCheck source — appearing directly in search results; no single-source claims treated as authoritative; some npm-registry facts verified live against this repo)
 
-## Sources studied (full text read, not summarized secondhand)
+## Grounding: current CLI shape (read from source, not assumed)
 
-| Source | What it is | Location |
-|---|---|---|
-| **Anthropic `skill-creator`** | Anthropic's own official meta-skill, ships in `anthropics/skills` | Local checkout `/Users/jeremie/Projects/ai-workspace/skills/skill-creator/` — canonical: [github.com/anthropics/skills/blob/main/skills/skill-creator/SKILL.md](https://github.com/anthropics/skills/blob/main/skills/skill-creator/SKILL.md) |
-| **`obra/superpowers` `writing-skills`** | Jesse Vincent's TDD-for-skills meta-skill, v6.1.0 | Local plugin cache — canonical: [github.com/obra/superpowers](https://github.com/obra/superpowers) |
-| **agentskills.io specification** | The open SKILL.md format spec both of the above (and Motto) target | [agentskills.io/specification](https://agentskills.io/specification) |
-| **gsd-core installed skills** (55 real `SKILL.md` files, incl. this researcher's own prompt) | Live corpus of `allowed-tools`, `argument-hint`, `<output>` block usage in production | `/Users/jeremie/.claude/skills/*/SKILL.md`, `/Users/jeremie/.claude/gsd-core/` |
-| **Motto design spec** | Locked decisions D-01..D-08 for this milestone | `.planning/superpowers/specs/2026-07-02-skill-builder-design.md` |
+`bin/motto.js` already returns structured result objects from `lintProject`/`buildProject`: `{ ok, count/skillCount, errors: [{ skill, message }] }`. Output today is hand-written `process.stdout.write('✓ ...')` / `✗ ${e.skill}: ${e.message}` lines, `parseArgs({ strict: true })` per-subcommand with only `force`/`help` currently defined. This means `--format json` is a **thin serialization layer over data that already exists** — not a new data model. `--quiet` is a **new output-suppression branch**, not new data.
 
-**Key cross-check finding (HIGH confidence, verified two independent ways — official spec text + Anthropic's own validator source code):** neither the official agentskills.io spec nor any surveyed real-world skill has an `outputs:` or `dependencies:` frontmatter field. Anthropic's own `scripts/quick_validate.py` in `skill-creator` hard-codes an **allowlist** of frontmatter keys — `{name, description, license, allowed-tools, metadata, compatibility}` — and *rejects* any other key as "unexpected". `template:`, `outputs:`, and `dependencies:` are **Motto-original extensions**, not things being standardized elsewhere. This is a genuine differentiator, not a gap Motto is late to close — but it also means these fields are 100% Motto's own field to design well, with zero prior art to lean on for their exact shape. It also means output produced by `motto build` (which copies `SKILL.md` verbatim) would carry frontmatter keys that Anthropic's own upload-side validator (if ever run against it) would flag — worth a README/docs note, not a blocker (Motto's own no-content-stripping principle already accepts this tradeoff for portability).
+Confirmed live drift (2026-07-03): `package.json` version = `0.0.3`, `motto.yaml` version = `0.0.3`, latest git tag = `v0.0.5`, npm registry latest = `0.0.3`. Three independent version sources (package.json, motto.yaml, npm registry) already disagree with the git tag — this is not a hypothetical, it's the exact bug CLIX/CI-drift work targets.
 
 ## Feature Landscape
 
-### Table Stakes (Users Expect These)
+### Table Stakes (Users/Maintainer Expect These)
 
-Features a "skill that writes skills" is expected to have, based on both surveyed implementations converging independently on the same shape.
+Features any small OSS CLI's "we have CI" claim implies. Missing these = the CI is decorative.
 
 | Feature | Why Expected | Complexity | Notes |
 |---------|--------------|------------|-------|
-| **Ingest free-form input first** (existing conversation, pasted doc, or verbal description) before asking anything | Both skill-creator and writing-skills open with "extract what's already known from context first, fill gaps second" — asking a blank-slate interview when the workflow is already in the transcript is the #1 UX complaint pattern this avoids | LOW | Matches D-03 exactly: build-skill is a structurer, input can be "any form" |
-| **Gap-filling interview, not blank-slate interview** — only ask what the input didn't already answer | skill-creator's "Capture Intent" step explicitly says extract from conversation history first, "user may need to fill the gaps, and should confirm before proceeding" | LOW–MED | Confirm-don't-reask is the differentiator vs. a generic form |
-| **Fixed minimum question set**: name, trigger/when-to-use, output format/shape, edge cases | skill-creator's 4 canonical questions (what should it do / when trigger / what output format / need test cases) map 1:1 onto SKILL.md's required fields (`name`, `description`) + Motto's new fields (`outputs`) | LOW | Directly reusable as build-skill's question checklist |
-| **Description quality coaching, not just presence-check** | Both sources spend enormous effort on `description` — it's the *only* thing loaded at all times and the sole trigger mechanism. skill-creator explicitly recommends "pushy" descriptions naming symptoms; writing-skills has a whole "Description = When to Use, NOT What it Does" section with tested before/after pairs | LOW (as a prompt instruction) | `motto lint` already checks length/format; build-skill should *additionally* coach description content quality at write-time, since lint can only check structure, not persuasiveness |
-| **Generate a complete, schema-conformant `SKILL.md`, not a stub** | Both produce a full file with frontmatter + body sections in one pass, not scaffolding for the user to fill in later | LOW–MED | Matches D-03's "generate skill" step |
-| **Self-verify against the schema before handing back to the user** | skill-creator runs `quick_validate.py`; writing-skills' Iron Law is literally "NO SKILL WITHOUT" verification; Motto's own equivalent is `motto lint` | LOW | Already have the validator — build-skill's job is to call it and iterate, not reinvent it. Cleanest possible reuse of existing Motto infrastructure |
-| **Iterate-until-clean loop on the generator's own output** | Same as above — both sources treat "write once, ship" as an anti-pattern; the loop is draft → validate → fix → re-validate | LOW–MED | `motto lint` returns machine-parseable errors already (per PROJECT.md); build-skill parses them and patches |
-| **Bundled-resource awareness** (`scripts/`, `references/`, `assets/`) — knows when to split content out vs. keep inline | Both sources have an explicit "Anatomy of a Skill" / "File Organization" section with the same three-bucket split and the same trigger ("heavy reference >300 lines → separate file") | LOW | Motto's shared refs mechanism (`shared/references/`) already exists — build-skill should point at it, not duplicate |
-| **Name/folder-match enforcement** | Universal across spec + both tools — `name` frontmatter must equal folder name, kebab-case, no reserved words | Already built | Motto's `motto lint` already enforces this (v0.0.1) — build-skill inherits it for free |
+| Node version test matrix (20/22/24) via `strategy.matrix` | `engines.node: ">=20"` is a promise; matrix is how it's kept honest | LOW | `fail-fast: false` so one version's break doesn't hide others; `actions/setup-node@v4` + `cache: npm` |
+| Single lint/dogfood job (not matrixed) | Dogfooding (`motto lint`/`build` on Motto's own `skills/`) is deterministic across Node versions — running it N times wastes CI minutes for zero signal | LOW | Run on one Node version (latest LTS, 22) only |
+| `npm ci` (not `npm install`) in every job | Reproducible installs from lockfile; standard CI convention everywhere in the ecosystem | LOW | Requires committing `package-lock.json` if not already tracked — verify |
+| Pack-install E2E job (tarball → tmp dir → `init`/`lint`/`build`) | `files` allowlist (`bin/`, `src/`, `dist/public/`) is a real risk surface — a file needed at runtime but excluded from `files` only breaks for *installed* users, never for repo-local `npm test` | MEDIUM | Needs `npm pack`, extract/install into a scratch dir, then exercise the 3 subcommands against a scaffolded project — this is the only job that would have caught the current package.json/motto.yaml drift class of bug if it also asserted version consistency |
+| `husky` prepare-script CI compatibility | `"prepare": "husky"` runs on every `npm ci`/`npm install`; fails or is a no-op depending on `.git` presence and CI flags | LOW | `actions/checkout` provides `.git`, so this is usually a non-issue on GitHub-hosted runners — but the pack-install E2E job installs from a *tarball* into a scratch dir with no `.git` and no devDependencies (`husky` isn't in `files`/is a devDep) — verify `prepare` doesn't fire or fails silently there; if it's in `package.json` `scripts.prepare` it fires for **every** `npm install` regardless of `files`, so a tarball-install test could break on this alone unless `--ignore-scripts` or a `NODE_ENV`/`CI` guard is used |
+| Tag-triggered publish (not push-to-main-triggered) | Matches this project's existing manual release skill (bump → tag → push); publishing on every merge is wrong for a project with deliberate version bumps | LOW–MEDIUM | Trigger on `push: tags: ['v*']` (git-tag push) — note GitHub's *own* trusted-publishing docs increasingly assume `on: release: types: [published]` (a GitHub Release object), not a bare tag push; these are two different trigger shapes with different OIDC validation behavior — decide explicitly, don't default |
+| `--quiet` suppresses non-essential/progress output only; errors always print; exit code unaffected | Universal CLI convention (confirmed across general CLI convention guides and ESLint's own `--quiet`) | LOW | For `lint`: `--quiet` should suppress the "✓ N skills OK" success line but never suppress `✗` error lines; exit code stays whatever it already is — quiet is a display concern, not a severity filter (ESLint's `--quiet` suppressing *warnings* doesn't map cleanly since Motto's lint has no warning/error severity split today — verify before copying that exact semantic) |
+| `--format json` emits machine-readable, stable-shaped output on stdout; human text goes away entirely (not mixed) | Precedent: ESLint and ShellCheck never mix formats in one stream — `--format json` replaces the human formatter, doesn't append to it | LOW–MEDIUM | Natural schema: serialize the existing `{ ok, count, errors: [{ skill, message }] }` result object directly — no line/column fields needed unless the underlying `yaml` parser's error objects already carry position info worth surfacing later |
 
-### Differentiators (Competitive Advantage)
+### Differentiators (Competitive/Trust Advantage for a Solo-Maintainer Project)
 
-Where Motto's build-skill should intentionally diverge from both surveyed tools — these map to the locked design decisions (D-01..D-08) and to what neither Anthropic's nor obra's tool does at all.
+Features that go beyond "has CI" and build trust that the published package matches the tagged source.
 
 | Feature | Value Proposition | Complexity | Notes |
 |---------|-------------------|------------|-------|
-| **Structurer, not ideator (D-03)** | Neither surveyed tool draws this line explicitly — skill-creator actively co-designs "what should the skill do", writing-skills assumes the user already knows and is testing rigor. Motto's differentiator is refusing the ideation role entirely: users bring GSD/superpowers/their own brainstorm, build-skill only maps it onto the schema. This is a scope discipline no competitor enforces, and it's what keeps build-skill "lightweight" per standing principle 3 | LOW (it's a constraint, not a feature to build) | Directly prevents build-skill from growing into a second brainstorming tool — the single most important anti-scope-creep decision in the design doc |
-| **`template: procedure` self-application (dogfood)** | Neither tool applies a formal template mechanism to itself this way — skill-creator's own SKILL.md has no template/type system at all. build-skill being `template: procedure` proves the template mechanism on day one against its most complex consumer | MED | Also closes TMPL-01 (deferred since v0.0.1) with a real, load-bearing consumer instead of a speculative one |
-| **Named `outputs:` map (D-04)** | Neither tool has a machine-checkable declaration of "this skill produces these files." skill-creator's evals.json/grading.json/benchmark.json family gets close (declares *test* output shapes) but nothing declares the skill's own *production* outputs as validated, existing files. Genuinely novel among surveyed tools | MED | "Same skill, different output parameters" — single-output is a one-entry map, so it doesn't burden simple skills |
-| **`dependencies:` resolved in-tree (D-05)** | No surveyed tool validates skill-to-skill dependencies at all — `compatibility:` (the closest official field) is a free-text string about *environment*, not other skills. Bare-kebab-name resolution against the project's `skills/` tree is unique to Motto | MED | Format-only for namespaced (`plugin:skill`) deps is the right scope cut — matches D-05's "lint what's verifiable" |
-| **Verbatim, portable output** | skill-creator's output only runs correctly with skill-creator's supporting scripts and workspace conventions present at *authoring* time; a skill it wrote is portable, but skill-creator's own tooling is not something Motto is trying to replicate. Motto's build-skill output must be plain SKILL.md + refs, loadable with zero Motto present, same as every other Motto output | LOW | Consistent with the project's existing Core Value — no new decision needed, just don't regress it |
-| **CLI-verifiable self-check, not LLM-graded evals** | skill-creator's self-verify is `quick_validate.py` (deterministic) *plus* an entire optional LLM-judged eval/benchmark harness (grading.json, benchmark.json, blind comparator). Motto's self-verify is `motto lint` only — deterministic, fast, no subagent fan-out required | LOW (already exists) | This is Motto's actual competitive edge: the "strict schema + linter" Core Value gives build-skill a self-verify step competitors have to build ad hoc |
+| npm-registry version-drift warning | Catches exactly the class of bug this repo already has live (package.json/motto.yaml/npm registry disagreeing with git tags) *before* it silently persists across 2 more milestones | MEDIUM | Two independent checks worth separating: (1) **pre-publish**: does `package.json` version already exist on the registry? (`npm view <pkg> version`, or the `NPM Published Version Check` GitHub Action pattern) — gates the publish step; (2) **drift audit**: does `motto.yaml` version match `package.json` version match latest git tag? — this is the check that would have caught the *actual* current bug and doesn't exist as an off-the-shelf action; write it as a small script, not a dependency |
+| Auto-generated GitHub Release notes (`generate_release_notes: true`) | Near-zero implementation cost, immediate changelog value; GitHub natively groups by merged-PR labels | LOW | `softprops/action-gh-release@v2` with `generate_release_notes: true` is the standard low-effort path; requires PRs (not direct-to-main commits) to have meaningful groupings — if this project merges phase work via direct commits (not PRs), auto-notes degrade to a flat commit-adjacent list — verify actual merge pattern before promising rich categorized notes |
+| Secrets-scan gate before repo-public flip | The repo-public flip is explicitly a one-way door (per PROJECT.md); a scan *after* going public is too late — bots scrape new public repos within minutes | MEDIUM | `gitleaks` (fast, regex-based, good default ruleset, runs well as a one-off full-history scan with `fetch-depth: 0`) is the right tool for a **one-time gate**, not `trufflehog` (whose differentiator — live-credential verification — matters more for continuous PR scanning than a single pre-flip audit). If gitleaks finds anything: rotate the secret first, decide history rewrite (`git filter-repo`, not BFG — BFG is unmaintained/Scala/JVM-dependent, `git filter-repo` is the currently-recommended tool) only if something real is found — do not build automatic rewrite tooling speculatively |
+| npm provenance attestation | Public, verifiable link from the published tarball back to the exact CI run/commit that built it — real trust signal for a package other agents/projects will `npm install` | LOW (if using `NPM_TOKEN` + `--provenance` flag) / MEDIUM (if migrating to full OIDC trusted publishing) | Provenance and trusted-publishing are **separable**: `npm publish --provenance` with `id-token: write` permission works today even with `NPM_TOKEN`-based auth on a GitHub-hosted runner, before any trusted-publisher config exists. Trusted publishing (no long-lived token at all, npm ≥11.5.1 required) is the stronger long-term posture but PROJECT.md already sequences it *after* the public flip — don't front-load that complexity into this milestone |
 
-### Anti-Features (Commonly Requested, Often Problematic)
+### Anti-Features (Commonly Reached For, Wrong Fit Here)
 
-Capabilities present in one or both surveyed tools that Motto should explicitly **not** build into build-skill v0.0.5, with the alternative each maps to.
-
-| Feature | Why Requested | Why Problematic (for Motto specifically) | Alternative |
-|---------|---------------|-------------------------------------------|-------------|
-| **Eval/benchmark harness** (evals.json, subagent A/B runs, `run_loop.py` description-optimizer, blind comparator, HTML viewer) | skill-creator's entire second half is this — pressure-testing skills quantitatively, comparing with/without-skill runs, optimizing triggering via iterative LLM calls | Violates "lightweight — don't overcode" and "mechanism over features"; requires subagent orchestration, Python scripts, HTML viewers — a whole second product surface Motto doesn't need. `motto lint` is deterministic and instant; an eval harness is stochastic and slow | Ship `motto lint` as the self-verify step (already exists); leave eval/benchmark tooling as an explicit non-goal, same posture as skipping a compiler |
-| **RED-GREEN-REFACTOR pressure-scenario testing with subagents** (writing-skills' whole methodology) | Genuinely valuable for *discipline-enforcing* skills (rules agents might rationalize around under pressure) | build-skill generates *structure*, not discipline-rule skills — this methodology answers "does the agent obey this skill under pressure," a different question than "is this skill schema-conformant." Importing it would conflate the two and bloat build-skill's scope | If a user's skill genuinely needs pressure-testing (e.g. an enforcement skill), that's an authoring choice for *them* to make with `writing-skills` itself, not something Motto's structurer re-implements |
-| **Interactive description-triggering optimizer loop** (20 eval queries, `claude -p` subprocess loop, held-out test/train split) | Real problem (skill under/over-triggering is common) — skill-creator built a whole optimizer for it | High complexity for a v0.0.5 feature; requires the `claude` CLI, background processes, HTML review UI — none of which fit Motto's "single runtime dep, no build step" constraint | build-skill's gap-fill interview should coach description quality at write-time (per skill-creator's own "pushy description" guidance) rather than optimize it after the fact via a separate loop |
-| **`tools:` array replacing/duplicating `allowed-tools`** | Some ecosystems (agent-file formats, `compatibility:` field misuse) blur "tools this skill needs" into a second field name | Confirmed by D-06 and by the real-world corpus: `allowed-tools` is the actual spec field name; a second field name fragments portability | Keep `allowed-tools`, format-check only (D-05/D-06); reserve `tools:` for a future `agent` template (evolution ledger) |
-| **`{var}` interpolation engine for `outputs:` placeholders** | Natural next step once you have a named-outputs map — "why not let the path be templated per invocation" | Explicitly out of scope per D-08 — YAGNI until a real skill needs runtime-resolved output paths; no surveyed tool does this either (skill-creator's `files_created` list is post-hoc, not templated) | Document `{var}` as convention-only in v0.0.5; build the interpolation engine only when a real skill demands it |
-| **Second metadata/config syntax alongside frontmatter** | gsd-core's own prior sprawl (flagged in the design doc's Context section) shows the temptation — e.g. a separate JSON manifest for outputs/deps instead of extending frontmatter | Already explicitly rejected in the design spec's Context ("Reject: ... second metadata syntax"); a second syntax doubles the surface `motto lint` must parse and doubles what authors must keep in sync | `outputs:`/`dependencies:`/`allowed-tools`/`template:` all live in the one YAML frontmatter block, validated by the one schema cascade |
+| Feature | Why Requested | Why Problematic | Alternative |
+|---------|---------------|------------------|-------------|
+| Full `release-please`/`semantic-release` automation | "Automate the whole release, why bump versions by hand" | Adds a dependency + a Conventional-Commits discipline this project doesn't currently follow (commit history reads as GSD phase commits, not `feat:`/`fix:`); contradicts the explicit "local = bump + tag + push only" design already chosen for v0.0.6; a solo maintainer doing ~1 release/week doesn't need release-PR automation overhead | Keep the existing `release` skill as the human-in-the-loop bump step; CI's job is verification + publish, not decision-making |
+| OS matrix (macOS + Windows runners) alongside Node-version matrix | "Real CI tests all platforms" | Motto is pure ESM Node with `fs/promises`/`path` — no native deps, no shell-outs beyond `git` in the release skill; doubles/triples CI minutes for a risk surface that's near-zero today (Windows path-separator bugs were already a named pitfall fixed in v0.0.1–v0.0.2, not a live gap) | Single OS (`ubuntu-latest`), Node-version matrix only; revisit if a Windows-specific bug report ever lands |
+| ESLint-style rich JSON schema (per-message `ruleId`, `messageId`, `fix` suggestion objects, `endLine`/`endColumn`) | "Match the industry-standard shape so tools like `reviewdog` can consume it directly" | Motto's linter doesn't autofix and doesn't currently track line/column per error (errors are `{skill, message}`, not per-token) — inventing fields that don't correspond to real data produces a schema consumers will trust and then get burned by (always `null`/absent fields) | Serialize the existing `{ ok, count, errors: [{ skill, message }] }` shape as-is; add `line`/`column` later only if/when the underlying `yaml` parser's position data is actually threaded through to error objects |
+| `--quiet` suppressing warnings (ESLint semantic) | ESLint precedent is the most familiar `--quiet` behavior to reach for | Motto's `lintProject` result has no warning/error severity split today — copying ESLint's exact semantic requires inventing a severity model that doesn't exist yet, which is a scope-creep feature, not a CLI-flag feature | `--quiet` in Motto means "suppress the success/progress line, not error lines" — a pure verbosity control, decoupled from any future severity system |
+| Automatic git-history rewrite (BFG/`git filter-repo`) wired into the pre-public CI gate | "If we're scanning for secrets, auto-clean them too" | History rewrite is destructive, breaks every existing clone/fork/tag reference, and should never run unattended on a `.git` history that also carries this project's entire GSD `.planning/` audit trail | Secrets scan is detect-only in CI; if it finds something, that's a stop-the-line human decision (rotate + manually decide whether/how to rewrite), not an automated remediation step |
 
 ## Feature Dependencies
 
 ```
-motto lint (existing, v0.0.1)
-    └──required-by──> build-skill's self-verify step (D-03 loop: write → lint → fix → repeat)
+[Existing: motto lint/build return structured {ok, errors[]} results]
+    └──enables (no new data model needed)──> [--format json]
 
-template: mechanism (schema add-on, this milestone)
-    └──required-by──> procedure template (this milestone)
-                           └──required-by──> build-skill's own frontmatter (build-skill is `template: procedure`)
+[Existing: parseArgs strict:true per-subcommand options]
+    └──requires extension (add `quiet`, `format` to options objects)──> [--quiet]
+    └──requires extension──────────────────────────────────────────────> [--format json]
 
-<process> + <success_criteria> section-tag registry (this milestone)
-    └──required-by──> procedure template's required-sections check
+[CI: Node matrix job] ──independent of──> [CI: single dogfood lint/build job]
+[CI: pack-install E2E job] ──requires──> [package.json `files` allowlist already correct]
+[CI: pack-install E2E job] ──surfaces risk from──> [husky "prepare" lifecycle script + missing .git in tarball-install scratch dir]
 
-outputs: field validation (this milestone)
-    └──enhances──> build-skill's gap-fill interview (asks "what does this skill produce" once outputs: exists to answer into)
+[Publish-on-tag CI workflow] ──requires──> [Release skill rewrite: local bump+tag+push only]
+[Publish-on-tag CI workflow] ──requires──> [D-05 tarball assertion moved into CI (pack-install E2E)]
+[npm-drift warning] ──requires──> [network reachability to npm registry from CI job]
+[npm-drift warning] ──enhances──> [Publish-on-tag CI workflow] (pre-publish existence check avoids a failed `npm publish` on duplicate version)
 
-dependencies: field validation (this milestone)
-    └──enhances──> build-skill's gap-fill interview (asks "does this skill call other skills" once dependencies: exists to answer into)
+[Trusted publishing (OIDC)] ──requires──> [Repo-public flip already done] (PROJECT.md sequencing)
+[Trusted publishing (OIDC)] ──requires──> [npm ≥ 11.5.1 in the publish job]
+[npm --provenance flag] ──requires only──> [id-token: write permission + GitHub-hosted runner] (does NOT require trusted publishing first)
 
-shared/references/ (existing, v0.0.1)
-    └──enhances──> build-skill's bundled-resource decisions (knows to point at shared refs instead of duplicating content)
+[Repo-public flip] ──requires──> [Secrets scan gate: clean result]
+[Repo-public flip] ──requires──> [Explicit .planning/ visibility decision] (independent of secrets scan — a content-inclusion choice, not a leak check)
 
-author-skill (existing, retiring)
-    └──superseded-by──> build-skill + skill-schema.md as bundled shared ref (closes AUTH-SKILL, kills lint-string duplication)
+[GitHub Release notes step] ──requires──> [Publish-on-tag CI workflow already producing a tagged, published artifact to attach notes to]
 ```
 
 ### Dependency Notes
 
-- **`motto lint` required by build-skill's self-verify step:** this is the load-bearing reuse in the whole design — build-skill has *zero* new validation logic of its own; it only needs to call the existing linter and parse its (already machine-parseable, per PROJECT.md constraints) errors. If `motto lint`'s error format ever changes, build-skill's fix-loop breaks silently — worth a regression test tying them together.
-- **`template:` mechanism required before `procedure` template:** sequencing constraint already reflected in the milestone's feature list ordering (mechanism → concrete template → build-skill built as consumer of both).
-- **`outputs:`/`dependencies:` enhance the interview but don't block it:** build-skill can generate a valid skill with an empty `outputs:` map or no `dependencies:` at all (both fields are optional per D-05/D-04) — the interview should ask about them but never force a non-empty answer. This mirrors the official spec's own posture that most optional fields ("most skills do not need `compatibility`") are situational, not mandatory.
-- **author-skill retirement depends on skill-schema.md being bundled as a shared ref inside build-skill:** if that bundling slips, retiring author-skill would leave the schema's teaching content nowhere — sequencing risk flagged in the design spec's item 5 (Docs & dogfood).
+- **`--format json` requires no new data model** because `lintProject`/`buildProject` already return `{ ok, count, errors: [{skill, message}] }`. The work is: (1) add `--format`/`--quiet` to each subcommand's `parseArgs` options object, (2) branch the existing `process.stdout.write` calls on `parsed.values.format === 'json'` to `JSON.stringify(result)` instead of the hand-written lines. This is genuinely low complexity — the risk is scope creep into inventing fields (see Anti-Features).
+- **Pack-install E2E surfaces the husky risk** that a matrix/lint job never would, because it's the only job that installs from a *tarball* (not a git checkout with `.git` present) — this is exactly the gap where `"prepare": "husky"` can fail or silently no-op differently than in the repo-checkout CI jobs.
+- **npm-drift warning enhances (not blocks) publish-on-tag**: treat it as informational-first (warn, don't fail the workflow) for this milestone, since the existing three-way drift (package.json/motto.yaml/registry) is already live and a hard-fail CI gate landing on top of unresolved drift would immediately red the pipeline. Catch-up publish of 0.0.5 (per PROJECT.md) must happen *before* this gate is made blocking.
+- **Trusted publishing requires the public flip first, not the reverse** — OIDC trust configuration on npm's side can technically be set up against a private repo, but PROJECT.md already made the sequencing decision (`NPM_TOKEN` interim → OIDC after public). Provenance (`--provenance` flag) is the one piece of the trust story available immediately, independent of that sequencing.
+- **Secrets scan and `.planning/` visibility are two different gates**, not one: secrets scan is "did we leak a credential," `.planning/` visibility is "do we want the audit trail (GSD phase history, decisions, deferred debt) public." Conflating them risks skipping the deliberate content decision because the automated scan came back clean.
 
 ## MVP Definition
 
-### Launch With (v1 — this milestone, v0.0.5)
+### Launch With (v0.0.6)
 
-- [ ] `template:` mechanism (data-driven, `src/templates.js`) — everything else in this milestone depends on it
-- [ ] `procedure` template (`<process>` + `<success_criteria>` required sections)
-- [ ] `outputs:` validated field (named map, path-safe, must exist)
-- [ ] `dependencies:` validated field (bare-kebab resolves in-tree, namespaced format-only)
-- [ ] `allowed-tools` format validation (non-empty, whitespace-free strings)
-- [ ] build-skill: ingest-any-input → gap-fill interview (name, trigger/description, steps, outputs+formats, deps/tools, audience) → generate `SKILL.md` → `motto lint` → fix-until-clean loop → report
-- [ ] build-skill ships as `template: procedure` (dogfood proof)
-- [ ] `author-skill` retired, its teaching content folded into `skill-schema.md` as a build-skill shared ref
+Minimum viable set — matches the milestone's stated target features, scoped to what's needed now.
 
-### Add After Validation (v1.x)
+- [ ] CI: Node 20/22/24 matrix test job (`fail-fast: false`) — validates `engines.node` promise
+- [ ] CI: single dogfood lint/build job (latest LTS only) — validates Motto lints/builds its own `skills/` tree
+- [ ] CI: pack-install E2E job (tarball → tmp dir → `init`/`lint`/`build`) — validates the `files` allowlist and surfaces the husky-in-tarball risk
+- [ ] CI: publish-on-tag workflow (`NPM_TOKEN` interim, per PROJECT.md sequencing) + `--provenance` flag (cheap trust win, no OIDC prerequisite)
+- [ ] CI: npm-drift warning (informational, non-blocking given known existing drift) — package.json vs motto.yaml vs latest git tag vs registry
+- [ ] Release skill rewrite: local script does bump + tag + push only; publish + D-05 tarball assertion move into CI
+- [ ] Pre-public gate: `gitleaks` one-time full-history scan (detect-only, human decides remediation) + explicit `.planning/` visibility decision documented as a real decision, not a default
+- [ ] `--quiet` flag on `lint`/`build` (suppress success/progress line only, never error lines, no exit-code change)
+- [ ] `--format json` flag on `lint`/`build` (serialize existing result object, no invented fields)
+- [ ] GitHub Release notes: `generate_release_notes: true` wired into the publish-on-tag workflow
 
-- [ ] `{var}` interpolation/validation engine for `outputs:` placeholders — once a real skill needs runtime-resolved paths (D-08 evolution item)
-- [ ] New action-tag registry entries (`<drill>`, `<run>`, `<mcp>`) — once a real skill needs them (evolution ledger)
-- [ ] `template:` as an array (multi-template composition) — once two templates need to compose
+### Add After Validation (v0.0.6.x / next milestone)
+
+- [ ] Make npm-drift warning blocking (hard-fail CI) — once the current three-way drift is resolved and stays resolved for a release or two
+- [ ] Migrate `NPM_TOKEN` → full OIDC trusted publishing — trigger: repo-public flip has landed and npm ≥11.5.1 is confirmed available in the publish job
+- [ ] Extend `--format json` beyond `lint`/`build` if `init` gains machine-consumable failure modes worth exposing
 
 ### Future Consideration (v2+)
 
-- [ ] `agent` template generating `.md` agent/subagent files (where `tools:` would properly live, distinct from `allowed-tools`)
-- [ ] Skill-calls-skill parameter passing across the `dependencies:` graph
-- [ ] MCP dependency resolution (currently linted as present, not resolved — explicit v0.0.4 out-of-scope carried forward)
-- [ ] Any eval/benchmark harness — only if Motto's own dogfooding surfaces a real triggering-quality problem `motto lint` can't catch (structural correctness ≠ triggering quality, a gap both surveyed tools spend heavy effort on and Motto currently doesn't address at all)
+- [ ] OS matrix (macOS/Windows) in CI — defer until an actual platform-specific bug report lands
+- [ ] Conventional-Commits-driven changelog automation (`release-please`/`semantic-release`) — defer until commit discipline shifts toward Conventional Commits and/or multiple contributors make the manual bump step real friction
+- [ ] Per-message line/column position in `--format json` errors — defer until the `yaml` parser's position data is actually threaded into `lintProject`'s error objects
 
 ## Feature Prioritization Matrix
 
 | Feature | User Value | Implementation Cost | Priority |
-|---------|------------|---------------------|----------|
-| `template:` mechanism | HIGH (unblocks everything else) | MED | P1 |
-| `procedure` template | HIGH (first real template consumer) | LOW | P1 |
-| `outputs:` field | MED–HIGH (named-output pattern is genuinely novel/useful) | MED | P1 |
-| `dependencies:` field | MED (in-tree resolution catches typos/broken refs early) | MED | P1 |
-| `allowed-tools` format check | LOW–MED (mostly closes a known gap) | LOW | P1 |
-| build-skill ingest+interview+generate+lint loop | HIGH (the actual milestone goal) | MED–HIGH | P1 |
-| author-skill retirement | LOW (cleanup) | LOW | P1 |
-| `{var}` interpolation engine | LOW today, MED later | HIGH | P3 |
-| Eval/benchmark harness | LOW for this milestone's goal | HIGH | P3 (anti-feature for now) |
-| `agent` template | MED (real need, not yet arrived) | MED | P3 |
+|---------|------------|----------------------|----------|
+| Node 20/22/24 CI matrix | HIGH | LOW | P1 |
+| Dogfood lint/build CI job | HIGH | LOW | P1 |
+| Pack-install E2E job | HIGH | MEDIUM | P1 |
+| Publish-on-tag workflow | HIGH | MEDIUM | P1 |
+| Release skill rewrite (local = bump/tag/push only) | HIGH | LOW | P1 |
+| Pre-public secrets scan + `.planning/` decision | HIGH (one-way door) | MEDIUM | P1 |
+| `--quiet` flag | MEDIUM | LOW | P1 |
+| `--format json` flag | MEDIUM (HIGH for CI consumers specifically) | LOW–MEDIUM | P1 |
+| GitHub Release notes (auto-generate) | MEDIUM | LOW | P1 |
+| npm-drift warning (informational) | MEDIUM | MEDIUM | P1 |
+| `--provenance` flag on publish | MEDIUM (trust signal) | LOW | P2 |
+| OIDC trusted publishing migration | MEDIUM | MEDIUM | P2 (deferred by design) |
+| npm-drift warning made blocking | MEDIUM | LOW (once P1 version lands) | P3 |
+| OS matrix (macOS/Windows) | LOW | MEDIUM | P3 |
+| release-please/semantic-release | LOW (for a solo maintainer) | HIGH | P3 |
 
 **Priority key:**
-- P1: Must have for this milestone (v0.0.5)
-- P2: Should have, add when possible
-- P3: Nice to have / explicitly deferred per evolution ledger
+- P1: In this milestone (v0.0.6)
+- P2: Sequenced-next by explicit PROJECT.md decision, not this milestone
+- P3: Backlog, revisit only on real friction/bug signal
 
-## Competitor Feature Analysis
+## Precedent Tool Analysis
 
-"Competitors" here means the surveyed prior-art skill-generators, since Motto's build-skill is not a market product but an internal meta-skill judged against the state of the art in skill-authoring tooling.
+Framed as precedent tools rather than competitors — Motto isn't competing with these, but its CLI ergonomics inherit expectations set by them.
 
-| Feature | `anthropics/skills` skill-creator | `obra/superpowers` writing-skills | Motto build-skill (this milestone) |
-|---------|-----------------------------------|-------------------------------------|--------------------------------------|
-| Interview style | Structured 4-question capture + open interview, "extract from context first" | Assumes user already knows content; focuses on rigor testing, not intent capture | Gap-fill only, per D-03 — narrower scope than either |
-| Structural validation | `quick_validate.py`, hard-coded key allowlist, run manually/on-demand | None built-in; relies on manual checklist review | `motto lint` — deterministic, reused, already exists, called automatically in the loop |
-| Quality/triggering validation | Full eval harness: subagent runs, grading, benchmarking, description-optimizer loop | Pressure-scenario RED-GREEN-REFACTOR with subagents, rationalization tables | Explicitly none in v0.0.5 (anti-feature) — deferred until dogfooding proves the gap matters |
-| Output declaration | None (evals.json declares *test* outputs, not skill outputs) | None | `outputs:` named map — novel |
-| Inter-skill dependency declaration | None (`compatibility:` is free-text env description) | Cross-referencing convention only ("REQUIRED SUB-SKILL: use X"), not machine-checked | `dependencies:` resolved in-tree — novel |
-| Template/type system for skill shape | None | None (skill "types" — Technique/Pattern/Reference — are a naming taxonomy, not an enforced schema) | `template:` mechanism with data-driven section registry — novel among surveyed tools |
-| Portability of generated output | High (plain SKILL.md), but authoring workflow needs skill-creator's own scripts present | High (plain SKILL.md), authoring workflow is pure prompting, no scripts required | High — matches both, and matches Motto's existing Core Value |
-| Description-quality guidance | Extensive ("pushy" descriptions, before/after) | Extensive (tested "Use when..." pattern, workflow-summary trap documented) | Should absorb this guidance into the interview prompt (LOW cost, HIGH value — not yet an explicit design item, worth folding in) |
+| Concern | ESLint | ShellCheck | Motto's Approach |
+|---------|--------|------------|-------------------|
+| `--format json` top-level shape | Bare array of `{filePath, messages[], errorCount, warningCount}` per file | Object wrapper: `{comments: [{file, line, column, level, code, message, fix}]}` | Neither — serialize Motto's own existing `{ok, count, errors: [{skill, message}]}` result shape verbatim; don't adopt either precedent's field names since Motto's error unit is "skill," not "file+line" |
+| `--quiet` semantics | Suppresses warning-severity messages only; errors always shown; exit code driven separately by `--max-warnings` | N/A (no severity-based quiet mode in ShellCheck) | Suppress success/progress output only; no severity model exists in Motto today — don't invent one to match ESLint |
+| Publish/release automation | N/A (project-specific) | N/A | GitHub Actions tag-triggered workflow, `NPM_TOKEN` interim → OIDC trusted publishing after public flip (PROJECT.md-sequenced) |
+| Release notes | N/A | N/A | `generate_release_notes: true` (GitHub-native), not a hand-maintained CHANGELOG.md — lowest-effort option consistent with "mechanism over features" |
 
 ## Sources
 
-- Anthropic `skill-creator` — [github.com/anthropics/skills/blob/main/skills/skill-creator/SKILL.md](https://github.com/anthropics/skills/blob/main/skills/skill-creator/SKILL.md) (full text + `references/schemas.md` + `scripts/quick_validate.py` read in full from local checkout). Confidence: HIGH — primary source, official Anthropic repo.
-- `obra/superpowers` `writing-skills` — [github.com/obra/superpowers](https://github.com/obra/superpowers) (full `SKILL.md` v6.1.0 read from local plugin cache). Confidence: HIGH — primary source, widely-adopted community skill.
-- Agent Skills open specification — [agentskills.io/specification](https://agentskills.io/specification) (fetched directly, full frontmatter field table). Confidence: HIGH — the canonical format spec both surveyed tools and Motto target.
-- Claude Platform Docs, Agent Skills overview — [platform.claude.com/docs/en/agents-and-tools/agent-skills/overview](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview) and Claude Code Docs `skills` page — confirms `allowed-tools` is still "experimental" and format varies by implementation (array vs. space-separated string observed across sources). Confidence: MEDIUM — official docs but field noted as experimental/evolving.
-- gsd-core live skill corpus (55 installed `SKILL.md` files under `/Users/jeremie/.claude/skills/`) — used to confirm real-world `allowed-tools` usage (both YAML-list and space-separated-string forms observed in the same corpus) and `<output>`-block conventions (this researcher's own prompt is an instance). Confidence: HIGH — direct inspection of live, in-use files.
-- Motto design spec — `.planning/superpowers/specs/2026-07-02-skill-builder-design.md`. Confidence: HIGH — authoritative for this project, locked decisions D-01..D-08.
+- [Building and testing Node.js — GitHub Docs](https://docs.github.com/en/actions/tutorials/build-and-test-code/nodejs) — Node CI matrix conventions
+- [actions/setup-node](https://github.com/actions/setup-node) — matrix + npm caching mechanics
+- [GitHub Actions Matrix Builds — BetterLink Blog](https://eastondev.com/blog/en/posts/dev/20260428-github-actions-matrix/) — matrix vs single-job cost/signal tradeoff
+- [Trusted publishing for npm packages — npm Docs](https://docs.npmjs.com/trusted-publishers/) — OIDC requirements, npm ≥11.5.1
+- [npm trusted publishing with OIDC is generally available — GitHub Changelog](https://github.blog/changelog/2025-07-31-npm-trusted-publishing-with-oidc-is-generally-available/) — GA status, `id-token: write` requirement
+- [Generating provenance statements — npm Docs](https://docs.npmjs.com/generating-provenance-statements/) — `--provenance` flag independent of trusted publishing
+- [Things you need to do for npm trusted publishing to work — philna.sh](https://philna.sh/blog/2026/01/28/trusted-publishing-npm/) — tag-push vs GitHub-Release trigger distinction, common misconfigurations
+- [NPM Published Version Check — GitHub Marketplace](https://github.com/marketplace/actions/npm-published-version-check) — pre-publish existence-check pattern
+- [npm-publish — npm Docs](https://docs.npmjs.com/cli/v11/commands/npm-publish/) — default duplicate-version-publish failure behavior
+- [ShellCheck JSON formatter source](https://github.com/koalaman/shellcheck/blob/master/src/ShellCheck/Formatter/JSON.hs) — `comments[]` wrapper schema, `fix` object shape
+- [ESLint Formatters Reference](https://eslint.org/docs/latest/use/formatters/) — bare-array JSON shape, `messages[]`/`errorCount`/`warningCount`
+- [Implement --quiet to only output errors and not warnings — eslint/eslint#905](https://github.com/eslint/eslint/issues/905) — `--quiet` origin/semantics
+- [ESLint Command Line Interface Reference](https://eslint.org/docs/latest/use/command-line-interface) — `--quiet`/`--max-warnings` interaction, exit codes
+- [CLI conventions — dmyersturnbull](https://dmyersturnbull.github.io/convention/cli/) — general `--quiet` / stdout-stderr conventions
+- [Clean non-interactive stdout — github/copilot-cli#3397](https://github.com/github/copilot-cli/issues/3397) — quiet-mode UI-chrome-to-stderr pattern
+- [Automatically generated release notes — GitHub Docs](https://docs.github.com/en/repositories/releasing-projects-on-github/automatically-generated-release-notes) — native PR-grouping behavior
+- [softprops/action-gh-release — GitHub Marketplace](https://github.com/marketplace/actions/generate-github-release-notes) — `generate_release_notes: true` usage
+- [Automated GitHub Releases with GitHub Actions and Conventional Commits — Kubesimplify](https://blog.kubesimplify.com/automated-github-releases-with-github-actions-and-conventional-commits) — release-please pattern (evaluated and rejected — see Anti-Features)
+- [Fixing "husky: not found" as a devDependency in CI — Medium](https://medium.com/@albertodeagostini.dev/fixing-husky-not-found-as-a-devdependency-in-the-ci-ec438cf73aa0) — `prepare` script CI failure modes
+- [Skip installing hooks on CI — typicode/husky#920](https://github.com/typicode/husky/issues/920) — CI/NODE_ENV guard pattern
+- [BFG Repo-Cleaner](https://rtyley.github.io/bfg-repo-cleaner/) and [BFG & git-filter-repo comparison — Elegant Software Solutions](https://www.elegantsoftwaresolutions.com/blog/bfg-git-filter-repo-cleaning-leaked-secrets-from-history) — history-rewrite tool tradeoffs (evaluated, kept out of CI — see Anti-Features)
+- [gitleaks/gitleaks](https://github.com/gitleaks/gitleaks) — one-time full-history scan pattern (`fetch-depth: 0`)
+- Live verification against this repo (2026-07-03): `package.json`/`motto.yaml` both at `0.0.3`, latest git tag `v0.0.5`, `npm view @jeremiewerner/motto version` → `0.0.3` — confirms the three-way drift the npm-drift feature must address
 
 ---
-*Feature research for: skill-generator meta-skill + template/outputs/dependencies schema fields*
-*Researched: 2026-07-02*
+*Feature research for: CI/CD + release engineering + CLI ergonomics (Motto v0.0.6 "Prove & Publish")*
+*Researched: 2026-07-03*

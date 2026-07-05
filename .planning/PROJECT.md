@@ -16,9 +16,21 @@ The **strict schema + linter**. Skills that always conform to one rigid-yet-crea
 
 **Hardening note:** post-v0.0.2 `/code-review high` caught 3 D-01 never-throw violations the milestone tests missed; fixed + guarded. v0.0.4 continued the pattern (adversarial scaffold-path tests). v0.0.5 made it structural: phase 18's review caught a Critical never-throw registry-shape crash (CR-01) *before* verification instead of after ship, and the twice-deferred WR-04 shape guard was closed at milestone close — zero known never-throw gaps at ship for the first time.
 
-## Next Milestone Goals
+## Current Milestone: v0.0.6 Prove & Publish
 
-Not yet defined — run `/gsd-new-milestone`. Backlog candidates in ROADMAP.md: CLI ergonomics (`--quiet`, `--format json`), CI workflow, `motto ship`, design-ledger items (action section tags, skill-calls-skill, `{var}` interpolation, multi-template, `agent` template), build-skill human-verify session.
+**Goal:** Motto's ship path becomes automated and trustworthy — CI gates every push, tags publish themselves to npm, repo goes public, and build-skill is proven on a real skill.
+
+**Progress:** All 4 phases complete (2026-07-05) — Phase 22 (public flip & token hardening) closed the milestone: two clean full-history gitleaks scans (Scan #2 at the literal pre-flip HEAD) gated the one-way PRIVATE→PUBLIC flip of jeremiewerner/motto; publish auth migrated NPM_TOKEN→OIDC trusted publishing (id-token: write, token-free publish env, structural regression test, maintainer-attested npmjs.com Trusted Publisher record); live branch protection on main (5 exact CI checks, enforce_admins: false); README publish-flow rewritten from a logged-out walkthrough + CI/npm badges. Security review: 8 threats, all closed, 0 open (22-SECURITY.md). Deferred to ship: first OIDC publish itself + marketplace re-verify (release SKILL.md Step 9 — npm latest still 0.0.3 until then). Prior: Phase 21 (publish job + release rewrite: local = bump+tag+push, CI publishes), Phase 20 (CI gate live, proven green on real PR runs, 231 tests), Phase 19 (pipe-safe CLI `--quiet`/`--format json`; build-skill proven live on `skills/changelog`). Next: ship v0.0.6 (`/gsd-complete-milestone`).
+
+**Target features:**
+- CI workflow: Node 20/22/24 test matrix + dogfood lint/build + pack-install E2E (tarball → tmp dir → init/lint/build) + publish-on-tag + npm-drift warning
+- Release skill rewrite: local = bump + tag + push only; publish + D-05 tarball assertion move to CI
+- Pre-public gate: git-history secrets scan + explicit `.planning/` visibility decision → repo flips public
+- Build-skill human-verify via authoring one real skill (BSKL-01, BSKL-05, WR-01 — closes v0.0.5 tech debt)
+- CLI ergonomics: `--quiet`, `--format json` (CLIX-01..02 — CI is first real consumer)
+- Changelog surface: release flow gains GitHub Release notes step
+
+**Key context:** npm stuck at 0.0.3 — v0.0.4/v0.0.5 were never published (release skill never ran; drift confirmed against registry 2026-07-03). Catch-up publish of 0.0.5 happens manually via the existing `release` skill before this milestone's CI work lands. Trusted publishing (OIDC) is sequenced after the public flip; `NPM_TOKEN` secret is the interim if CI publishes earlier. Repo public is a one-way door — secrets scan and `.planning/` decision are explicit gates, not assumptions. Remaining backlog (not this milestone): `motto ship`, design-ledger items (action section tags, skill-calls-skill, `{var}` interpolation, multi-template, `agent` template).
 
 **Standing principles (every step):** heavy research; design for unknown purpose; lightweight (readable code/md, no doc sprawl); agentic best practice (skills + agents + subagents + API/MCP are first-class); simple to adapt, creativity free; rigor in a small easy spine.
 
@@ -86,7 +98,7 @@ Not yet defined — run `/gsd-new-milestone`. Backlog candidates in ROADMAP.md: 
 
 ### Active
 
-(None — define with the next milestone via `/gsd-new-milestone`.)
+(v0.0.6 — defined in `.planning/REQUIREMENTS.md`; validated entries move here at phase transitions.)
 
 ### Out of Scope
 
@@ -102,8 +114,8 @@ Not yet defined — run `/gsd-new-milestone`. Backlog candidates in ROADMAP.md: 
 - Output is **standard Agent Skills** (`SKILL.md` + frontmatter + `references/`). The tooling is Claude-Code-specific; the output is portable.
 - A full design spec and a 6-task TDD implementation plan already exist: `.planning/superpowers/specs/2026-06-29-motto-design.md` and `.planning/superpowers/plans/2026-06-30-motto-core-cli.md`.
 - Repo layout for a Motto project: `skills/<name>/` (SKILL.md, references/, scripts/) + `shared/references/` → generated `dist/{public,private}/`.
-- Codebase state after v0.0.5: 1,964 LOC plain ESM JS (`bin/` + `src/`), 213 tests (`node --test`), single dep `yaml`, husky pre-commit full-suite hook, no CI. Two live skills (`release`, `build-skill`), doc-sync test pins `skill-schema.md` to the validator source.
-- Known debt: no CI (CI-01), repo still private, 3 build-skill live-behavior human-verify items + 1 info-level prose gap (see `milestones/v0.0.5-MILESTONE-AUDIT.md` tech_debt).
+- Codebase state after v0.0.6 phases: plain ESM JS (`bin/` + `src/`), `node --test` suite, single dep `yaml`, husky pre-commit full-suite hook, CI live (`.github/workflows/ci.yml`: Node 20/22/24 matrix + dogfood + pack-install E2E + OIDC publish-on-tag + npm-drift advisory). Repo **public** (flipped 2026-07-05 after two clean gitleaks scans). Three live skills (`release`, `build-skill`, `changelog`), doc-sync test pins `skill-schema.md` to the validator source.
+- Known debt: npm latest still 0.0.3 until the first OIDC publish at v0.0.6 ship (marketplace install serves stale skills until then — re-verify is release SKILL.md Step 9); 1 info-level build-skill prose gap (see `milestones/v0.0.5-MILESTONE-AUDIT.md` tech_debt).
 
 ## Constraints
 
@@ -134,6 +146,8 @@ Not yet defined — run `/gsd-new-milestone`. Backlog candidates in ROADMAP.md: 
 | `motto init` is flag-driven only — no interactive prompts | Would add a dep, break scriptable/agent use, duplicate lint's validation | ✅ v0.0.4 (research-backed anti-feature) |
 | No RESERVED-word check on `plugins.public/private` names (doc fix only, DEBT-01) | Over-strictness would reject spec-conformant names like `claude-notes-sync` | ✅ v0.0.4 |
 | No `motto ship` command | After init + build, shipping is two git commands; marketplace.json already scaffolded | ✅ v0.0.4 (backlog SHIP-01 until real friction) |
+| Publish auth = OIDC trusted publishing, zero stored tokens | Short-lived workflow-scoped OIDC token replaces the standing `NPM_TOKEN` credential; exact org/repo/workflow match on npmjs.com; residual secret revoked at ship (release Step 9) | ✓ Phase 22 — token-free publish path live in ci.yml, structural test guards it |
+| `.planning/` ships public as-is (no history rewrite) | 2026-07-05: Tags stay valid, history stays honest, the planning record is a feature for a dev-tooling repo (D-01). Accepted with informed knowledge of the PII sweep's commit-metadata-email finding — `jeremie@studiometa.fr` is the git-config author/committer email on the large majority of commits and is invisible to gitleaks (which scans diff content, not commit headers); D-06 already forbids purging it via history rewrite, so this exposure is knowingly accepted, not a silent default (see `.planning/phases/22-public-flip-token-hardening/22-SECRETS-SCAN.md` PII Sweep section) | ✓ Accepted — Phase 22 |
 
 ## Evolution
 
@@ -153,4 +167,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-03 after v0.0.5 milestone*
+*Last updated: 2026-07-05 after Phase 22 (repo public, OIDC publish path live — v0.0.6 phases all complete)*

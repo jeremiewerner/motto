@@ -1,23 +1,34 @@
 {
   "name": "@jeremiewerner/motto",
-  "version": "0.0.3",
+  "version": "0.0.6",
   "type": "module",
   "description": "Framework for authoring, validating, and packaging Claude Code Agent Skills",
   "author": "Jérémie Werner",
   "license": "MIT",
   "repository": "github:jeremiewerner/motto",
   "homepage": "https://github.com/jeremiewerner/motto",
-  "keywords": ["claude", "agent-skills", "claude-code", "cli"],
+  "keywords": [
+    "claude",
+    "agent-skills",
+    "claude-code",
+    "cli"
+  ],
   "engines": {
     "node": ">=20"
   },
   "bin": {
     "motto": "./bin/motto.js"
   },
-  "files": ["bin/", "src/", "dist/public/"],
-  "publishConfig": { "access": "public" },
+  "files": [
+    "bin/",
+    "src/",
+    "dist/public/"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
-    "prepare": "husky",
+    "prepare": "node scripts/prepare.mjs",
     "test": "node --test",
     "prepublishOnly": "node bin/motto.js build",
     "version": "node -e \"const fs=require('fs'); let c=fs.readFileSync('motto.yaml','utf8'); c=c.replace(/^version: .+$/m,'version: \\\"'+process.env.npm_new_version+'\\\"'); fs.writeFileSync('motto.yaml',c);\" && git add motto.yaml"

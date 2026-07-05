@@ -1,5 +1,8 @@
 # Motto
 
+[![CI](https://github.com/jeremiewerner/motto/actions/workflows/ci.yml/badge.svg)](https://github.com/jeremiewerner/motto/actions/workflows/ci.yml)
+[![npm version](https://img.shields.io/npm/v/@jeremiewerner/motto)](https://www.npmjs.com/package/@jeremiewerner/motto)
+
 **Framework for authoring, validating, and packaging Claude Code Agent Skills**
 
 Motto is a framework for authoring, validating, and packaging [Claude Code Agent Skills](https://code.claude.com/docs/en/plugins-reference). You write skills as structured `SKILL.md` files in a source tree, Motto's strict linter enforces a schema before anything ships, and `motto build` packages them into a self-contained, distributable plugin. The built output is plain, standard Agent Skills — any agent loads them with no knowledge of Motto.
@@ -175,13 +178,13 @@ Consumers then add your marketplace and install your plugin:
 The release skill at `skills/release/SKILL.md` carries the full maintainer checklist. The short version:
 
 ```sh
-npm version X.Y.Z -m "chore: release v%s"   # bumps package.json + motto.yaml, creates tag
-node bin/motto.js lint && node bin/motto.js build   # dogfood check
-npm publish          # fires prepublishOnly (rebuilds dist/public/) then uploads
-git push --follow-tags
+node --test                                         # all tests must pass first
+npm version X.Y.Z -m "chore: release v%s"           # bumps package.json + motto.yaml, creates tag
+node bin/motto.js lint && node bin/motto.js build   # local dogfood sanity check
+git push --follow-tags                              # hand off to CI
 ```
 
-> **Note:** `npm version` creates the git tag automatically from v0.0.4 onward. See the `release` skill for the full tarball-verify step and post-release housekeeping.
+Publishing itself happens in CI, not locally. Pushing the tag triggers a GitHub Actions run that re-runs the full test suite against the tagged commit, then publishes to npm via OIDC trusted publishing (no `NPM_TOKEN` involved) and creates the matching GitHub Release. See `skills/release/SKILL.md` for the full runbook, including how to verify CI actually published and how to recover if it doesn't.
 
 ---
 
