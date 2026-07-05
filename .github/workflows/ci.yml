@@ -92,6 +92,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write # scoped to this job only — workflow default stays contents: read
+      id-token: write # OIDC trusted publishing — authenticates npm publish below
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -122,9 +123,7 @@ jobs:
           fi
       - name: npm publish
         if: steps.npm_guard.outputs.already_published == 'false'
-        run: npm publish
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --provenance
       - name: Guard — skip GitHub Release if it already exists
         id: gh_guard
         run: |
