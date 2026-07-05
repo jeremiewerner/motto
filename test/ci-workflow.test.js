@@ -87,8 +87,10 @@ describe('ci.yml publish job structural contract (CR-01 / Truth #6)', () => {
 
 // Structural regression guard for PUB-05: the publish job must authenticate to
 // npm via OIDC trusted publishing, not a stored NPM_TOKEN/NODE_AUTH_TOKEN
-// secret. Scoped to the "npm publish" step's own env object (not a whole-file
-// grep) so this stays a precise contract check, not a brittle text search.
+// secret. The zero-token check sweeps every env scope that flows into the
+// publish job (workflow-level, job-level, and each step's own env) — the
+// realistic regression vectors — while staying a parsed-structure contract
+// check, not a brittle whole-file text grep.
 describe('ci.yml publish job OIDC contract (PUB-05)', () => {
   const workflow = parse(readFileSync(CI_YML, 'utf8'));
   const steps = workflow?.jobs?.publish?.steps;
@@ -116,13 +118,26 @@ describe('ci.yml publish job OIDC contract (PUB-05)', () => {
     assert.match(npmPublishStep.run ?? '', /--provenance/, 'expected --provenance flag on npm publish');
   });
 
-  it("the 'npm publish' step's own env does not reference NPM_TOKEN/NODE_AUTH_TOKEN", () => {
-    assert.ok(npmPublishStep, 'npm publish step not found');
-    const envStr = JSON.stringify(npmPublishStep.env ?? {});
-    assert.doesNotMatch(
-      envStr,
-      /NPM_TOKEN|NODE_AUTH_TOKEN/,
-      'npm publish step env must not reference NPM_TOKEN/NODE_AUTH_TOKEN',
-    );
+  it('no step, job-level, or workflow-level env reintroduces NPM_TOKEN/NODE_AUTH_TOKEN', () => {
+    // The highest-probability regression paths are `env:` at the job level
+    // (jobs.publish.env) or workflow level (top-level env:) — both flow into
+    // every step's environment — or a token wired into a sibling step (e.g.
+    // setup-node or an added .npmrc-writing step). Sweep every env scope that
+    // can reach the publish job, not just the publish step's own env.
+    const scopes = [
+      ['workflow-level env', workflow?.env],
+      ['jobs.publish env', workflow?.jobs?.publish?.env],
+      ...steps.map((s, i) => [
+        `publish step ${i} (${s.name ?? s.id ?? s.uses ?? 'unnamed'}) env`,
+        s.env,
+      ]),
+    ];
+    for (const [label, env] of scopes) {
+      assert.doesNotMatch(
+        JSON.stringify(env ?? {}),
+        /NPM_TOKEN|NODE_AUTH_TOKEN/,
+        `${label} must not reference NPM_TOKEN/NODE_AUTH_TOKEN`,
+      );
+    }
   });
 });
