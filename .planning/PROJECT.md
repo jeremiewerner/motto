@@ -146,6 +146,7 @@ The **strict schema + linter**. Skills that always conform to one rigid-yet-crea
 | `motto init` is flag-driven only — no interactive prompts | Would add a dep, break scriptable/agent use, duplicate lint's validation | ✅ v0.0.4 (research-backed anti-feature) |
 | No RESERVED-word check on `plugins.public/private` names (doc fix only, DEBT-01) | Over-strictness would reject spec-conformant names like `claude-notes-sync` | ✅ v0.0.4 |
 | No `motto ship` command | After init + build, shipping is two git commands; marketplace.json already scaffolded | ✅ v0.0.4 (backlog SHIP-01 until real friction) |
+| `.planning/` ships public as-is (no history rewrite) | 2026-07-05: Tags stay valid, history stays honest, the planning record is a feature for a dev-tooling repo (D-01). Accepted with informed knowledge of the PII sweep's commit-metadata-email finding — `jeremie@studiometa.fr` is the git-config author/committer email on the large majority of commits and is invisible to gitleaks (which scans diff content, not commit headers); D-06 already forbids purging it via history rewrite, so this exposure is knowingly accepted, not a silent default (see `.planning/phases/22-public-flip-token-hardening/22-SECRETS-SCAN.md` PII Sweep section) | ✓ Accepted — Phase 22 |
 
 ## Evolution
 
