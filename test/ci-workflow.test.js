@@ -75,3 +75,45 @@ describe('ci.yml publish job structural contract (CR-01 / Truth #6)', () => {
     );
   });
 });
+
+// Structural regression guard for PUB-05: the publish job must authenticate to
+// npm via OIDC trusted publishing, not a stored NPM_TOKEN/NODE_AUTH_TOKEN
+// secret. Scoped to the "npm publish" step's own env object (not a whole-file
+// grep) so this stays a precise contract check, not a brittle text search.
+describe('ci.yml publish job OIDC contract (PUB-05)', () => {
+  const workflow = parse(readFileSync('.github/workflows/ci.yml', 'utf8'));
+  const steps = workflow?.jobs?.publish?.steps;
+  assert.ok(Array.isArray(steps), 'jobs.publish.steps must exist and be an array');
+  const npmPublishStep = steps.find((s) => s.name === 'npm publish');
+
+  it("jobs.publish.permissions['id-token'] equals 'write'", () => {
+    assert.equal(
+      workflow?.jobs?.publish?.permissions?.['id-token'],
+      'write',
+      "expected jobs.publish.permissions['id-token'] === 'write'",
+    );
+  });
+
+  it("jobs.publish.permissions.contents still equals 'write' (regression guard)", () => {
+    assert.equal(
+      workflow?.jobs?.publish?.permissions?.contents,
+      'write',
+      'expected jobs.publish.permissions.contents === \'write\' to remain unchanged',
+    );
+  });
+
+  it("the 'npm publish' step's run field matches /--provenance/", () => {
+    assert.ok(npmPublishStep, 'npm publish step not found');
+    assert.match(npmPublishStep.run ?? '', /--provenance/, 'expected --provenance flag on npm publish');
+  });
+
+  it("the 'npm publish' step's own env does not reference NPM_TOKEN/NODE_AUTH_TOKEN", () => {
+    assert.ok(npmPublishStep, 'npm publish step not found');
+    const envStr = JSON.stringify(npmPublishStep.env ?? {});
+    assert.doesNotMatch(
+      envStr,
+      /NPM_TOKEN|NODE_AUTH_TOKEN/,
+      'npm publish step env must not reference NPM_TOKEN/NODE_AUTH_TOKEN',
+    );
+  });
+});
