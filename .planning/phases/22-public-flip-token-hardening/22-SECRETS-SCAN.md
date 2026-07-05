@@ -111,3 +111,25 @@ already identified.
 | `noreply@anthropic.com` | 3 | N/A (Anthropic placeholder, no PII) | No action; identifies no individual |
 | `you@example.com` | 2 | N/A (placeholder in an illustrative code snippet) | No action; not a real address |
 | `jeremie@studiometa.fr` | 1, 2, 3 | No | **Accept as-is** (D-01/D-06 forbid history rewrite); surfaced to the maintainer in PROJECT.md's Key Decisions row (Task 3) for informed, recorded acceptance |
+
+## Scan #2 — Final (pre-flip)
+
+This is the **second and final** of the two scans required by D-08. It runs as the
+literal last pre-flip step — no content-changing commit lands between this scan and
+the visibility flip in this plan's Task 2. The HEAD SHA recorded below is the exact
+HEAD SHA that Task 2 flips to public.
+
+- **Command:** `gitleaks git . --report-format json --report-path <scratch-tmp-path> --exit-code 0`
+- **gitleaks version:** 8.30.1
+- **HEAD SHA scanned:** `e85c410a6e239bcc2582232bd776d363994735d8`
+- **Commits scanned:** 415
+- **Exit code:** 0
+- **Findings count:** 0
+
+No findings. The raw JSON report (`[]`) was written to the session scratch directory
+(never under the repo tree), inspected, and deleted immediately after confirming an
+empty findings array — no report file was ever staged or committed.
+
+This HEAD SHA (`e85c410a6e239bcc2582232bd776d363994735d8`) is the one Task 2 flips to
+public. No further content-changing commit will be made between this scan and the
+flip.
