@@ -20,7 +20,7 @@ The **strict schema + linter**. Skills that always conform to one rigid-yet-crea
 
 **Goal:** Motto's ship path becomes automated and trustworthy — CI gates every push, tags publish themselves to npm, repo goes public, and build-skill is proven on a real skill.
 
-**Progress:** Phase 20 complete (2026-07-03) — CI gate live: `.github/workflows/ci.yml` with 4 parallel jobs (Node 20/22/24 test matrix, dogfood lint/build, pack-install E2E, npm-drift advisory; CIW-01..05), proven by two real green `pull_request` runs (PR #3, opened/closed unmerged). Research falsified locked D-15 (`npm install <tarball>` never fires a nested dep's `prepare`) — closed with an explicit `git archive`-based `.git`-less `npm ci` proof (`scripts/prepare-guard-check.mjs`). Post-execution review caught 1 Critical (bare `npx motto` in CI = registry-substitution hazard; pinned to `node_modules/.bin/motto`) + 5 warnings incl. a never-red violation in `npm-drift-check.mjs` — all 6 fixed, post-fix CI run green. 231 tests. Prior: Phase 19 (pipe-safe CLI `--quiet`/`--format json`; build-skill proven live on `skills/changelog`). Next: Phase 21 publish-automation & release rewrite.
+**Progress:** All 4 phases complete (2026-07-05) — Phase 22 (public flip & token hardening) closed the milestone: two clean full-history gitleaks scans (Scan #2 at the literal pre-flip HEAD) gated the one-way PRIVATE→PUBLIC flip of jeremiewerner/motto; publish auth migrated NPM_TOKEN→OIDC trusted publishing (id-token: write, token-free publish env, structural regression test, maintainer-attested npmjs.com Trusted Publisher record); live branch protection on main (5 exact CI checks, enforce_admins: false); README publish-flow rewritten from a logged-out walkthrough + CI/npm badges. Security review: 8 threats, all closed, 0 open (22-SECURITY.md). Deferred to ship: first OIDC publish itself + marketplace re-verify (release SKILL.md Step 9 — npm latest still 0.0.3 until then). Prior: Phase 21 (publish job + release rewrite: local = bump+tag+push, CI publishes), Phase 20 (CI gate live, proven green on real PR runs, 231 tests), Phase 19 (pipe-safe CLI `--quiet`/`--format json`; build-skill proven live on `skills/changelog`). Next: ship v0.0.6 (`/gsd-complete-milestone`).
 
 **Target features:**
 - CI workflow: Node 20/22/24 test matrix + dogfood lint/build + pack-install E2E (tarball → tmp dir → init/lint/build) + publish-on-tag + npm-drift warning
@@ -114,8 +114,8 @@ The **strict schema + linter**. Skills that always conform to one rigid-yet-crea
 - Output is **standard Agent Skills** (`SKILL.md` + frontmatter + `references/`). The tooling is Claude-Code-specific; the output is portable.
 - A full design spec and a 6-task TDD implementation plan already exist: `.planning/superpowers/specs/2026-06-29-motto-design.md` and `.planning/superpowers/plans/2026-06-30-motto-core-cli.md`.
 - Repo layout for a Motto project: `skills/<name>/` (SKILL.md, references/, scripts/) + `shared/references/` → generated `dist/{public,private}/`.
-- Codebase state after v0.0.5: 1,964 LOC plain ESM JS (`bin/` + `src/`), 213 tests (`node --test`), single dep `yaml`, husky pre-commit full-suite hook, no CI. Two live skills (`release`, `build-skill`), doc-sync test pins `skill-schema.md` to the validator source.
-- Known debt: no CI (CI-01), repo still private, 3 build-skill live-behavior human-verify items + 1 info-level prose gap (see `milestones/v0.0.5-MILESTONE-AUDIT.md` tech_debt).
+- Codebase state after v0.0.6 phases: plain ESM JS (`bin/` + `src/`), `node --test` suite, single dep `yaml`, husky pre-commit full-suite hook, CI live (`.github/workflows/ci.yml`: Node 20/22/24 matrix + dogfood + pack-install E2E + OIDC publish-on-tag + npm-drift advisory). Repo **public** (flipped 2026-07-05 after two clean gitleaks scans). Three live skills (`release`, `build-skill`, `changelog`), doc-sync test pins `skill-schema.md` to the validator source.
+- Known debt: npm latest still 0.0.3 until the first OIDC publish at v0.0.6 ship (marketplace install serves stale skills until then — re-verify is release SKILL.md Step 9); 1 info-level build-skill prose gap (see `milestones/v0.0.5-MILESTONE-AUDIT.md` tech_debt).
 
 ## Constraints
 
@@ -146,6 +146,7 @@ The **strict schema + linter**. Skills that always conform to one rigid-yet-crea
 | `motto init` is flag-driven only — no interactive prompts | Would add a dep, break scriptable/agent use, duplicate lint's validation | ✅ v0.0.4 (research-backed anti-feature) |
 | No RESERVED-word check on `plugins.public/private` names (doc fix only, DEBT-01) | Over-strictness would reject spec-conformant names like `claude-notes-sync` | ✅ v0.0.4 |
 | No `motto ship` command | After init + build, shipping is two git commands; marketplace.json already scaffolded | ✅ v0.0.4 (backlog SHIP-01 until real friction) |
+| Publish auth = OIDC trusted publishing, zero stored tokens | Short-lived workflow-scoped OIDC token replaces the standing `NPM_TOKEN` credential; exact org/repo/workflow match on npmjs.com; residual secret revoked at ship (release Step 9) | ✓ Phase 22 — token-free publish path live in ci.yml, structural test guards it |
 | `.planning/` ships public as-is (no history rewrite) | 2026-07-05: Tags stay valid, history stays honest, the planning record is a feature for a dev-tooling repo (D-01). Accepted with informed knowledge of the PII sweep's commit-metadata-email finding — `jeremie@studiometa.fr` is the git-config author/committer email on the large majority of commits and is invisible to gitleaks (which scans diff content, not commit headers); D-06 already forbids purging it via history rewrite, so this exposure is knowingly accepted, not a silent default (see `.planning/phases/22-public-flip-token-hardening/22-SECRETS-SCAN.md` PII Sweep section) | ✓ Accepted — Phase 22 |
 
 ## Evolution
@@ -166,4 +167,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-03 — Phase 20 complete (CI workflow live, gate proven green pre-public)*
+*Last updated: 2026-07-05 after Phase 22 (repo public, OIDC publish path live — v0.0.6 phases all complete)*

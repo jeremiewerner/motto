@@ -161,7 +161,7 @@ Phases execute in numeric order: 19 → 20 → 21 → 22
 | 19. CLI Ergonomics & Build-Skill Verification | v0.0.6 | 2/2 | Complete    | 2026-07-03 |
 | 20. CI Workflow | v0.0.6 | 3/3 | Complete    | 2026-07-03 |
 | 21. Publish Automation & Release Rewrite | v0.0.6 | 4/4 | Complete   | 2026-07-04 |
-| 22. Public Flip & Token Hardening | v0.0.6 | 5/5 | Complete   | 2026-07-05 |
+| 22. Public Flip & Token Hardening | v0.0.6 | 5/5 | Complete    | 2026-07-05 |
 
 ## Backlog
 

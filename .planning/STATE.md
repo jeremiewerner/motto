@@ -3,35 +3,35 @@ gsd_state_version: 1.0
 milestone: v0.0.6
 milestone_name: Prove & Publish
 current_phase: 22
-current_phase_name: public-flip-token-hardening
 status: verifying
 stopped_at: Completed 22-04-PLAN.md
-last_updated: "2026-07-05T17:29:00.111Z"
+last_updated: "2026-07-05T18:40:05.329Z"
 last_activity: 2026-07-05
-last_activity_desc: Phase 22 execution started
+last_activity_desc: Phase 22 complete
 progress:
   total_phases: 4
   completed_phases: 4
   total_plans: 14
   completed_plans: 14
   percent: 100
+current_phase_name: public-flip-token-hardening
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-07-02 after v0.0.4)
+See: .planning/PROJECT.md (updated 2026-07-05 after Phase 22)
 
 **Core value:** A strict schema + linter that guarantees authored skills conform before they ship, then packages them into self-contained standard Agent Skill plugins.
-**Current focus:** Phase 22 — public-flip-token-hardening
+**Current focus:** Complete milestone v0.0.6 (all phases done — ship next)
 
 ## Current Position
 
-Phase: 22 (public-flip-token-hardening) — EXECUTING
-Plan: 5 of 5
+Phase: 22
+Plan: Not started
 Status: Phase complete — ready for verification
-Last activity: 2026-07-05 — Phase 22 execution started
+Last activity: 2026-07-05 — Phase 22 complete
 
 **Milestone shape (v0.0.6, coarse):**
 
@@ -46,7 +46,7 @@ Ordering (research-locked): CLI flags first (pack-E2E consumes them) → CI prov
 
 **Velocity:**
 
-- Total plans completed: 16
+- Total plans completed: 21
 - Average duration: -
 - Total execution time: 0 hours
 
@@ -65,6 +65,7 @@ Ordering (research-locked): CLI flags first (pack-E2E consumes them) → CI prov
 | 18 | 2 | - | - |
 | 19 | 2 | - | - |
 | 20 | 3 | - | - |
+| 22 | 5 | - | - |
 
 **Recent Trend:**
 
@@ -172,8 +173,8 @@ None yet.
 
 - **Phase 15 gate override (plan-phase 13a):** decision-coverage gate returned `could-not-parse` (15-CONTEXT.md decisions use bold-category bullets, not `- **D-NN:**` form; zero uncovered). Operator chose "Proceed anyway" after plan-checker Dimension 7 verified all context decisions honored in plans. Verify-phase should re-check decision compliance manually, not via the mechanical gate.
 - **Phase 16 gate override (plan-phase 13a):** decision-coverage gate returned `could-not-parse` (16-CONTEXT.md decisions use category bullets, not `- **D-NN:**` form; zero uncovered). Operator chose "Proceed anyway" after planner and plan-checker both verified all locked decisions honored in the plan. Verify-phase should re-check decision compliance manually, not via the mechanical gate.
-- **Cross-phase (per-phase check):** each phase must decide whether `motto init`'s scaffold needs updating (starter skill `template:`? example outputs file? marketplace/doc strings) — no speculative requirement; decide against real need.
-- Carried from prior milestones: no CI (husky-only, CI-01, deferred); repo still private.
+- **[Phase 22] Deferred to ship:** first OIDC publish + marketplace re-verify (release SKILL.md Step 9) — npm latest still 0.0.3 until the v0.0.6 ship tag publishes; marketplace install serves stale (author-skill) content until then. Also at ship: revoke residual `NPM_TOKEN` secret (Step 9 zero-tokens follow-through).
+- ~~Carried from prior milestones: no CI; repo still private~~ — both resolved: CI live (Phase 20), repo public (Phase 22).
 
 ### Quick Tasks Completed
 
@@ -198,10 +199,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-05T17:28:35.398Z
-Stopped at: Completed 22-04-PLAN.md
-Resume file: 
-
-None
-
-- Start the next milestone with /gsd-new-milestone
+Last session: 2026-07-05
+Stopped at: Phase 22 complete (UAT 1/1 passed, security verified, post-ship check deferred to release Step 9) — milestone v0.0.6 100%, ready for /gsd-complete-milestone
+Resume file: None
