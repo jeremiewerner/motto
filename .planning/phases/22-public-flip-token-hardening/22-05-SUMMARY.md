@@ -146,3 +146,11 @@ None — no external service configuration required.
 ---
 *Phase: 22-public-flip-token-hardening*
 *Completed: 2026-07-05*
+
+## Self-Check: PASSED
+
+- FOUND: README.md
+- FOUND: skills/release/SKILL.md
+- FOUND: .planning/phases/22-public-flip-token-hardening/22-05-SUMMARY.md
+- FOUND commit: f2bb3ec
+- FOUND commit: ddc338f

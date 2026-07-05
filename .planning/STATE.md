@@ -4,17 +4,17 @@ milestone: v0.0.6
 milestone_name: Prove & Publish
 current_phase: 22
 current_phase_name: public-flip-token-hardening
-status: executing
+status: verifying
 stopped_at: Completed 22-04-PLAN.md
-last_updated: "2026-07-05T17:19:22.856Z"
+last_updated: "2026-07-05T17:29:00.111Z"
 last_activity: 2026-07-05
 last_activity_desc: Phase 22 execution started
 progress:
   total_phases: 4
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 14
-  completed_plans: 13
-  percent: 75
+  completed_plans: 14
+  percent: 100
 ---
 
 # Project State
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-07-02 after v0.0.4)
 
 Phase: 22 (public-flip-token-hardening) — EXECUTING
 Plan: 5 of 5
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-07-05 — Phase 22 execution started
 
 **Milestone shape (v0.0.6, coarse):**
@@ -95,6 +95,7 @@ Ordering (research-locked): CLI flags first (pack-E2E consumes them) → CI prov
 | Phase 22 P02 | 15min | 3 tasks | 3 files |
 | Phase 22 P03 | 20min | 2 tasks | 0 files |
 | Phase 22 P04 | checkpoint-spanning | 2 tasks | 1 files |
+| Phase 22 P05 | checkpoint-spanning | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -159,6 +160,9 @@ Recent decisions affecting current work:
 - [Phase 22]: [Phase 22-03] npm-drift deliberately excluded from required-status-checks list — Its job-level if: github.ref == 'refs/heads/main' guard means it never reports on a PR-triggered run, which would leave a required check permanently pending
 - [Phase 22-04]: gitleaks git . full-history scan #2 (final, of 2 per D-08) recorded clean: 415 commits, HEAD e85c410, exit 0, 0 findings
 - [Phase 22-04]: jeremiewerner/motto flipped PRIVATE -> PUBLIC via gh repo edit --visibility public --accept-visibility-change-consequences, performed by the maintainer only after Scan #2 confirmed 0 unresolved findings
+- [Phase 22-05]: Walkthrough items 3-4 (marketplace add/install, skill-list appearance) recorded BLOCKED-pending-first-OIDC-publish (root cause: npm 'latest' for @jeremiewerner/motto still resolves to 0.0.3), not silently marked passed
+- [Phase 22-05]: README.md publish-flow section rewritten to match the actual current flow (tests -> npm version -> git push --follow-tags -> CI OIDC publish); stale local npm publish step removed; CI + npm badges added
+- [Phase 22-05]: Added a marketplace re-verify item to skills/release/SKILL.md Step 9 (zero-tokens follow-through, first-OIDC-release-only) so walkthrough items 3-4 get re-checked automatically after the first OIDC publish
 
 ### Pending Todos
 
@@ -194,7 +198,7 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-05T17:19:08.308Z
+Last session: 2026-07-05T17:28:35.398Z
 Stopped at: Completed 22-04-PLAN.md
 Resume file: 
 

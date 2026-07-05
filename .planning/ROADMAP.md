@@ -45,7 +45,7 @@ Full phase details: [milestones/v0.0.5-ROADMAP.md](milestones/v0.0.5-ROADMAP.md)
 - [x] **Phase 19: CLI Ergonomics & Build-Skill Verification** - Machine-readable, pipe-safe CLI output that CI can assert against, plus one real skill proven through build-skill (completed 2026-07-03)
 - [x] **Phase 20: CI Workflow** - Every push/PR gated by a Node 20/22/24 matrix, dogfood, and pack-install E2E — proven while the repo is still private (completed 2026-07-03)
 - [x] **Phase 21: Publish Automation & Release Rewrite** - Tags publish themselves to npm idempotently; local release flow shrinks to bump-tag-push (3/3 plans executed; verification found 1 gap — see 21-VERIFICATION.md) (completed 2026-07-04)
-- [ ] **Phase 22: Public Flip & Token Hardening** - The repo crosses the one-way door to public, verified clean and stranger-usable, ending with zero long-lived publish tokens
+- [x] **Phase 22: Public Flip & Token Hardening** - The repo crosses the one-way door to public, verified clean and stranger-usable, ending with zero long-lived publish tokens (completed 2026-07-05)
 
 ## Phase Details
 
@@ -130,7 +130,7 @@ Plans:
   3. The repo `jeremiewerner/motto` flips public and a logged-out stranger can follow the README, npm links, and marketplace install path successfully.
   4. After the flip, CI publish migrates from `NPM_TOKEN` to npm trusted publishing (OIDC) with `--provenance`, leaving zero long-lived publish tokens.
 
-**Plans**: 4/5 plans executed
+**Plans**: 5/5 plans complete
 
 **Wave 1**
 
@@ -144,7 +144,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2)*
 
-- [ ] 22-05-PLAN.md — Maintainer checkpoint: stranger walkthrough + README accuracy pass (badges, stale publish-flow fix) (OPEN-03)
+- [x] 22-05-PLAN.md — Maintainer checkpoint: stranger walkthrough + README accuracy pass (badges, stale publish-flow fix) (OPEN-03)
 
 ## Progress
 
@@ -161,7 +161,7 @@ Phases execute in numeric order: 19 → 20 → 21 → 22
 | 19. CLI Ergonomics & Build-Skill Verification | v0.0.6 | 2/2 | Complete    | 2026-07-03 |
 | 20. CI Workflow | v0.0.6 | 3/3 | Complete    | 2026-07-03 |
 | 21. Publish Automation & Release Rewrite | v0.0.6 | 4/4 | Complete   | 2026-07-04 |
-| 22. Public Flip & Token Hardening | v0.0.6 | 4/5 | In Progress|  |
+| 22. Public Flip & Token Hardening | v0.0.6 | 5/5 | Complete   | 2026-07-05 |
 
 ## Backlog
 
