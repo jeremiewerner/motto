@@ -135,6 +135,24 @@ After Step 6 confirms the release is live:
 3. Close the milestone in the planning system (mark complete in `.planning/`).
 4. Open the next milestone planning issue if one is queued.
 
+## Step 9 — Zero-Tokens Follow-Through (first OIDC-live release only)
+
+Run this step **once** — the first time a tag-triggered publish succeeds via OIDC trusted publishing (i.e. the first release cut after the publish job stopped using `NPM_TOKEN`/`NODE_AUTH_TOKEN`). Every subsequent release skips this step entirely; it is not part of the normal per-release flow.
+
+1. **Revoke the token and delete the secret.** On npmjs.com, revoke the granular access token that was used as the `NPM_TOKEN` fallback. Then delete the GitHub Actions repository secret that stored it:
+   ```
+   gh secret delete <name>
+   ```
+   `<name>` is whichever secret name Phase 21's checkpoint created. Record that both actions were taken (token revoked + secret deleted) — never record the token value itself.
+2. **Lock npm publishing to trusted-publisher-only.** On npmjs.com, set `@jeremiewerner/motto`'s publishing access so that tokens are disallowed and only the configured Trusted Publisher can publish. This makes zero-tokens a structural guarantee, not just an incidental current state.
+3. **Verify provenance via the registry.** Check the npmjs.com package page for a provenance attestation badge, or run:
+   ```
+   npm view @jeremiewerner/motto --json
+   ```
+   and look for attestation data. Record what was observed (do not just assume `--provenance` worked because `npm publish` exited 0).
+
+**Troubleshooting:** if the OIDC publish 404s or 401s despite a correctly-configured Trusted Publisher, check `package.json`'s `repository` field. It currently uses the `github:jeremiewerner/motto` shorthand form — try expanding it to `git+https://github.com/jeremiewerner/motto.git` as a first troubleshooting step.
+
 </process>
 
 <success_criteria>
@@ -147,5 +165,6 @@ After Step 6 confirms the release is live:
 - The maintainer verifies the Actions run is green, the registry has the new version (`npm view`), and the GitHub Release exists (`gh release view`) before doing any Post-Release Housekeeping.
 - If CI publish fails, recovery is `gh run rerun <id> --failed` for transient/config failures (or, as an emergency-only escape hatch, a manual `npm publish` from the tagged commit), or a new version bump + new matching tag for tag/version-mismatch guard failures — never deleting or recreating the git tag.
 - `PROJECT.md` and `MILESTONES.md` are updated to reflect the new shipped state.
+- The zero-tokens follow-through (Step 9: token revocation, npm-side trusted-publisher-only lockdown, provenance verification) runs once — the first OIDC-live release only — never as a per-release step.
 
 </success_criteria>
