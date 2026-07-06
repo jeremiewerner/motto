@@ -1,7 +1,7 @@
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, rm, writeFile, readFile } from 'node:fs/promises';
 import { join, basename } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -433,6 +433,49 @@ describe('init stderr split (D-07)', () => {
       const r = runCli(['init', '--quiet'], { cwd: dir });
       assert.strictEqual(r.status, 1);
       assert.match(r.stderr, /unknown option/);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Skew warning is non-blocking (VER-02) — spawned-CLI proof
+// ---------------------------------------------------------------------------
+
+/**
+ * Hand-edit a scaffolded fixture's motto.yaml mottoVersion line to a fake
+ * value guaranteed older than any real Motto release — never asserts
+ * against the live literal (Pitfall 6).
+ * @param {string} dir - fixture directory (already scaffolded)
+ */
+async function makeSkewedOlderFixture(dir) {
+  const configPath = join(dir, 'motto.yaml');
+  const before = await readFile(configPath, 'utf8');
+  const after = before.replace(/^mottoVersion:.*$/m, 'mottoVersion: "0.0.1"');
+  await writeFile(configPath, after);
+}
+
+describe('CLI skew warning is non-blocking (VER-02)', () => {
+  it('lint on a skewed-but-valid project: exit code 0, ⚠ line on stderr', async () => {
+    const dir = await scaffoldCleanFixture('motto-cli-skew-lint-', 'skew-lint-proj');
+    try {
+      await makeSkewedOlderFixture(dir);
+      const r = runCli(['lint'], { cwd: dir });
+      assert.strictEqual(r.status, 0, `stderr: ${r.stderr}`);
+      assert.match(r.stderr, /⚠.*check UPGRADING\.md/);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('build on a skewed-but-valid project: exit code 0, ⚠ line on stderr', async () => {
+    const dir = await scaffoldCleanFixture('motto-cli-skew-build-', 'skew-build-proj');
+    try {
+      await makeSkewedOlderFixture(dir);
+      const r = runCli(['build'], { cwd: dir });
+      assert.strictEqual(r.status, 0, `stderr: ${r.stderr}`);
+      assert.match(r.stderr, /⚠.*check UPGRADING\.md/);
     } finally {
       await rm(dir, { recursive: true, force: true });
     }

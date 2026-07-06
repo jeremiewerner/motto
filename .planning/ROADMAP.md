@@ -1,8 +1,8 @@
 # Motto Roadmap
 
 **Project:** Motto
-**Latest shipped:** v0.0.6 (2026-07-05)
-**Active milestone:** None — run `/gsd-new-milestone` to start the next cycle
+**Latest shipped:** v0.0.7 (2026-07-06)
+**Active milestone:** None — run `/gsd-new-milestone`
 **Core Value:** A strict schema + linter that guarantees authored skills conform before they ship, then packages them into self-contained standard Agent Skill plugins.
 **Granularity:** Coarse
 
@@ -20,6 +20,8 @@
   - Data-driven `template:` enforcement, validated `outputs:`/`dependencies:`/`allowed-tools` with integrity guards, `build-skill` Agent Skill (author-skill retired), docs current with doc-sync drift guard, base spine migrated to registry-driven `<role>` section tag. 19 requirements + 9-decision Phase 18 contract, 213 tests.
 - [x] **v0.0.6** — Prove & Publish (Phases 19-22) — SHIPPED 2026-07-05 → [archive](milestones/v0.0.6-ROADMAP.md)
   - CI gates every push (Node 20/22/24 matrix + dogfood + pack-install E2E), tags publish themselves to npm via OIDC trusted publishing with zero long-lived tokens, the repo crossed the one-way door to public (gitleaks-clean, branch-protected), and build-skill proven on a real skill. Live-proven by v0.0.6's own tag-triggered publish. 17 requirements, 243 tests. Zero new deps.
+- [x] **v0.0.7** — Version Awareness (Phases 23-25) — SHIPPED 2026-07-06 → [archive](milestones/v0.0.7-ROADMAP.md)
+  - A Motto project knows which Motto version scaffolded it (`mottoVersion` stamped at `init`); `lint`/`build` detect version skew and report it as a direction-aware, never-throw advisory; `UPGRADING.md` ledger + release-skill Ledger Gate make future schema breaks non-stranding; v0.0.6 operator debt closed (marketplace re-walk, npm token revoke, trusted-publisher lock). 11 requirements, 293 tests. Zero new deps.
 
 ## Phases
 
@@ -48,6 +50,17 @@ Full phase details: [milestones/v0.0.6-ROADMAP.md](milestones/v0.0.6-ROADMAP.md)
 
 </details>
 
+<details>
+<summary>✅ v0.0.7 Version Awareness (Phases 23-25) — SHIPPED 2026-07-06</summary>
+
+- [x] Phase 23: Version Stamping & Skew Detection (4/4 plans) — completed 2026-07-06
+- [x] Phase 24: Upgrade-Path Ledger & Policy (2/2 plans) — completed 2026-07-06
+- [x] Phase 25: v0.0.6 Operator Debt Closure (3/3 plans) — completed 2026-07-06
+
+Full phase details: [milestones/v0.0.7-ROADMAP.md](milestones/v0.0.7-ROADMAP.md)
+
+</details>
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -61,6 +74,9 @@ Full phase details: [milestones/v0.0.6-ROADMAP.md](milestones/v0.0.6-ROADMAP.md)
 | 20. CI Workflow | v0.0.6 | 3/3 | Complete | 2026-07-03 |
 | 21. Publish Automation & Release Rewrite | v0.0.6 | 4/4 | Complete | 2026-07-04 |
 | 22. Public Flip & Token Hardening | v0.0.6 | 5/5 | Complete | 2026-07-05 |
+| 23. Version Stamping & Skew Detection | v0.0.7 | 4/4 | Complete    | 2026-07-06 |
+| 24. Upgrade-Path Ledger & Policy | v0.0.7 | 2/2 | Complete    | 2026-07-06 |
+| 25. v0.0.6 Operator Debt Closure | v0.0.7 | 3/3 | Complete    | 2026-07-06 |
 
 ## Backlog
 
@@ -70,6 +86,8 @@ Candidates for a future milestone (detail in archived milestone requirements):
 - OS matrix (Windows/macOS CI legs) — defer until a real Windows bug report.
 - Node 20 EOL decision (bump `engines` to ≥22?) — explicit decision next milestone; matrix still tests 20 for lagging installs.
 - `--format json` line/column positions from yaml parser errors — v2+ consideration.
+- `--format json` structured skew field (`{skew: {projectVersion, toolVersion, direction}}`) — VER-F1, deferred until magma validates the plain-text message wording.
+- Severity keyed to semver distance / documented breaking boundary (patch/minor quiet, breaking loud) — VER-F2, needs a second real break to calibrate.
+- `motto upgrade` command that walks a project across schema breaks — UPG-F1, deferred (YAGNI) until the first real post-stamp schema break demands it; v0.0.7's detection layer is its prerequisite.
 - `--zip` build feature — dropped for v0.0.3 (marketplace + `~/.claude/skills/` cover Claude Desktop's Code tab). Revisit only on real demand.
 - Deferred design-ledger items: action section tags (`<drill>`/`<run>`/`<mcp>`), skill-calls-skill with params, `{var}` interpolation engine, `template:` as array (multi-template), `agent` template — design each against the first real skill that needs it.
-- Marketplace/skill-list re-check (from 22-05 stranger walkthrough): was BLOCKED on stale npm `latest` = 0.0.3; unblocked by the v0.0.6 publish — re-walk the marketplace install path to confirm.

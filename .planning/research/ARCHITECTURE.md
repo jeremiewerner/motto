@@ -1,280 +1,271 @@
-# Architecture Research
+# Architecture Research: Version Awareness (v0.0.7)
 
-**Domain:** CI/CD integration for an existing Node CLI (motto) — GitHub Actions, npm publish automation, CLI output-format flags
-**Researched:** 2026-07-03
-**Confidence:** HIGH (verified against current repo source: `src/lint.js`, `src/build.js`, `bin/motto.js`, `skills/release/SKILL.md`, `package.json`, `test/cli.test.js`; MEDIUM on npm trusted-publishing specifics — recent 2025 GA feature, verified via official docs + changelog)
+**Domain:** Integrating version stamping + skew detection into Motto's existing CLI (plain ESM, never-throw pipelines)
+**Researched:** 2026-07-06
+**Confidence:** HIGH (grounded entirely in the actual v0.0.6 source — `bin/motto.js`, `src/config.js`, `src/init.js`, `src/lint.js`, `src/build.js`, `package.json`, `motto.yaml`)
 
-This is a **subsequent-milestone integration** doc, not a greenfield architecture doc. It answers exactly the four integration questions posed, plus a build order. It does not re-derive the existing lint/build/schema architecture (unchanged this milestone). It supersedes the previous `ARCHITECTURE.md` (v0.0.5 Skill Builder integration research), which is no longer current.
+This is a **subsequent-milestone integration** doc, not a greenfield architecture doc. It answers exactly the integration questions posed (where comparison lives, how skew flows through the result shape, where the tool reads its own version, what `init.js` needs, new vs modified components, build order). It supersedes the previous `ARCHITECTURE.md` (v0.0.6 CI/publish integration research), which is no longer current.
+
+## Critical Finding First: `version` Is Already Taken
+
+`motto.yaml`'s existing `version` field (`src/config.js:73-75`, `motto.yaml:2`) is the **user's project version** (e.g. `"0.1.0"`), consumed by `build.js:199` to stamp `plugin.json`'s `version` key. It has nothing to do with which Motto tool built the project.
+
+The new "which Motto version scaffolded/built this" stamp **must be a new, differently-named field** — e.g. `mottoVersion` (camelCase, matches the `plugins.public`/`plugins.private` JS-side naming already in `config.js`). Never reuse or overload `version`. Colliding these two would silently corrupt `plugin.json` version stamping in `build.js:199` and break the CONF-01 required-field contract in `config.js`. This is the single highest-risk pitfall for this milestone and must be locked as a naming decision before any code is written.
 
 ## System Overview
 
-Five new pieces land this milestone. Four are additive; one (release skill) is a rewrite. None of them touch the never-throw validation core (`schema.js`, `lint.js`, `build.js` internals) — they wrap it.
-
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
-│ .github/workflows/ci.yml  (ONE workflow, multiple jobs, needs: graph) │
+│ bin/motto.js  (CLI shell — parseArgs, dispatch, renderResult)         │
 │                                                                        │
-│  on: push [main, tags v*], pull_request [main]                        │
-│                                                                        │
-│  ┌─────────┐   ┌──────────┐   ┌───────────────────┐   ┌───────────┐  │
-│  │  test   │   │ dogfood  │   │ pack-install-e2e   │   │ npm-drift │  │
-│  │ 20/22/24│   │ lint+bld │   │ npm pack → tmp dir │   │  (warn)   │  │
-│  │ matrix  │   │          │   │ → install → lint/  │   │           │  │
-│  │         │   │          │   │   build             │   │           │  │
-│  └────┬────┘   └────┬─────┘   └─────────┬──────────┘   └───────────┘  │
-│       │             │                    │                            │
-│       └─────────────┴────────needs───────┘                            │
-│                      ▼                                                │
-│              ┌───────────────┐                                       │
-│              │    publish    │  if: refs/tags/v*                     │
-│              │ npm publish   │  needs: [test, dogfood,               │
-│              │ + GH Release  │          pack-install-e2e]             │
-│              └───────┬───────┘                                       │
-└──────────────────────┼────────────────────────────────────────────────┘
-                        │ (triggered by)
-                        ▼
-┌──────────────────────────────────────────────────────────────────────┐
-│ skills/release/SKILL.md  (rewritten — local half only)                │
-│                                                                        │
-│  Step 1 tests → Step 2 version bump → Step 3 dogfood → Step 4 tag +   │
-│  push  ──────────────────────────────────────────────────────────►   │
-│  (Steps "npm publish" + D-05 tarball assertion REMOVED — now live     │
-│   inside pack-install-e2e + publish jobs in ci.yml)                   │
+│  motto init  ──► src/init.js:scaffoldProject()                       │
+│  motto lint  ──► src/lint.js:lintProject()   ──► renderResult()      │
+│  motto build ──► src/build.js:buildProject() ──► renderResult()      │
 └──────────────────────────────────────────────────────────────────────┘
-
+                              │
+                              │  NEW: src/version.js
+                              │  - reads OWN tool version (package.json)
+                              │  - pure comparison of two version strings
+                              │  - shapes a skew warning descriptor
+                              ▼
 ┌──────────────────────────────────────────────────────────────────────┐
-│ bin/motto.js  (presentation layer only — unchanged boundary below)    │
+│ src/config.js  loadConfig(text)                                      │
+│   — reads NEW `mottoVersion` field (optional; absence ≠ error,        │
+│     mirrors the plugins.private pattern D-17)                        │
 │                                                                        │
-│  --format json / --quiet   ─┐                                        │
-│                              ▼                                        │
-│         chooseRenderer(result) → text lines | JSON.stringify(result)  │
-│                              │                                        │
-│                              ▼  (result already fully structured)     │
-│  ┌────────────────────────────────────────────────────────────────┐  │
-│  │  src/lint.js lintProject()  →  { ok, errors[], count }         │  │
-│  │  src/build.js buildProject() →  { ok, outDir, errors[],        │  │
-│  │                                    skillCount, bucketCount }    │  │
-│  │  NEVER-THROW CORE — zero changes this milestone                │  │
-│  └────────────────────────────────────────────────────────────────┘  │
+│ src/init.js  scaffoldProject()                                       │
+│   — writes NEW `mottoVersion: "<tool's own version>"` line into       │
+│     the motto.yaml template string                                   │
+│                                                                        │
+│ src/lint.js  lintProject()  /  src/build.js  buildProject()          │
+│   — after config loads, call src/version.js's comparator             │
+│   — skew is a WARNING (never-throw, never blocks lint/build)          │
+│   — pushed into a NEW result.warnings[] array                        │
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Component Responsibilities
 
-| Component | Responsibility | New / Modified |
-|-----------|-----------------|-----------------|
-| `.github/workflows/ci.yml` | Single workflow: test matrix, dogfood, pack-install E2E, npm-drift warning, tag-gated publish + GitHub Release | **New** |
-| `test/cli.test.js` pattern (reused, not modified) | Precedent for spawning `bin/motto.js` as a child process against tmp dirs — the pack-install E2E script follows this exact shape | Reused pattern, no change |
-| pack-install E2E script | `npm pack` → install tarball into a fresh tmp dir → run `motto init/lint/build` against it → assert tarball contents (absorbs the release skill's Step 4 D-05 assertion) | **New** — location decision below |
-| `bin/motto.js` output layer | Adds `--quiet` / `--format json` flags; renders `lintProject()`/`buildProject()` results as text (current) or JSON (new) | **Modified** (presentation only) |
-| `src/lint.js`, `src/build.js`, `src/schema.js` | Never-throw validation/build core | **Unchanged** |
-| `skills/release/SKILL.md` | Local maintainer checklist | **Rewritten** — Steps 4-5 (tarball verify, publish) removed/replaced with "push tag, CI takes over" + a failure-mode recovery section |
-| npm registry | Publish target | External — now reached from CI (`NPM_TOKEN` secret initially; OIDC trusted publishing after the repo goes public, per locked project decision) |
-| GitHub Releases API | Changelog surface | External — new consumer, written to by the `publish` job |
+| Component | Responsibility | New or Modified |
+|-----------|-----------------|------------------|
+| `src/version.js` | Pure functions: read tool's own version, compare two version strings, build a skew warning object. No fs I/O beyond one `readFile` of the tool's own `package.json`. Never throws. | **NEW** |
+| `src/config.js` | Parse `mottoVersion` from `motto.yaml` as an optional field (no new required-field error). | **MODIFIED** (small, additive) |
+| `src/init.js` | Inject the running tool's version into the scaffolded `motto.yaml` template as `mottoVersion:`. | **MODIFIED** (template string edit) |
+| `src/lint.js` | Call the skew comparator once, after `processConfig`; push a warning (not an error) into a new `warnings[]` array on the result. | **MODIFIED** |
+| `src/build.js` | Same skew check — build already re-reads config (`loadConfig` at `build.js:99`) after the lint gate; surface the same warning in its own result shape. | **MODIFIED** |
+| `bin/motto.js` | `renderResult` must render `warnings[]` in both `text` and `json` modes without breaking the existing `{ok, errors}` JSON contract consumers may already parse. | **MODIFIED** (additive field, backward-compatible) |
+| `package.json` | Already the source of truth for the tool's own version (`"version": "0.0.6"`). No change needed — just becomes a new *read* target. | **UNCHANGED** (read-only new consumer) |
 
-## Answering the Four Integration Questions
+## Where Version Comparison Lives: `src/version.js` (new, standalone module)
 
-### 1. Workflow file structure: one `ci.yml` vs separate `release.yml`
+**Decision: a dedicated `src/version.js`, not inline in `config.js`, `lint.js`, or `build.js`.**
 
-**Recommendation: one `.github/workflows/ci.yml` with multiple jobs and a `needs:` graph. Do not create a separate `release.yml`.**
+Rationale, grounded in the existing codebase's own conventions:
 
-Rationale:
-- `needs:` only gates jobs **within the same workflow run**. Cross-workflow gating requires the `workflow_run` trigger, which reacts to a *separate, already-completed* workflow run and has well-documented UX friction (default branch context quirks, artifacts must be re-downloaded across workflows, harder to reason about "did this exact commit's tests pass"). For a single-maintainer project whose explicit constraint is "keep the maintenance surface minimal," `needs:` in one file is strictly simpler and more correct than `workflow_run` across two files.
-- A separate `release.yml` would either (a) duplicate the `actions/checkout` + `setup-node` + `npm ci` boilerplate, or (b) re-run tests redundantly on the tag push (tags don't inherit branch-push job results). Both violate the project's "mechanism over features" philosophy.
-- Triggers: `on: push: { branches: [main], tags: ['v*'] }` plus `pull_request: { branches: [main] }`. Every push (branch or tag) runs the same `test` → `dogfood` → `pack-install-e2e` gate. The `publish` job alone is scoped with `if: startsWith(github.ref, 'refs/tags/v')`, and `needs: [test, dogfood, pack-install-e2e]` so a tag push that happens to break something still cannot publish.
-- `npm-drift` (warn-only) should run on `push` to `main` only (`if: github.ref == 'refs/heads/main'`), not on PRs or tags — it's a standing early-warning check, not a release gate, and should never fail the build (`continue-on-error: true` or a step that prints a warning without a non-zero exit).
+1. **Precedent for pure, single-purpose modules.** `src/schema.js` (validator, zero fs), `src/config.js` (validator, zero fs), `src/frontmatter.js` (parser) are all pure. `src/lint.js`/`src/build.js` are the fs-dependent orchestrators that *wire* pure modules together. Version comparison is a pure function of two strings (tool version, stamped project version) — it belongs in the pure-module tier, not baked into an orchestrator.
 
-### 2. Where the pack-install E2E lives: CI-only script vs committed test file
+2. **Two distinct concerns must not be conflated in one file:**
+   - **Reading the tool's own version** — this is the one part of the module that touches the filesystem/module graph (needs `package.json`, see next section). It is Motto-tool-identity, orthogonal to any project.
+   - **Comparing two version strings and shaping a warning** — pure, testable with zero I/O, trivially unit-testable via `node --test` the same way `schema.test.js`/`config.test.js` already work.
 
-**Load-bearing finding:** Node's `node --test` runner auto-discovers **every** `.js`/`.cjs`/`.mjs` file inside any directory literally named `test` (or `tests`), regardless of filename — not just files matching `*.test.js`. This project's bare `npm test` script is `node --test` with no path argument, and husky's pre-commit hook runs `npm test` on every commit. That means **anything dropped into `test/` runs on every single commit**, unconditionally.
+   Splitting these into two exports of the same file (`getOwnVersion()` / `compareVersions(toolVersion, projectVersion)`) keeps the fs-touching surface to one function, matching the existing house style where pure logic and I/O are separated even within a single file (see `src/config.js`'s own doc comment: "This function performs NO filesystem I/O").
 
-The pack-install E2E is inherently slow relative to the rest of the suite (`npm pack`, a real `npm install` of the tarball into a fresh tmp dir, then spawning the CLI against it — likely several seconds, network/registry-cache dependent). Two real options:
+3. **Reused by multiple call sites** (`lint.js`, `build.js`, and potentially a future `--version` CLI flag) — a shared module avoids duplicating the comparison logic the way `NAME_KEBAB` is already shared from `schema.js` into `config.js` (`config.js:15`) rather than redefined.
 
-- **Option A — inside `test/`, accept the cost.** Simple, consistent with the existing `test/cli.test.js` / `test/init-dogfood.test.js` spawnSync-into-tmpdir pattern. Cost: every local commit (via husky) pays the E2E tax, even for unrelated one-line changes.
-- **Option B (recommended) — a dedicated script outside `test/`,** e.g. `scripts/pack-install-e2e.mjs`, wired to its own `npm run test:e2e` script, invoked as an explicit CI step (`node scripts/pack-install-e2e.mjs`). `npm test`/husky stays exactly as fast as it is today. There is direct precedent for this shape already in the codebase: the D-05 tarball-leak assertion currently lives as an **inline script embedded in the release skill**, not as a `node --test` file — it was never meant to run on every commit, only at release time. Lifting it into `scripts/pack-install-e2e.mjs` (absorbing the tarball-content assertion as one of its checks) is a natural, low-risk move: same script shape, same never-runs-on-every-commit intent, now triggered by CI instead of a human reading a skill step.
+4. **Not `config.js`:** `config.js`'s `loadConfig` is a pure YAML-text validator with a locked contract (`{ config, errors }`) proven across 4 milestones. Adding skew-detection there would require passing in the tool's own version as a new parameter, muddying its single responsibility (validate motto.yaml's shape) with a second one (compare against runtime state). Keep `config.js` parsing the new `mottoVersion` field as *data* only — comparison is a separate concern layered on top by the orchestrators.
 
-Either way, reuse the `spawnSync(process.execPath, [CLI_PATH, ...args], { encoding: 'utf8', cwd })` pattern already proven in `test/cli.test.js`, and the `mkdtemp(join(tmpdir(), …))` pattern already proven in `test/init-dogfood.test.js` — this is not new machinery, just a new call site.
+5. **Not inline in `lint.js`/`build.js`:** both already have enough responsibility (lint = discovery + validation + fs checks across N skills; build = lint-gate + pack + plugin.json emit). Bolting version-string comparison logic directly into either would duplicate it in the other. A shared `src/version.js` is called identically from both, mirroring how both already independently call `loadConfig`.
 
-**Decision to lock in phase planning:** Option B is the research recommendation; if the team prefers Option A's simplicity (one less npm script to remember) that's a legitimate but slower-commit tradeoff — call it out explicitly rather than defaulting silently.
+## Where the Tool Reads Its Own Version
 
-### 3. How `--format json` threads through lint.js's error shape without touching the never-throw core
+**Decision: read `package.json`'s `version` field via a relative path from `src/version.js`, resolved with `fileURLToPath(import.meta.url)` — the same ESM pattern the stack doc already prescribes (`path.dirname(fileURLToPath(import.meta.url))`), not `process.env.npm_package_version`.**
 
-**Key finding: it doesn't need to touch the core at all — this is a pure presentation-layer change, entirely inside `bin/motto.js`.**
+Two candidate mechanisms exist; only one is safe for this codebase:
 
-`lintProject()` already returns a fully structured, JSON-serializable shape: `{ ok: boolean, errors: Array<{ skill: string, message: string }>, count: number }`. `buildProject()` returns `{ ok, outDir, errors, skillCount, bucketCount }` — same shape family. Neither function does any text formatting today; `bin/motto.js`'s dispatch blocks are solely what turn `result.errors` into `✗ ${e.skill}: ${e.message}\n` lines (see lines 242-249 and 270-275 of the current `bin/motto.js`).
+| Mechanism | Works when installed via npm (global/local)? | Works when run via `node bin/motto.js` in dev? | Works when run via `npx`? | Verdict |
+|---|---|---|---|---|
+| `process.env.npm_package_version` | **No** — only set inside npm-lifecycle-script execution context (`npm run <script>`), NOT when the installed `motto` binary is invoked directly as a CLI by an end user | N/A (same issue) | **No** | Reject — confirmed absent from every existing `process.env` read in this codebase (grep found zero uses); this codebase deliberately avoids it |
+| Read `package.json` next to `bin/motto.js` / `src/` via `readFile` + `JSON.parse`, resolved relative to the module's own file path | **Yes** — `package.json` ships in every npm install (it's the manifest itself; `package.json`'s own `files` allowlist doesn't even need to list it — npm always includes the manifest) | **Yes** | **Yes** — npx extracts the full package including `package.json` | **Use this** |
 
-Adding `--format json` means:
-1. Add `format: { type: 'string' }` to the `parseArgs` options in `bin/motto.js` (mirrors how `force`/`help` are already declared). Validate the value is `'text'` or `'json'` (default `'text'`); an invalid value follows the same unknown-flag error shape already established (D-04/D-05 pattern) rather than inventing a new error format.
-2. Replace the current inline `for (const e of result.errors) { process.stdout.write(...) }` blocks (there are two — lint's and build's, structurally identical) with a small shared renderer, e.g. `renderResult(result, { format, quiet })`, called from both the `lint` and `build` dispatch branches. `format === 'json'` → `process.stdout.write(JSON.stringify(result) + '\n')`. `format === 'text'` (default) → today's exact lines, byte-for-byte, so the existing `cli.test.js` text-mode assertions keep passing unmodified.
-3. `--quiet` is orthogonal: it governs whether the **success** line (`✓ N skills OK`) prints at all — useful for scripts/hooks that only care about exit code + errors. It should not suppress error output in either mode (a silent failure is worse than a silent success). Whether `--quiet` also collapses JSON-mode success output to nothing, or `--format json` implies its own contract independent of `--quiet`, is a genuine open interaction to lock explicitly in phase planning — don't let it fall out as an implementation-detail accident.
+Implementation detail: from `src/version.js`, `package.json` is one directory up (`../package.json`), the same relative depth `src/config.js` uses to import `./schema.js`. Resolve it with:
+```js
+import { readFile } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
 
-Because `errors[].skill` / `errors[].message` become a de facto JSON schema the moment `--format json` ships (CI/scripts will parse these field names), treat them as an external contract from day one — no field renames without a breaking-change note, even though nothing today enforces that externally.
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
-**Net effect on the never-throw core:** zero. `lint.js`, `build.js`, `schema.js` are not touched by this feature. The entire risk surface is `bin/motto.js`, which is already a thin, tested shell (`test/cli.test.js` already spawns it as a real child process, the correct test boundary for argv/exit-code/stdout-routing concerns — the same boundary the new flags live in).
-
-### 4. Release-skill / CI handshake, and failure modes when CI publish fails after the tag exists
-
-**Handshake shape:** the skill's local half ends at `git push --follow-tags` (Step 4 in the rewritten skill — tests → version bump → dogfood → tag + push). It does **not** wait for CI and does **not** know whether publish succeeded. The tag push is the sole handoff signal; CI's `publish` job (`if: startsWith(github.ref, 'refs/tags/v')`) picks it up asynchronously. This is a one-way, fire-and-forget handoff — the skill's "Post-Release Housekeeping" step (updating `PROJECT.md`/`MILESTONES.md`) currently assumes the release is done; after this rewrite it should explicitly tell the maintainer to **check the Actions run** before doing housekeeping, since "tag pushed" no longer means "published."
-
-**Failure mode: CI publish fails after the tag already exists and is pushed.** This is the sharp edge of moving publish out of the local, synchronous flow. Concretely:
-- The git tag `vX.Y.Z` and the release commit are already public (or at least pushed to the remote) — that part succeeded.
-- `npm publish` inside the `publish` job fails: bad `NPM_TOKEN`/OIDC misconfiguration, registry outage, `prepublishOnly` (`motto build`) failing in the CI environment for an environment-specific reason, or (self-inflicted) the same version already being published (npm rejects re-publishing an existing version — this is actually a *safe*, idempotent failure, not a dangerous one).
-- **Do not re-tag.** Deleting and recreating a git tag to "retry" is destructive (rewrites a ref other clones may have already fetched, and is exactly the kind of git operation this environment's own working agreements flag as needing extra caution). The correct recovery paths, in order of preference:
-  1. **Re-run the failed job from the GitHub Actions UI.** This re-uses the exact same tag/ref and the exact same `needs:` graph — no new commit, no new tag, safe to retry as many times as needed for transient failures (network, registry hiccup, expired token before rotation).
-  2. **Fix root cause, then re-run** (e.g. rotate `NPM_TOKEN`, fix an OIDC trust-relationship misconfiguration) — same re-run mechanism, now expected to succeed.
-  3. **Escape hatch — manual local publish from the tagged commit**, only if CI is unrecoverable in a reasonable window: `git checkout vX.Y.Z && npm publish` locally. This is exactly the flow the release skill supported before this milestone, so it's a true fallback, not new machinery — but the rewritten skill should document it explicitly as "emergency only," not as a normal path, otherwise the whole point of moving publish to CI (consistent environment, D-05 assertion enforced, no "works on my machine" tarball leaks) quietly erodes.
-- The `npm-drift` warning job (runs on every push to `main`) is the structural backstop for exactly this scenario — it is what would have caught the real-world v0.0.4/v0.0.5 drift (tag pushed, release skill never actually ran, npm stuck at 0.0.3) automatically instead of requiring a manual registry check months later, per the PROJECT.md context.
-
-**What the rewritten skill needs, concretely:** replace old Step 5 ("Publish" — `npm whoami` / `npm publish` / `git push --follow-tags`) with a Step 4 that ends at tag+push, and add a short "Step 5 — Verify CI Published" step: check the Actions run for the pushed tag, confirm the `publish` job succeeded (npm registry shows the new version, GitHub Release exists), and only then proceed to Post-Release Housekeeping. Add a "If CI publish failed" subsection covering the three recovery paths above.
-
-## Recommended Project Structure (additions only)
-
+export async function getOwnVersion() {
+  try {
+    const text = await readFile(join(__dirname, '..', 'package.json'), 'utf8');
+    return JSON.parse(text).version ?? null;
+  } catch {
+    return null; // never-throw — skew check becomes a silent no-op, not a crash
+  }
+}
 ```
-.github/
-└── workflows/
-    └── ci.yml                    # test matrix + dogfood + pack-install-e2e + npm-drift + publish (tag-gated)
-scripts/
-└── pack-install-e2e.mjs          # NEW — npm pack → tmp install → init/lint/build; absorbs D-05 tarball assertion
-                                   # (recommended: outside test/, its own `npm run test:e2e` script)
-bin/motto.js                      # MODIFIED — adds --format/--quiet parsing + shared result renderer
-skills/release/SKILL.md           # REWRITTEN — Steps 1-4 (test/version/dogfood/tag+push) stay local;
-                                   # old Steps 4-5 (tarball verify, publish) replaced by "CI takes over" +
-                                   # Step 5 "Verify CI Published" + failure-mode recovery subsection
-package.json                      # MODIFIED — new `test:e2e` script; publish-related scripts unchanged
-                                   # (prepublishOnly still runs `motto build`, now exercised inside CI's
-                                   #  publish job instead of a maintainer's local npm publish)
-```
+This mirrors the existing never-throw pattern used everywhere else (`config.js`'s `safeToJS`, `init.js`'s `resolveGitOwnerName` "Pattern 3" — best-effort, collapse all failures to a safe fallback, never throw). `getOwnVersion()` returning `null` must be a valid, handled case: the skew comparator treats "can't determine own version" as "skip the check," not as an error.
 
-### Structure Rationale
+**Testability:** because `getOwnVersion()` is `async` and isolated in its own file, tests can either (a) let it read the real `package.json` (simplest — it always exists in the repo under test) or (b) test the comparison logic (`compareVersions`) in complete isolation as a pure sync function taking two version strings directly, with zero fs mocking needed. (b) is the more valuable and larger test surface and should be the primary unit-test target, matching how `schema.test.js`/`config.test.js` test pure functions today.
 
-- `scripts/` is new — this project currently has no non-`bin/`/`src/` executable code. A single-purpose CI script here, not under `test/`, keeps `npm test` fast (see Q2 above) and is the natural home for future CI-only tooling without growing `test/`'s auto-discovery surface.
-- `.github/workflows/` is standard GitHub Actions location; one file only, per Q1.
-- No changes anywhere under `src/` — this is the architectural headline of the whole milestone: CI, publish automation, and CLI ergonomics are all additive/wrapping, not core-invasive.
+## Data Flow Through the Existing `{errors, warnings}` Shape
 
-## Architectural Patterns
+### The result shape must grow, not change
 
-### Pattern 1: Presentation-layer format switch over an already-structured core result
+Current results:
+- `lintProject()` returns `{ ok, errors, count }` (`lint.js:356`)
+- `buildProject()` returns `{ ok, outDir, errors, skillCount, bucketCount }` (`build.js:207-213`)
 
-**What:** When a pure/never-throw core function already returns a structured result object (`{ ok, errors[], ... }`), a new output format is implemented entirely at the CLI boundary by adding a renderer branch — never by changing the core's return shape or adding formatting concerns to it.
-**When to use:** Any time a "machine-readable output" feature is requested for a tool whose core already separates data from presentation (this project has done so since Phase 1 — `lintProject`/`buildProject` were designed error-object-first specifically so the CLI could format them, not the reverse).
-**Trade-offs:** None significant here — this is the reason the never-throw core was designed to return structured errors instead of throwing/printing directly. The only discipline required is treating the emitted JSON field names as a stable external contract once shipped.
+Both already have `--format json` consumers (`bin/motto.js:194-195`) that serialize the result object **verbatim** — any new field is automatically included in JSON output with zero renderResult changes required for the JSON path itself. This is the load-bearing reason skew must be a **new additive field**, not a repurposing of `errors`:
+
+- **`errors` semantics are locked**: `errors.length > 0` implies `ok: false` and `process.exitCode = 1` (`renderResult`, `bin/motto.js:205`). A version skew is explicitly **not** a failure (never-throw directive in the milestone brief: "explicit, actionable, never-throw message"). Pushing skew into `errors` would flip `ok` to `false` and break exit-code 0 for every skewed-but-otherwise-valid project — unacceptable regression.
+- **Add `warnings: Array<{skill: string, message: string}>`** to both `lintProject`/`buildProject` results, defaulting to `[]` when no skew (and for every other current warning-free path — today there are zero warnings anywhere in the codebase, so this is a wholly new concept). Reuse the exact `{skill, message}` shape already used for `errors` (`skill: 'motto.yaml'` label, mirroring how config errors are already labelled at `lint.js:59`) — zero new shape to learn, and existing error-rendering code (`renderResult`'s `for (const e of result.errors)` loop) can be trivially mirrored for warnings without inventing new conventions.
+
+### Text-mode rendering (`bin/motto.js:193-206`)
+
+`renderResult` currently only prints `✗ <skill>: <message>` lines for `errors`, and only when `!result.ok`. Warnings must print **regardless of `ok`** — a version skew coexists with a clean lint pass. Required addition to `renderResult`:
 
 ```js
-// bin/motto.js — illustrative shape, not final code
-function renderResult(result, { format, quiet }) {
+function renderResult(result, { format, quiet, successLine }) {
   if (format === 'json') {
     process.stdout.write(JSON.stringify(result) + '\n');
-    return;
+  } else {
+    if (result.ok) {
+      if (!quiet) process.stdout.write(`${successLine}\n`);
+    } else {
+      for (const e of result.errors) {
+        process.stderr.write(`✗ ${e.skill}: ${e.message}\n`);
+      }
+    }
+    // NEW: warnings print in text mode independent of ok/quiet — skew is
+    // informational, not a success/failure signal, so it should not be
+    // silenced by --quiet (which only suppresses the SUCCESS line, D-06).
+    for (const w of result.warnings ?? []) {
+      process.stderr.write(`⚠ ${w.skill}: ${w.message}\n`);
+    }
   }
-  if (result.ok) {
-    if (!quiet) process.stdout.write(`✓ ${result.count ?? result.skillCount} ...\n`);
-    return;
-  }
-  for (const e of result.errors) process.stdout.write(`✗ ${e.skill}: ${e.message}\n`);
+  if (!result.ok) process.exitCode = 1;
 }
 ```
 
-### Pattern 2: Single-workflow job graph with `needs:` as the release gate
+Design decisions this forces (flag to roadmapper/planner for explicit sign-off, not silently assumed here):
+- **Stream:** stderr (like errors) or stdout? Recommend **stderr** — consistent with the existing convention that anything not the bare success line goes to stderr (D-05/D-07 in the current doc comments), and keeps stdout `--quiet`-clean for scripting/grep use cases.
+- **Interaction with `--quiet`:** recommend warnings are **not** suppressed by `--quiet` (quiet only suppresses the success *line*, per the current doc comment at `bin/motto.js:29-30` — "suppresses the ✓ … success/progress line"). A silent skew is the exact failure mode this milestone exists to prevent.
+- **JSON mode:** no special-casing needed at all — `JSON.stringify(result)` already includes `warnings` for free the moment the orchestrators populate it. This is the strongest architectural argument for making `warnings[]` a new top-level result field rather than a side-channel.
 
-**What:** All CI concerns (test matrix, dogfood, E2E, drift warning, publish) live as jobs in one workflow file; `needs:` expresses "publish only if these jobs on this exact commit/ref succeeded," and `if:` expresses "this job only runs for this trigger type" (tag vs branch push).
-**When to use:** Any project where release/publish must be strictly gated on the same commit's CI results, and where the project explicitly values a minimal-surface-area CI setup (one file to read, one trigger model to reason about).
-**Trade-offs:** A single large workflow file is less "separable" than multiple files if the project later wants very different permission scopes per job (e.g. `id-token: write` should be scoped to the `publish` job only, not the whole workflow — GitHub Actions supports job-level `permissions:` overrides, so this is achievable within one file, not a reason to split).
+### CLI contract compatibility
 
-### Pattern 3: Fire-and-forget tag handoff with an idempotent, re-runnable receiver
+- Existing JSON consumers (scripts parsing `{ok, errors, count}`) see a **new key added**, which is backward-compatible for any reasonable consumer (ignoring unknown keys). No existing key changes shape or meaning.
+- Existing text-mode consumers see a **new possible line** (`⚠ …`) that did not print before. This is technically a behavior change but an additive, opt-in-relevant one (only fires when skew is detected) — acceptable per the "no breaking hard-break without upgrade path" standing constraint added this milestone, since it's new information surfacing, not a removed/renamed contract.
+- `count`/`skillCount`/`bucketCount`/`outDir` are untouched.
 
-**What:** The producer (release skill) does one irreversible-feeling thing (push a tag) and stops; the consumer (CI `publish` job) is designed to be safely re-run against the same ref without side effects from a partial prior run (npm publish is itself idempotent-safe — re-publishing an already-published version fails loudly rather than corrupting state).
-**When to use:** Whenever a human-triggered step hands off to an asynchronous automated step and the human has no synchronous confirmation of success. The design obligation this creates is: **never make the recovery path require destroying/recreating the trigger** (the tag). Recovery = re-run or fall back to manual, never re-tag.
+## What `init.js` Needs
 
-## Data Flow
+Two concrete, additive changes to `src/init.js`:
 
-### Release Flow (tag push → publish)
+1. **Template string edit** — the inline `motto.yaml` template at `init.js:147-150`:
+   ```js
+   await writeFile(
+     join(targetDir, 'motto.yaml'),
+     `name: ${name}\nversion: "0.1.0"\ndescription: ${SCAFFOLD_DESCRIPTION}\nplugins:\n  public: ${name}\n`,
+   );
+   ```
+   needs a new `mottoVersion: "<tool version>"` line inserted. Given the naming collision risk flagged above, and that this template already interpolates `name` bare (Pitfall 2 in the existing doc comments — "name and plugins.public derive from the SAME validated `name` value"), the new field must be visually and semantically distinct from `version: "0.1.0"` in the emitted YAML — e.g.:
+   ```yaml
+   name: my-project
+   version: "0.1.0"
+   mottoVersion: "0.0.7"
+   description: ...
+   plugins:
+     public: my-project
+   ```
 
-```
-maintainer runs release skill (local)
-    ↓ Step 1-3: tests, version bump, dogfood (unchanged)
-    ↓ Step 4: git push --follow-tags  ← HANDOFF POINT (fire-and-forget)
-GitHub receives tag push
-    ↓ triggers .github/workflows/ci.yml
-    ↓ jobs: test (matrix) ∥ dogfood ∥ pack-install-e2e   (all run, all must pass)
-    ↓ needs: [test, dogfood, pack-install-e2e]  AND  if: refs/tags/v*
-    ↓ publish job: prepublishOnly (motto build) → npm publish → create GitHub Release
-    ↓ (on failure: job fails visibly in Actions UI; tag/commit remain valid;
-    ↓  recovery = re-run job, never re-tag — see Q4)
-maintainer checks Actions run (NEW Step 5) → confirms npm + GH Release → Post-Release Housekeeping
-```
+2. **Version injection at scaffold time** — `scaffoldProject()` needs the tool's own version available *before* it builds the template string, so it must `import` (or call) `getOwnVersion()` from the new `src/version.js`, exactly like it already imports `NAME_KEBAB` from `src/schema.js` (`init.js:30`). Because `getOwnVersion()` is `async`, this is a natural fit inside the existing `async function scaffoldProject(...)` — no new async boundary needed. If `getOwnVersion()` returns `null` (package.json unreadable — extremely unlikely but must be handled per never-throw), the scaffold should still proceed: omit `mottoVersion` from the written file rather than writing a sentinel — recommend **omitting the line entirely** to keep the same "absence is not an error" pattern config.js already uses for `plugins.private` (D-17). This also means `config.js`'s new `mottoVersion` parsing must treat absence as valid (a pre-v0.0.7-scaffolded project has no such field at all and must not fail lint because of it — this is exactly the upgrade-path constraint the milestone locks in PROJECT.md: "every structure/schema change... ships with a documented upgrade path").
 
-### CLI Output Flow (existing, extended)
+No change needed to `writeScaffold`'s external contract shape — its internal options object (`{name, owner}` → `{name, owner, mottoVersion}`) is a private helper, non-breaking since it's not exported.
 
-```
-motto lint/build [--format text|json] [--quiet]
-    ↓
-lintProject()/buildProject()  →  { ok, errors[], count/skillCount, ... }   ← UNCHANGED, never-throw
-    ↓
-bin/motto.js renderResult()  →  text lines (default, byte-identical to today)
-                              →  JSON.stringify(result)  (new)
-```
+## New vs Modified Components — Summary Table
+
+| File | New / Modified | Change |
+|---|---|---|
+| `src/version.js` | **NEW** | `getOwnVersion()` (reads own `package.json`, never-throw, returns `string\|null`); `compareVersions(toolVersion, projectVersion)` or `checkSkew(toolVersion, projectVersion)` (pure, sync, returns `null` when equal/no-project-version, else a `{skill, message}`-shaped warning descriptor) |
+| `src/config.js` | **MODIFIED** (small) | Parse optional `mottoVersion` field from YAML into `config.mottoVersion`; absence is NOT an error (mirrors `plugins.private`, D-17 pattern) |
+| `src/init.js` | **MODIFIED** | Import `getOwnVersion` from `src/version.js`; call it in `scaffoldProject` before building the template string; add `mottoVersion: "<value>"` line to the `motto.yaml` template (omit line if `getOwnVersion()` returns `null`) |
+| `src/lint.js` | **MODIFIED** | After `processConfig` succeeds (config has no fatal errors), call the skew comparator with `config.mottoVersion` vs `getOwnVersion()`; push result (if non-null) into a new `warnings[]` array; `lintProject` return shape gains `warnings` |
+| `src/build.js` | **MODIFIED** | Same skew check, reusing the config already re-read at `build.js:99`; `buildProject` return shape gains `warnings`. Skew must NOT block the build (never-throw, informational only) — the pre-pack error checks (`buildErrors`) stay error-only; skew is orthogonal |
+| `bin/motto.js` | **MODIFIED** | `renderResult` prints `warnings[]` as `⚠ <skill>: <message>` lines to stderr, independent of `ok`/`quiet`; JSON mode needs zero code change (verbatim serialization already includes new fields) |
+| `package.json` | **UNCHANGED** | Already the read target; no write/schema change |
+| `motto.yaml` (this repo's own, dogfooded) | **MODIFIED** (data, not code) | Must gain its own `mottoVersion: "0.0.7"` line once this milestone ships, so Motto's own dogfood project reflects the new field — likely a phase-close housekeeping step, not a code change |
 
 ## Suggested Build Order
 
-Ordered by real dependency, not by requirement-ID order. Items on the same numbered step have no dependency on each other and can be built in either order or in parallel.
+Dependency-ordered, each step buildable/testable independently before the next depends on it:
 
-1. **CLI ergonomics — `--quiet` / `--format json` (CLIX-01/02).** Zero dependency on anything else this milestone. Build first: it's self-contained, low-risk (presentation-layer only, per Q3), and the pack-install E2E script (step 3) benefits from a machine-parseable output to assert against instead of fragile text matching — so it should exist before the E2E script is written, not after.
-2. **Build-skill human-verify (BSKL-01, BSKL-05, WR-01)** — fully independent of the CI/publish/CLI work; can run in parallel with step 1, anytime, by anyone. No ordering constraint with the rest of this list.
-3. **CI workflow: `test` + `dogfood` + `pack-install-e2e` + `npm-drift` jobs (no `publish` job wired live yet, or wired but never yet exercised by a real tag).** Depends on step 1 for the E2E script's output assertions. This can and should be built and iterated on while the repo is still **private** — GitHub Actions works fully on private repos (metered minutes, not a blocker for a solo project), so there's no reason to wait for the public flip to validate CI. Prove the whole non-publish gate is green on real pushes before touching the release skill.
-4. **Release skill rewrite (local = bump+tag+push only) + `publish` job wired live, tested against a real tag.** Must come **after** step 3, not before — removing local `npm publish` capability before the CI publish path is proven working would create a real gap where no path can ship a release. Recommend proving the `publish` job once (e.g. via the deferred catch-up publish of v0.0.5, or a controlled test) before deleting the skill's old Step 5 language. This step also adds the GitHub Release notes ("Changelog surface") — it's part of the same handshake, not a separate later phase.
-5. **Pre-public gate (git-history secrets scan + explicit `.planning/` visibility decision) → flip repo to public.** Independent of steps 1-2, but should sequence **after** step 3 (CI hardened privately first, so the repo's first public CI runs are already clean — a broken CI badge on a freshly-public repo is a bad look and avoidable) and can run before or after step 4 (publish-handshake correctness doesn't depend on repo visibility, only on the `NPM_TOKEN`/OIDC secret being configured). Recommend after step 4 for simplicity: fewer moving pieces changing state at once.
-6. **Trusted publishing (OIDC) migration**, replacing the interim `NPM_TOKEN` secret. Explicitly sequenced after the public flip per the already-locked project decision (PROJECT.md "Key context"). Not required for this milestone's `publish` job to function — `NPM_TOKEN` is a legitimate interim credential — but the `publish` job should be written so swapping the auth mechanism later (`id-token: write` permission, `registry-url` config, drop `NODE_AUTH_TOKEN`) is a small, isolated diff, not a rewrite. This can land as a fast-follow after step 5 rather than blocking milestone completion.
+1. **`src/version.js` first, standalone, fully unit-tested.** Zero dependents yet — pure module, easiest to get right in isolation (`getOwnVersion()` reading the real `package.json` at test time; `compareVersions`/`checkSkew` tested with hand-crafted string pairs, zero fs mocking needed for the comparison half). This gives every downstream step a stable, tested dependency to import.
 
-**Do not build in this order:** publish job before the CI test/dogfood/E2E gate exists (nothing to gate on); release-skill rewrite before the publish job is proven (creates a ship-capability gap); repo-public flip before the secrets scan (irreversible one-way door, per PROJECT.md's own framing).
+2. **`src/config.js` — add optional `mottoVersion` parsing.** Small, additive, testable in isolation the same way `plugins.private`'s optionality is already tested (`config.test.js`). No dependency on `version.js` yet — `config.js` just needs to expose the raw string field; the *comparison* happens one layer up in lint/build, not inside `loadConfig` itself (keeps `loadConfig`'s pure-validator contract unchanged in shape, only adds a passthrough field).
 
-## Anti-Patterns
+3. **`src/init.js` — wire `getOwnVersion()` into the scaffold template.** Depends on step 1 (`version.js`) existing. Testable against `init.test.js`'s existing scaffold-content assertions — add an assertion that the written `motto.yaml` contains a `mottoVersion:` line matching the running tool's `package.json` version.
 
-### Anti-Pattern 1: Separate `release.yml` triggered by tag push, independent of the main CI workflow
+4. **`src/lint.js` — wire the skew check + `warnings[]` into `lintProject`.** Depends on steps 1 and 2 (needs `config.mottoVersion` parsed, and `version.js`'s comparator). This is the first orchestrator-level change and the first place `warnings[]` appears in a real result shape — get this right before duplicating the pattern into `build.js`.
 
-**What people do:** Create a second workflow file specifically for "the release," reasoning that publish logic is conceptually separate from "regular CI."
-**Why it's wrong:** Tags don't inherit the branch-push workflow's job results. A separate file either re-runs the full test matrix redundantly on every tag (wasted minutes, and now two sources of truth for "did tests pass") or — worse — skips re-running and trusts that "the branch CI must have passed at some point," which is exactly the drift risk (a tag can be pushed against a commit whose CI never ran or ran against different code, e.g. after a rebase). One workflow with `needs:` ties publish to the actual green state of the actual tagged ref.
-**Instead:** Single `ci.yml`, `publish` job gated with `needs:` + `if: startsWith(github.ref, 'refs/tags/v')` — see Q1.
+5. **`src/build.js` — same skew check + `warnings[]` into `buildProject`.** Depends on step 4's pattern being proven (literally reuse the same call shape); build already re-reads config after its lint gate, so this is a near-mechanical repeat of step 4's wiring, not new design.
 
-### Anti-Pattern 2: Re-tagging to retry a failed publish
+6. **`bin/motto.js` — `renderResult` warnings rendering.** Depends on steps 4 and 5 existing (needs real `warnings[]`-bearing results to render). Last, because it's the presentation layer and easiest to get wrong if the underlying data shape isn't finalized yet — matches this codebase's own layering discipline (pure validators → fs orchestrators → CLI shell, in that dependency order, as seen in the existing module docstrings).
 
-**What people do:** When `npm publish` fails in CI after a tag is already pushed, delete the tag locally and remotely, fix the issue, and push a new tag of the same name to "try again."
-**Why it's wrong:** Tag deletion/recreation rewrites a ref other clones/CI runs may have already observed; it's a destructive git operation and obscures the audit trail (two different commits briefly wore the same version tag).
-**Instead:** Re-run the existing failed Actions job (same ref, same tag, no git mutation) or, as a documented emergency-only fallback, publish manually from the already-tagged commit. See Q4.
+7. **Housekeeping: stamp this repo's own `motto.yaml` with `mottoVersion`.** Do this last, at/near milestone close (mirrors how `package.json`'s `version` field itself is bumped via the existing `npm version`-triggered `motto.yaml`-sync script, `package.json:34`) — otherwise Motto's own dogfood lint would start emitting a skew warning against itself mid-milestone, which is confusing noise while steps 1-6 are still in flight.
 
-### Anti-Pattern 3: Threading `--format`/`--quiet` state into `lintProject`/`buildProject`
+**Not in this build order (explicitly deferred per the milestone brief):** the upgrade *command* itself. This build order only produces detection (stamping + skew warning), not remediation tooling — consistent with "YAGNI until the first real schema break demands it."
 
-**What people do:** Pass a `format` or `quiet` option down into the core orchestrator so it can "print less" or "return differently shaped data" for JSON mode.
-**Why it's wrong:** It reintroduces a presentation concern into functions whose entire design value (and this project's `D-01` never-throw discipline) rests on returning one stable, structured shape regardless of caller. It would also mean two code paths through the never-throw core to re-verify instead of one, undermining the "zero known never-throw gaps" state the project just reached at v0.0.5.
-**Instead:** Core stays untouched; `bin/motto.js` renders the one returned shape two ways. See Q3 / Pattern 1.
+## Anti-Patterns to Avoid
 
-## Integration Points
+### Anti-Pattern 1: Comparing versions as plain strings with `!==`
 
-### External Services
+**What people do:** `if (config.mottoVersion !== ownVersion) warn(...)`.
+**Why it's wrong:** treats `"0.0.7"` vs `"0.0.7-rc.1"` or absent/malformed strings inconsistently; gives no signal about *direction* (project older vs project newer than tool) or *severity* (patch bump vs major bump), which the milestone brief calls for ("explicit, actionable" message).
+**Instead:** parse both as `major.minor.patch`-shaped tuples (a tiny hand-rolled split is enough — Motto has zero other deps beyond `yaml`, adding a `semver` package for a 3-field integer compare would violate the project's own "single runtime dependency" constraint). Message should say *which side is ahead* (e.g. "project was scaffolded with motto 0.0.5; you are running 0.0.7 — see upgrade docs") not just "mismatch."
 
-| Service | Integration Pattern | Notes |
-|---------|---------------------|-------|
-| npm registry (`registry.npmjs.org`) | `npm publish` from the CI `publish` job, authenticated via `NPM_TOKEN` secret initially, OIDC trusted publishing after the public flip (`id-token: write` permission, no long-lived token) | Trusted publishing does not support self-hosted runners (n/a here — `ubuntu-latest`); requires the publish job to have `id-token: write` scoped at job level, not workflow level, to avoid over-granting |
-| GitHub Actions | Hosted runner matrix (Node 20/22/24), `needs:`-graphed jobs, `if:`-gated tag trigger | Works fully on private repos today — no need to wait for the public flip to build/validate CI |
-| GitHub Releases API | `publish` job creates a Release with notes, likely via `gh release create` or an actions/`create-release`-style step | New consumer this milestone — "Changelog surface" requirement |
+### Anti-Pattern 2: Making skew a hard lint error
 
-### Internal Boundaries
+**What people do:** instinctively push skew into the same `errors[]` array since it's "wrong."
+**Why it's wrong:** directly contradicts the milestone's explicit "never-throw" directive and would break exit-code-0 for every existing project the moment its own tool gets upgraded — a self-inflicted regression on the exact npm-publish cadence this project just spent v0.0.6 automating.
+**Instead:** always a `warnings[]` entry; `ok`/exit code stay governed by `errors[]` alone.
 
-| Boundary | Communication | Notes |
-|----------|---------------|-------|
-| `bin/motto.js` ↔ `src/lint.js`/`src/build.js` | Direct function call, structured return object | Unchanged boundary — `--format`/`--quiet` live entirely on the `bin/motto.js` side, per Q3 |
-| release skill (local) ↔ `ci.yml` (remote) | Git tag push (async, fire-and-forget) | The only handshake mechanism; no synchronous confirmation — see Q4 and Pattern 3 |
-| `ci.yml` jobs ↔ each other | `needs:` (hard dependency, blocks on success) + `if:` (trigger-type gating) | All within one workflow file — see Q1 |
-| pack-install E2E script ↔ `bin/motto.js` | Spawns the CLI as a real child process against an installed tarball in a tmp dir | Same `spawnSync` pattern already proven in `test/cli.test.js`; new call site, not new machinery |
+### Anti-Pattern 3: Reusing the `version` field name for the tool-stamp
+
+**What people do:** naming fatigue — "just add motto version next to version."
+**Why it's wrong:** `version` is already semantically the *project's* version and flows directly into `plugin.json`'s `version` key at `build.js:199`. Overloading it would either silently corrupt that or require a breaking migration of the existing field's meaning across all installed projects (magma included) — precisely the kind of hard break the milestone's standing constraint exists to prevent.
+**Instead:** a distinctly named field (`mottoVersion` recommended, camelCase to match the `plugins.public`/`plugins.private` JS-side field access conventions already in `config.js`).
+
+## Integration Points (file:line references)
+
+| Integration point | Location | Nature |
+|---|---|---|
+| `motto.yaml`'s `version` field already means project version | `src/config.js:73-75`, `motto.yaml:2` | Naming collision risk — must NOT be reused |
+| `plugin.json` version stamp consumes `config.version` | `src/build.js:199` | Confirms `version` is load-bearing elsewhere; do not touch |
+| `plugins.private` optional-field pattern (absence ≠ error) | `src/config.js:96-102` | Template for how `mottoVersion` absence must be handled |
+| `NAME_KEBAB` shared from `schema.js`, re-exported by `config.js` | `src/config.js:13-19` | Template for how `version.js` should be imported into `config.js`/`init.js`/`lint.js`/`build.js` (single source, no redefinition) |
+| Inline `motto.yaml` scaffold template | `src/init.js:147-150` | Needs the new `mottoVersion:` line |
+| `resolveGitOwnerName` best-effort never-throw pattern | `src/init.js:94-104` | Template for `getOwnVersion()`'s never-throw fallback shape |
+| `processConfig` — config errors labelled `'motto.yaml'`, run first (D2-10) | `src/lint.js:43-61` | Skew check should run immediately after this, still labelled `'motto.yaml'` |
+| `lintProject` return shape | `src/lint.js:320-357` (`{ok, errors, count}`) | Gains `warnings: []` |
+| `buildProject`'s config re-read after lint gate | `src/build.js:89-99` | Second, independent site needing the same skew check |
+| `buildProject` return shape | `src/build.js:207-213` (`{ok, outDir, errors, skillCount, bucketCount}`) | Gains `warnings: []` |
+| `renderResult` — errors-only rendering today | `bin/motto.js:193-206` | Needs a warnings-rendering loop, independent of `ok`/`quiet` |
+| No existing `process.env.npm_package_version` usage anywhere | grep-verified across `bin/`, `src/`, `scripts/` | Confirms this mechanism must not be introduced; use `package.json` read instead |
+| `package.json`'s own `version` field | `package.json:3` | The tool's own version, read target for `getOwnVersion()` |
 
 ## Sources
 
-- Repo source (read directly, HIGH confidence): `src/lint.js`, `src/build.js`, `bin/motto.js`, `skills/release/SKILL.md`, `package.json`, `test/cli.test.js`, `.planning/PROJECT.md`, `.planning/ROADMAP.md`, `.planning/STATE.md`
-- [Node.js Test Runner docs (v26)](https://nodejs.org/api/test.html) — confirms `node --test` auto-discovers any file inside a directory named `test`/`tests`, not just `*.test.js`-suffixed files. Verified 2026-07-03. Confidence: HIGH (official Node.js docs, cross-confirmed by community guides).
-- [npm Docs — Trusted publishing for npm packages](https://docs.npmjs.com/trusted-publishers/) — OIDC setup, `id-token: write` requirement, no self-hosted-runner support. Verified 2026-07-03. Confidence: MEDIUM (official docs, but the feature is recent — GA'd mid-2025 per GitHub changelog below).
-- [GitHub Changelog — npm trusted publishing with OIDC is generally available (2025-07-31)](https://github.blog/changelog/2025-07-31-npm-trusted-publishing-with-oidc-is-generally-available/) — confirms GA status and workflow permission requirements. Confidence: MEDIUM.
-- [GitHub community discussion #176761 — NPM publish using OIDC on GitHub Actions](https://github.com/orgs/community/discussions/176761) — practical workflow YAML shape (tag trigger, `id-token: write`, `registry-url`). Confidence: LOW-MEDIUM (community discussion, not official, but consistent with official docs above).
-- General `needs:`/`if:` job-gating and `workflow_run` cross-workflow-trigger tradeoffs — standard, stable GitHub Actions behavior; not independently re-verified this session (pre-existing HIGH-confidence platform knowledge, consistent with official GitHub Actions documentation structure).
+- `/Users/jeremie/Projects/motto/.planning/PROJECT.md` — milestone goal, target features, standing upgrade-path constraint (verified 2026-07-06; HIGH confidence, primary source)
+- `/Users/jeremie/Projects/motto/bin/motto.js` — CLI dispatch, `renderResult`, JSON/text contract (lines 193-206, 254-397; verified 2026-07-06; HIGH)
+- `/Users/jeremie/Projects/motto/src/config.js` — `loadConfig`, required/optional field pattern (`plugins.private` D-17, lines 96-102; verified 2026-07-06; HIGH)
+- `/Users/jeremie/Projects/motto/src/init.js` — `scaffoldProject`, inline `motto.yaml` template (lines 147-150; verified 2026-07-06; HIGH)
+- `/Users/jeremie/Projects/motto/src/lint.js` — `lintProject`, `processConfig`, result shape (lines 320-357; verified 2026-07-06; HIGH)
+- `/Users/jeremie/Projects/motto/src/build.js` — `buildProject`, config re-read, result shape (lines 89-214; verified 2026-07-06; HIGH)
+- `/Users/jeremie/Projects/motto/package.json` — tool's own version field, no existing `process.env.npm_package_version` usage anywhere in the codebase (grep-verified; HIGH)
+- `/Users/jeremie/Projects/motto/motto.yaml` — confirms `version` field already means project version, not tool version (verified 2026-07-06; HIGH)
 
 ---
-*Architecture research for: motto v0.0.6 "Prove & Publish" — CI/publish/CLI-format integration*
-*Researched: 2026-07-03*
+*Architecture research for: Motto v0.0.7 Version Awareness milestone*
+*Researched: 2026-07-06*

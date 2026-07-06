@@ -123,3 +123,60 @@ describe("loadConfig", () => {
     );
   });
 });
+
+// mottoVersion optionality (VER-04) + adversarial malformed matrix (VER-05, D-R1)
+// mirrors the code_examples matrix in 23-RESEARCH.md lines 404-424.
+const MOTTO_VERSION_BASE =
+  "name: poems\nversion: 0.1.0\ndescription: my poems\nplugins:\n  public: poems\n";
+
+const MALFORMED_MOTTO_VERSIONS = [
+  ["number", 7],
+  ["array", [0, 0, 7]],
+  ["object", { major: 0, minor: 0, patch: 7 }],
+  ["boolean", true],
+  ["null", null],
+  ["empty string", ""],
+  ["garbage string", "not-a-version"],
+];
+
+describe("loadConfig mottoVersion", () => {
+  it("absent mottoVersion reports no mottoVersion error (VER-04, bootstrap compatibility)", () => {
+    const { errors } = loadConfig(MOTTO_VERSION_BASE);
+    assert.ok(
+      !errors.some((e) => /mottoVersion/i.test(e.message)),
+      `expected no mottoVersion error when field absent, got: ${JSON.stringify(errors)}`
+    );
+  });
+
+  it("well-formed mottoVersion reports no mottoVersion error", () => {
+    // Fake fixture version only — never Motto's real version literal (Pitfall 6).
+    const text = `${MOTTO_VERSION_BASE}mottoVersion: "1.2.3"\n`;
+    const { errors } = loadConfig(text);
+    assert.ok(
+      !errors.some((e) => /mottoVersion/i.test(e.message)),
+      `expected no mottoVersion error for well-formed value, got: ${JSON.stringify(errors)}`
+    );
+  });
+
+  for (const [label, yamlLiteral] of MALFORMED_MOTTO_VERSIONS) {
+    it(`VER-05: mottoVersion ${label} produces a clean error entry, never throws`, () => {
+      const yamlValue =
+        typeof yamlLiteral === "string"
+          ? `"${yamlLiteral}"`
+          : JSON.stringify(yamlLiteral);
+      const text = `${MOTTO_VERSION_BASE}mottoVersion: ${yamlValue}\n`;
+      let result;
+      assert.doesNotThrow(() => {
+        result = loadConfig(text);
+      }, `loadConfig must never throw for mottoVersion ${label}`);
+      assert.ok(
+        result.errors.some((e) => /mottoVersion/i.test(e.message)),
+        `expected a mottoVersion error for ${label}, got: ${JSON.stringify(result.errors)}`
+      );
+      assert.ok(
+        result.errors.every((e) => !("skill" in e)),
+        `expected mottoVersion errors to carry only {message}, no skill key, got: ${JSON.stringify(result.errors)}`
+      );
+    });
+  }
+});

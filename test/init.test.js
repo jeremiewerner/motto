@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
 import { scaffoldProject } from '../src/init.js';
+import { getOwnVersion } from '../src/version.js';
 
 // scaffoldProject(targetDir, { name, force }) -> {
 //   ok, created, errors, reason?, name?, suggestion?, offending?
@@ -320,5 +321,24 @@ describe('scaffoldProject content shape', () => {
   it('motto.yaml has no plugins.private line', async () => {
     const text = await readFile(join(tempDir, 'motto.yaml'), 'utf8');
     assert.ok(!/^\s*private:/m.test(text), `expected no plugins.private line, got:\n${text}`);
+  });
+
+  it('motto.yaml mottoVersion equals the live tool version, distinct from version (VER-01)', async () => {
+    const text = await readFile(join(tempDir, 'motto.yaml'), 'utf8');
+    const toolVersion = getOwnVersion();
+    // Never assert against a hardcoded literal (Pitfall 6) — derive the
+    // expected value live via getOwnVersion(), same function init.js calls.
+    assert.ok(typeof toolVersion === 'string', 'expected getOwnVersion() to return a string in this test environment');
+    assert.ok(
+      text.includes(`mottoVersion: "${toolVersion}"`),
+      `expected motto.yaml to contain mottoVersion: "${toolVersion}", got:\n${text}`,
+    );
+    // mottoVersion (tool version) must be a distinct key from the project
+    // version field — never conflated, even though both currently read the
+    // same numeric value pre-1.0 (D-R4 scaffold-time coincidence).
+    assert.ok(/^version: "0\.1\.0"$/m.test(text), `expected distinct project version: "0.1.0" line, got:\n${text}`);
+    const versionLineIndex = text.indexOf('version: "0.1.0"');
+    const mottoVersionLineIndex = text.indexOf(`mottoVersion: "${toolVersion}"`);
+    assert.notStrictEqual(versionLineIndex, mottoVersionLineIndex, 'version and mottoVersion must be separate lines/keys');
   });
 });

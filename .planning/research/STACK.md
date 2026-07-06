@@ -1,10 +1,123 @@
 # Stack Research
 
 **Domain:** Node.js CLI tool — YAML/Markdown linter and plugin packager
-**Researched:** 2026-06-30 (base) · 2026-07-01 (v0.0.4 addendum) · 2026-07-02 (v0.0.5 addendum) · 2026-07-03 (v0.0.6 addendum)
-**Confidence:** HIGH (v0.0.6, v0.0.5, and v0.0.4 additions verified directly against official npm/GitHub/Node.js docs, the open agentskills.io spec, and the existing codebase; base stack MEDIUM per original research)
+**Researched:** 2026-06-30 (base) · 2026-07-01 (v0.0.4 addendum) · 2026-07-02 (v0.0.5 addendum) · 2026-07-03 (v0.0.6 addendum) · 2026-07-06 (v0.0.7 addendum)
+**Confidence:** HIGH (v0.0.7, v0.0.6, v0.0.5, and v0.0.4 additions verified directly against official npm/GitHub/Node.js docs, the open agentskills.io spec, and the existing codebase; v0.0.7's one Node-20-patch-floor claim is MEDIUM, see addendum; base stack MEDIUM per original research)
 
 ---
+
+## v0.0.7 Version Awareness Addendum
+
+**Verdict: Zero new runtime deps, zero new dev deps, zero new stdlib modules beyond what Node ≥20 already guarantees stable. Version stamping + skew detection is fully covered by `fs.readFileSync`+`JSON.parse` (reading Motto's own `package.json`) and a hand-rolled ~10-line major/minor/patch regex comparator. Do NOT add the `semver` npm package — it solves range-satisfaction and pre-release-precedence problems this milestone doesn't have. Do NOT use `import ... with { type: 'json' }` yet — it emits a stderr `ExperimentalWarning` on Node 20.0.0–20.18.2, a real subset of the project's declared `>=20` floor, which would break the CLI's clean stdout/stderr contract (D-05/D-07) on every invocation for those users.**
+
+This section answers the two stack questions for the v0.0.7 milestone: how the CLI should read its own version at runtime, and what semver comparison is needed for skew detection. The base, v0.0.4, v0.0.5, and v0.0.6 stack below is unchanged.
+
+### Q1 — Reading Motto's own version at runtime: `fs.readFileSync(new URL(...)) + JSON.parse`, not import attributes
+
+**Verdict: Plain stdlib file read + `JSON.parse`, memoized per-process. Not `import ... with { type: 'json' }` given the current `engines` floor.**
+
+```js
+// src/self-version.js (new, ~15 lines)
+import { readFileSync } from 'node:fs';
+
+let cached;
+
+/**
+ * Read Motto's own package.json version. Never throws (D-01): any read/parse
+ * failure yields null, callers treat null as "skew check unavailable" rather
+ * than crashing the CLI.
+ * @returns {string|null}
+ */
+export function getMottoVersion() {
+  if (cached !== undefined) return cached;
+  try {
+    const url = new URL('../package.json', import.meta.url);
+    const raw = readFileSync(url, 'utf8');
+    const pkg = JSON.parse(raw);
+    cached = typeof pkg.version === 'string' ? pkg.version : null;
+  } catch {
+    cached = null;
+  }
+  return cached;
+}
+```
+
+**Why not `import pkg from '../package.json' with { type: 'json' }`:**
+
+JSON-module import attributes only became unflagged/stable (no `ExperimentalWarning`) starting at specific **patch** releases — **v20.18.3**, **v22.12.0**, **v23.1.0** (backported to v18.20.5) — per the official Node.js `esm.html` docs "History" table (fetched directly, cross-checked by independent web searches and a GitHub issue thread on the warning itself). Motto's `package.json` declares `"engines": {"node": ">=20"}` — a floor, not a patch pin. Any real install on Node 20.0.0–20.18.2 would print `ExperimentalWarning: Importing JSON modules is an experimental feature...` to stderr on **every** `motto lint`/`motto build` invocation, directly regressing the v0.0.6 stdout/stderr contract (D-05/D-07: stderr carries only `✗ ...` error lines). `readFileSync`+`JSON.parse` has no such version gating — verified hands-on against the locally installed Node v24.14.1, and stable stdlib behavior since Node's earliest ESM support. This also mirrors the existing `src/config.js` style (plain `fs` read + explicit parse, no indirection layer) rather than introducing a new pattern.
+
+`createRequire(import.meta.url)(path)` (Node's own documented pre-import-attributes JSON-import escape hatch, stable since Node 12.2.0) is an equally valid zero-warning, zero-dep alternative — verified hands-on to resolve correctly too. Not chosen only because it's marginally more indirect (builds a CJS `require` shim to call once) versus a direct `readFileSync`, and nothing else in `src/` uses `createRequire`-style indirection.
+
+**Revisit trigger:** once `engines.node` is bumped to `>=22` (or specifically `>=20.18.3`) in some future milestone, switch to `import ... with { type: 'json' }` — it becomes marginally more idiomatic once the experimental-warning sub-range is fully excluded by the engines field itself. Not a blocker now; purely a "come back to this" note.
+
+**Caching:** read once per process, memoized in a module-level variable — `motto lint`/`motto build` are short-lived processes, so there's no staleness concern from not re-reading mid-run.
+
+### Q2 — Semver comparison for skew detection: hand-rolled major/minor/patch comparator, NOT the `semver` package
+
+**Verdict: A ~10-line regex parser + numeric comparator is sufficient. Adding `semver` would violate the standing single-runtime-dependency constraint for a problem it doesn't actually have.**
+
+```js
+const VERSION_RE = /^v?(\d+)\.(\d+)\.(\d+)/;
+
+/**
+ * Parse a version-like string into numeric parts. Never throws; returns null
+ * for anything that doesn't match a leading X.Y.Z shape (D-01) — including
+ * undefined/non-string input, which happens whenever motto.yaml predates
+ * stamping or a field was hand-edited into garbage.
+ * @param {unknown} v
+ * @returns {{major:number, minor:number, patch:number}|null}
+ */
+export function parseVersion(v) {
+  if (typeof v !== 'string') return null;
+  const m = VERSION_RE.exec(v.trim());
+  if (!m) return null;
+  return { major: Number(m[1]), minor: Number(m[2]), patch: Number(m[3]) };
+}
+
+/**
+ * Compare two parsed versions. Returns -1/0/1 (a<b / a==b / a>b), matching
+ * Array.prototype.sort comparator semantics.
+ */
+export function compareVersions(a, b) {
+  if (a.major !== b.major) return a.major < b.major ? -1 : 1;
+  if (a.minor !== b.minor) return a.minor < b.minor ? -1 : 1;
+  if (a.patch !== b.patch) return a.patch < b.patch ? -1 : 1;
+  return 0;
+}
+```
+
+**Why this is enough, and why `semver` is not needed:**
+
+- The actual comparison need is narrow: *"is the version stamped in `motto.yaml` older/newer/equal to the running `motto` binary's own version?"* — a three-way numeric comparison, not range satisfaction (`^`/`~` operators) or pre-release precedence, which is what `semver` (the npm package) exists to solve for dependency-resolution use cases Motto doesn't have.
+- Motto has never shipped a pre-release or build-metadata version — `0.0.1` through `0.0.6`, confirmed in `.planning/PROJECT.md`'s milestone history, plain `X.Y.Z` throughout. The regex tolerates an optional leading `v` and ignores anything after the patch number, which is exactly the granularity skew detection needs.
+- The zero-new-dependency constraint is explicit and standing (`.planning/PROJECT.md`: *"single runtime dependency `yaml` — keep the maintenance surface minimal"*). Adding a ~3000-line, independently-versioned package to detect "is 0.0.7 different from 0.0.6" is disproportionate.
+- **Prior art:** npm's own `lockfileVersion` mismatch check (`package-lock.json`'s `lockfileVersion: 1/2/3`) is a plain integer/string comparison with a friendly message ("this version of npm is compatible with lockfileVersion@1, but package-lock.json was generated for lockfileVersion@2") — not a semver-range check — even inside a tool (`npm`) that *does* depend on `semver` for its actual package-resolution job. Even semver-heavy tools use simple ordering checks for their own internal schema/tool-version drift, reserving the range engine for its one real job.
+- `parseVersion` returning `null` on anything malformed mirrors `src/config.js`'s existing `if (!config.version) { errors.push(...) }` never-throw aggregation style exactly — the skew checker is one more validation step in that same model, not a new pattern.
+
+**Messaging design note (for the phase that consumes this):** skew detection needs three distinct, human-actionable outcomes, not just "mismatch vs match":
+1. **project version < tool version** (most common — Motto was updated, project wasn't re-scaffolded) → informational, non-fatal: "this project was created with an older Motto; you're running a newer one."
+2. **project version > tool version** (rare — local Motto install is behind) → actionable: "this project expects a newer Motto than the one running — update your install."
+3. **unparsable / missing project version** — distinct from both above; expected for any `motto.yaml` predating this milestone (no stamped version yet), not an error to alarm on.
+
+This fits directly into the existing never-throw `{ok, errors}` result-object shape already used by `lintProject`/`buildProject` (see `bin/motto.js`'s `renderResult`) without new plumbing — skew becomes one more non-fatal, informational entry alongside the existing error list.
+
+### v0.0.7 What NOT to Use
+
+| Avoid | Why | Use Instead |
+|-------|-----|-------------|
+| `semver` (npm package) | Solves range-satisfaction/pre-release-precedence problems this milestone doesn't have; adds a dependency against the explicit single-runtime-dependency constraint for a 10-line comparison | Hand-rolled regex major/minor/patch extractor + numeric comparator (above) |
+| `import pkg from '../package.json' with { type: 'json' }` (right now) | Emits `ExperimentalWarning` on stderr for Node 20.0.0–20.18.2, a real subset of the declared `>=20` engines floor — regresses the clean stdout/stderr contract on every invocation | `fs.readFileSync(new URL(...)) + JSON.parse` — zero-warning on all Node ≥20 patch versions |
+| `process.env.npm_package_version` | Only populated when invoked through an npm lifecycle script, not reliable for a globally-installed/`npx`-invoked binary in normal `motto lint` usage | `fs.readFileSync` against the package's own `package.json`, resolved relative to the module file |
+| A network "check npm registry for newer release" call | Out of scope — this milestone is local-only stamped-version-vs-running-tool skew, not "is there a newer release available," a different network-dependent feature | Local-only comparison between `motto.yaml`'s stamped version and the running binary's own `package.json` version |
+
+### v0.0.7 Version Compatibility
+
+| Package A | Compatible With | Notes |
+|-----------|-----------------|-------|
+| `fs.readFileSync` + `JSON.parse` | Node 20.0.0 through 24.x (all patches) | No version gating — verified hands-on on local Node v24.14.1; stable stdlib behavior since Node's earliest ESM support. |
+| `import ... with { type: 'json' }` | Unflagged/no-warning: Node ≥20.18.3, ≥22.12.0, ≥23.1.0. Experimental/warns: Node 20.0.0–20.18.2, 22.0.0–22.11.x | Not chosen given the `>=20` floor doesn't exclude the warning-emitting sub-range. Confirmed via official Node.js `esm.html` docs history table + independent web searches + a GitHub issue on the warning; not independently reproduced against a real Node 20.0.0 binary in this session (only v24.14.1 was available locally) — MEDIUM confidence on the specific patch threshold. |
+| `createRequire(import.meta.url)` | Stable since Node 12.2.0 — no gating concern for a `>=20` floor | Fully viable zero-dep alternative; not chosen only for directness/style-consistency, not a compatibility reason. |
+| Minimal regex version parser | N/A (first-party code) | Only needs to handle plain `X.Y.Z` (Motto's own historical version shape); tolerates a leading `v`, ignores trailing pre-release/build suffixes rather than rejecting them. |
 
 ## v0.0.6 Prove & Publish Addendum
 
@@ -987,9 +1100,13 @@ const [subcommand] = positionals;
 - `docs.npmjs.com/trusted-publishers/` — npm trusted publishing (OIDC) requirements, provenance constraints, permissions. Verified 2026-07-03 (WebFetch, official npm docs). Confidence: HIGH. See v0.0.6 addendum for full detail.
 - `gitleaks/gitleaks` (GitHub) + 2026 secret-scanner comparison sources — one-shot git-history scan usage and rationale vs `trufflehog`. Verified 2026-07-03 (WebSearch synthesis). Confidence: MEDIUM. See v0.0.6 addendum.
 - Node.js EOL schedule (`endoflife.date/nodejs`, cross-checked) — Node 20 EOL April 30, 2026. Verified 2026-07-03 (WebSearch synthesis). Confidence: MEDIUM-HIGH. See v0.0.6 addendum.
-- Direct codebase inspection — `bin/motto.js`, `src/build.js`, `src/lint.js`, `src/config.js`, `src/schema.js`, `test/build.test.js`, `package.json`, `.gitignore`, `motto.yaml`, `.claude-plugin/marketplace.json`, `skills/release/SKILL.md`, `.planning/superpowers/specs/2026-07-02-skill-builder-design.md`, `.planning/PROJECT.md`. Verified 2026-06-30 (re-verified 2026-07-01, 2026-07-02, 2026-07-03). Confidence: HIGH.
+- Direct codebase inspection — `bin/motto.js`, `src/build.js`, `src/lint.js`, `src/config.js`, `src/schema.js`, `test/build.test.js`, `package.json`, `.gitignore`, `motto.yaml`, `.claude-plugin/marketplace.json`, `skills/release/SKILL.md`, `.planning/superpowers/specs/2026-07-02-skill-builder-design.md`, `.planning/PROJECT.md`. Verified 2026-06-30 (re-verified 2026-07-01, 2026-07-02, 2026-07-03, 2026-07-06). Confidence: HIGH.
+- `nodejs.org/api/esm.html` (JSON modules / Import Attributes section, "History" table) — fetched directly; confirms `v23.1.0, v22.12.0, v20.18.3, v18.20.5` as the versions where JSON module imports stopped being experimental. Verified 2026-07-06 (WebFetch, official Node.js docs). Confidence: MEDIUM (cross-checked by independent web searches; not independently reproduced against a real Node 20.0.0 binary in this session — only v24.14.1 was available locally). See v0.0.7 addendum.
+- GitHub `nodejs/node` issue #51347 ("ExperimentalWarning: Importing JSON modules") — corroborates the warning is real and version-dependent, matching the docs' history table. Verified 2026-07-06 (WebSearch synthesis). Confidence: MEDIUM. See v0.0.7 addendum.
+- Hands-on verification (this session) — `import ... with { type: 'json' }`, `createRequire(...)(path)`, and `fs.readFileSync(new URL(...)) + JSON.parse` all executed directly against Node v24.14.1 and confirmed to correctly resolve `package.json`'s `version` field. Confidence: HIGH (first-party, reproduced locally) for the v24 runtime specifically; does not itself establish the Node 20.x warning threshold. See v0.0.7 addendum.
+- `docs.npmjs.com/cli/v11/configuring-npm/package-lock-json` + related `lockfileVersion` mismatch-warning search results — prior art for "simple equality/ordering check + friendly message" as the pattern real npm tooling uses for its own schema-version drift, distinct from the `semver` range engine it uses elsewhere. Verified 2026-07-06 (WebSearch synthesis). Confidence: MEDIUM. See v0.0.7 addendum.
 
 ---
 
-*Stack research for: Motto CLI (Node ESM, YAML linter, Claude Code plugin packager) — base + v0.0.2 dogfood addendum + v0.0.4 project bootstrap addendum + v0.0.5 skill builder addendum + v0.0.6 Prove & Publish addendum*
-*Researched: 2026-06-30 (base) · 2026-07-01 (v0.0.4 addendum) · 2026-07-02 (v0.0.5 addendum) · 2026-07-03 (v0.0.6 addendum)*
+*Stack research for: Motto CLI (Node ESM, YAML linter, Claude Code plugin packager) — base + v0.0.2 dogfood addendum + v0.0.4 project bootstrap addendum + v0.0.5 skill builder addendum + v0.0.6 Prove & Publish addendum + v0.0.7 Version Awareness addendum*
+*Researched: 2026-06-30 (base) · 2026-07-01 (v0.0.4 addendum) · 2026-07-02 (v0.0.5 addendum) · 2026-07-03 (v0.0.6 addendum) · 2026-07-06 (v0.0.7 addendum)*

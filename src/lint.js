@@ -11,11 +11,16 @@
  * parse error is converted to a `{ skill, message }` entry and the scan
  * continues to all remaining skills.
  *
- * Return shape: { ok: boolean, errors: Array<{ skill: string, message: string }>, count: number }
- *   ok     — true when errors is empty.
- *   errors — aggregated error list; config errors (labelled 'motto.yaml') always
- *            precede skill errors; skill errors are in alphabetical-by-dirName order.
- *   count  — number of skills discovered (0 when none found).
+ * Return shape: { ok: boolean, errors: Array<{ skill: string, message: string }>, count: number, warnings: Array<{ skill: string, message: string }> }
+ *   ok       — true when errors is empty.
+ *   errors   — aggregated error list; config errors (labelled 'motto.yaml') always
+ *              precede skill errors; skill errors are in alphabetical-by-dirName order.
+ *   count    — number of skills discovered (0 when none found).
+ *   warnings — additive, non-blocking advisories (VER-02); currently populated
+ *              only by a mottoVersion/tool skew check (VER-03), gated on the
+ *              stamp being present AND well-formed so a malformed mottoVersion
+ *              (already reported in errors[] by config.js) is never
+ *              double-reported here (D-R1). Always present, defaults to [].
  *
  * Internal helpers (not exported): processConfig, loadSharedRefs,
  * discoverSkillNames, loadSkillAudiences, checkOutputsFs, processSkill — per
@@ -28,6 +33,7 @@ import { join, basename, extname, resolve, relative, isAbsolute } from 'node:pat
 import { parseFrontmatter } from './frontmatter.js';
 import { validateSkill, isOutputPathLexicallySafe } from './schema.js';
 import { loadConfig } from './config.js';
+import { checkSkew, getOwnVersion, parseVersion } from './version.js';
 
 // ---------------------------------------------------------------------------
 // processConfig — step 1 of lintProject (D2-09, D2-10)
@@ -308,6 +314,9 @@ async function processSkill(skillsDir, dirName, sharedRefs, skillNames, audience
  *
  * Execution order (locked per D2-10 — config errors MUST precede skill errors):
  *   1. processConfig  — reads motto.yaml; errors labelled 'motto.yaml'
+ *      (immediately followed by a re-read + skew check — VER-02/VER-03 — gated
+ *      on a well-formed mottoVersion stamp so a malformed value is never
+ *      double-reported as a warning; see D-R1)
  *   2. loadSharedRefs — scans shared/references/*.md → Set of basenames
  *   3. discoverSkillNames — reads skills/ directory; null or [] → "no skills found"
  *   4. loadSkillAudiences — cross-skill pre-pass building Map<dirName, audience>
@@ -315,13 +324,38 @@ async function processSkill(skillsDir, dirName, sharedRefs, skillNames, audience
  *      then runs the fs-dependent outputs: existence/symlink-escape check
  *
  * @param {string} projectRoot - absolute path to the project root
- * @returns {Promise<{ ok: boolean, errors: Array<{skill: string, message: string}>, count: number }>}
+ * @returns {Promise<{ ok: boolean, errors: Array<{skill: string, message: string}>, count: number, warnings: Array<{skill: string, message: string}> }>}
  */
 export async function lintProject(projectRoot) {
   const errors = [];
+  const warnings = [];
 
   // 1. Config errors first so they precede all skill errors (D2-10)
   await processConfig(projectRoot, errors);
+
+  // Skew check (VER-02/VER-03) — re-read motto.yaml to obtain the parsed
+  // config object (Option A — re-read, mirrors src/build.js:98-99). This is
+  // the codebase's sanctioned reuse pattern rather than widening
+  // processConfig's return shape (which returns nothing and destructures
+  // only `{ errors: configErrors }`). Never throws: any read/parse failure
+  // collapses to a null config, and a null config is simply "no skew check" —
+  // processConfig already reported the underlying error above.
+  let config = null;
+  try {
+    const configText = await readFile(join(projectRoot, 'motto.yaml'), 'utf8');
+    ({ config } = loadConfig(configText));
+  } catch {
+    config = null;
+  }
+  // GATING (Issue 1, D-R1): only compute skew when the stamp is present AND
+  // well-formed (parseVersion truthy). A malformed mottoVersion is already
+  // reported as an errors[] entry by config.js above — parseVersion returns
+  // null for it, so this guard guarantees it is NEVER also reported here as
+  // a skew warning (no double-report).
+  if (config && parseVersion(config.mottoVersion)) {
+    const skewWarning = checkSkew(config.mottoVersion, getOwnVersion());
+    if (skewWarning) warnings.push(skewWarning);
+  }
 
   // 2. Shared references set (empty if shared/ missing — D2-08; non-ENOENT
   //    read failures become '(project)' error entries — CR-02, never thrown)
@@ -335,13 +369,13 @@ export async function lintProject(projectRoot) {
 
   if (discovered !== null && !Array.isArray(discovered)) {
     errors.push({ skill: '(project)', message: discovered.error });
-    return { ok: false, errors, count: 0 };
+    return { ok: false, errors, count: 0, warnings };
   }
   const skillNames = discovered;
 
   if (skillNames === null || skillNames.length === 0) {
     errors.push({ skill: '(project)', message: 'no skills found' });
-    return { ok: false, errors, count: 0 };
+    return { ok: false, errors, count: 0, warnings };
   }
 
   // 4. Cross-skill context for VAL-02/VAL-03 — read-only pre-pass, never throws
@@ -353,5 +387,5 @@ export async function lintProject(projectRoot) {
     await processSkill(skillsDir, dirName, sharedRefs, skillNameSet, audienceMap, errors);
   }
 
-  return { ok: errors.length === 0, errors, count: skillNames.length };
+  return { ok: errors.length === 0, errors, count: skillNames.length, warnings };
 }

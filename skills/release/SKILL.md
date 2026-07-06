@@ -1,6 +1,6 @@
 ---
 name: release
-description: Maintainer release checklist for Motto — run tests, bump version, dogfood lint and build, and hand off to CI for publish. Use this skill when releasing a new Motto version.
+description: Maintainer release checklist for Motto — run tests, pass the UPGRADING.md ledger gate, bump version, dogfood lint and build, and hand off to CI for publish. Use this skill when releasing a new Motto version.
 audience: private
 template: procedure
 allowed-tools:
@@ -13,7 +13,7 @@ allowed-tools:
 # Releasing Motto
 
 <role>
-You are the Motto release assistant for the maintainer. Guide through each locally-run release step in order: tests, version bump, dogfood sanity check, then hand off to CI with `git push --follow-tags`. After the push, guide verifying that CI actually published the release, and — if it didn't — walk the never-re-tag recovery runbook.
+You are the Motto release assistant for the maintainer. Guide through each locally-run release step in order: tests, ledger gate, version bump, dogfood sanity check, then hand off to CI with `git push --follow-tags`. After the push, guide verifying that CI actually published the release, and — if it didn't — walk the never-re-tag recovery runbook.
 </role>
 
 <process>
@@ -28,7 +28,26 @@ node --test
 
 Expected output: `# pass 75` (or higher) and `# fail 0`. If any test fails, stop. Fix the failure before proceeding.
 
-## Step 2 — Version Bump
+## Step 2 — Ledger Gate
+
+Diff schema-bearing files since the last release tag (this step runs **before** the version bump, so `git describe --tags --abbrev=0` still resolves to the *previous* release tag — running it after the bump would diff against the just-created tag, an always-empty range):
+
+```
+git diff $(git describe --tags --abbrev=0)..HEAD -- src/schema.js src/templates.js src/config.js src/init.js src/build.js src/frontmatter.js
+```
+
+This file list (`src/schema.js`, `src/templates.js`, `src/config.js`, `src/init.js`, `src/build.js`, `src/frontmatter.js`) covers the current homes of the behaviors in the gate's scope — schema/template validation, `motto.yaml` config keys, scaffold output, dist layout (`src/build.js`), and lint-relevant frontmatter extraction (`src/frontmatter.js`). It is a snapshot, not a dynamically derived list. Do NOT replace it with something like `git ls-files src/`, which would over-trigger on every commit including test/doc-only ones. A future maintainer adding a new schema-adjacent file should add it to this list here; the human/agent verdict below is the real backstop against a stale list, not the list alone.
+
+If this diff is non-empty, do NOT proceed to the Version Bump step until either:
+
+1. A new entry for this version has been added to `UPGRADING.md`, or
+2. An explicit "not breaking, no entry needed" verdict has been recorded in this release conversation — silence is not a verdict, state it out loud.
+
+Scope: this gate concerns behavior-defined breaking changes — a change that makes a previously-passing project fail lint/build, or that requires editing project files (`motto.yaml` keys, SKILL.md structure, dist layout consumers depend on). New warnings, wording changes, or new flags do not trigger an entry. Pre-1.0 norm: a hard break plus a ledger entry is sufficient and is the norm; dual-accept compatibility windows stay case-by-case, not mandated.
+
+When in doubt, write the entry — entries are cheap; the v0.0.5 `<role>` migration, stranded before this policy existed, is the cautionary tale.
+
+## Step 3 — Version Bump
 
 Starting from a **clean working tree** (no uncommitted changes — `git status` must be empty):
 
@@ -47,7 +66,7 @@ The husky pre-commit hook re-runs all tests during this commit — if they fail 
 
 **Note on v0.0.3:** The very first release using this script is v0.0.4 onward. v0.0.3's version was drift-corrected manually in Phase 7 (committed 451f92e) and first published to npm on 2026-07-01; its `v0.0.3` git tag was created retroactively at that first publish, not by this script. From v0.0.4 on, `npm version` creates the tag as part of the flow.
 
-## Step 3 — Dogfood Check (local pre-push sanity check)
+## Step 4 — Dogfood Check (local pre-push sanity check)
 
 Run Motto against its own skill tree, as a local sanity check before handing off to CI:
 
@@ -61,7 +80,7 @@ Expected:
 
 If lint fails, fix the skill content before pushing. The skill tree must pass clean on the version being released. CI's `dogfood` job re-runs the equivalent check against the tagged commit — this local run is a fast fail-early check, not the sole gate.
 
-## Step 4 — Push (hand off to CI)
+## Step 5 — Push (hand off to CI)
 
 Push the release commit and tag together:
 
@@ -71,7 +90,7 @@ git push --follow-tags
 
 This is the **last maintainer-run command in the local flow** — no local registry publish, and no local registry-auth check. `git push --follow-tags` pushes both the release commit and the `vX.Y.Z` tag to `github:jeremiewerner/motto` in one command; everything from here is CI's responsibility.
 
-## Step 5 — CI Handoff
+## Step 6 — CI Handoff
 
 `git push --follow-tags` updates two refs (`refs/heads/main` and `refs/tags/vX.Y.Z`) in one push, which triggers **two separate GitHub Actions workflow runs**. The tag-scoped run (`ref = refs/tags/vX.Y.Z`) re-runs the full `test` / `dogfood` / `pack-install-e2e` suite against the exact tagged commit — including the D-05 tarball-leak assertion (`assertTarballClean`, now enforced inside `pack-install-e2e` on every push, not just at release time). Before either idempotency guard runs, the `publish` job first asserts the pushed tag `vX.Y.Z` matches `package.json`'s version and hard-fails (with a `::error::` annotation) if they disagree — so a tag pushed on an un-bumped or wrong-version commit fails fast instead of publishing nothing to npm while still creating a GitHub Release. If, and only if, that guard and all three of those jobs pass within that same tag-triggered run, the `publish` job runs:
 
@@ -80,9 +99,9 @@ This is the **last maintainer-run command in the local flow** — no local regis
 
 These two guards are fully independent — a partial failure (e.g. npm publish succeeds but the GitHub Release step fails) never causes a re-run to skip the step that didn't complete.
 
-**This is asynchronous.** Nothing local confirms success synchronously — do not treat the push itself as "released." Proceed to Step 6 before any housekeeping.
+**This is asynchronous.** Nothing local confirms success synchronously — do not treat the push itself as "released." Proceed to Step 7 before any housekeeping.
 
-## Step 6 — Verify CI Published
+## Step 7 — Verify CI Published
 
 Before doing anything else, confirm all three of the following:
 
@@ -99,9 +118,9 @@ Before doing anything else, confirm all three of the following:
    gh release view vX.Y.Z
    ```
 
-Only proceed to Step 8 (Post-Release Housekeeping) once all three confirm. Do not assume "tag pushed" means "published" — this project has previously drifted (npm stuck at an old version while git tags advanced) precisely because that assumption went unchecked.
+Only proceed to Step 9 (Post-Release Housekeeping) once all three confirm. Do not assume "tag pushed" means "published" — this project has previously drifted (npm stuck at an old version while git tags advanced) precisely because that assumption went unchecked.
 
-## Step 7 — If CI Publish Fails
+## Step 8 — If CI Publish Fails
 
 1. **Do NOT delete or recreate the git tag.** Tags are permanent handoff markers — deleting and re-pushing one rewrites a ref other clones may have already fetched and destroys the audit trail.
 2. **If the failure is the tag/version-mismatch guard** (the pushed tag does not match `package.json`'s version), it is **not transient and not fixable by `gh run rerun <id> --failed`** — the same ref will fail identically every time. The correct recovery is to publish a corrected version: bump `package.json` to the intended version and cut a new, matching tag on a new commit. Never delete or re-push the existing mismatched tag.
@@ -109,7 +128,7 @@ Only proceed to Step 8 (Post-Release Housekeeping) once all three confirm. Do no
    ```
    gh run view <run-id> --log-failed
    ```
-4. If the failure is transient (network, registry hiccup) or a fixable config issue (fix the Trusted Publisher configuration on npmjs.com, fix a workflow permissions typo such as a missing `id-token: write` — never mint a new `NPM_TOKEN`; publishing is trusted-publisher-only per Step 9), fix the root cause if needed, then re-run only the failed job(s):
+4. If the failure is transient (network, registry hiccup) or a fixable config issue (fix the Trusted Publisher configuration on npmjs.com, fix a workflow permissions typo such as a missing `id-token: write` — never mint a new `NPM_TOKEN`; publishing is trusted-publisher-only per Step 10), fix the root cause if needed, then re-run only the failed job(s):
    ```
    gh run rerun <run-id> --failed
    ```
@@ -126,16 +145,16 @@ Only proceed to Step 8 (Post-Release Housekeeping) once all three confirm. Do no
    ```
    Proceed only if the output equals `X.Y.Z`. If it doesn't, use the point-2 recovery instead (bump to a new version + new matching tag).
 
-## Step 8 — Post-Release Housekeeping
+## Step 9 — Post-Release Housekeeping
 
-After Step 6 confirms the release is live:
+After Step 7 confirms the release is live:
 
 1. Update `PROJECT.md` → Current State section with the new version and what was shipped.
 2. Archive the milestone in `MILESTONES.md` → move it from Active to Completed.
 3. Close the milestone in the planning system (mark complete in `.planning/`).
 4. Open the next milestone planning issue if one is queued.
 
-## Step 9 — Zero-Tokens Follow-Through (first OIDC-live release only)
+## Step 10 — Zero-Tokens Follow-Through (first OIDC-live release only)
 
 Run this step **once** — the first time a tag-triggered publish succeeds via OIDC trusted publishing (i.e. the first release cut after the publish job stopped using `NPM_TOKEN`/`NODE_AUTH_TOKEN`). Every subsequent release skips this step entirely; it is not part of the normal per-release flow.
 
@@ -161,11 +180,12 @@ Run this step **once** — the first time a tag-triggered publish succeeds via O
 - All tests pass (`node --test` reports zero failures) before the version bump.
 - `package.json`, `motto.yaml`, and `package-lock.json` are bumped to the same version and committed in a single release commit with a `vX.Y.Z` tag.
 - `motto lint` and `motto build` both succeed locally against the release version with no errors, as a pre-push sanity check.
+- The Ledger Gate runs before the version bump — while `git describe --tags --abbrev=0` still resolves to the previous release tag — and blocks tag creation and push on a non-empty diff of schema-bearing files (`src/schema.js`, `src/templates.js`, `src/config.js`, `src/init.js`, `src/build.js`, `src/frontmatter.js`) since that tag, pending either a new `UPGRADING.md` entry or a recorded "not breaking, no entry needed" verdict.
 - The local flow ends at `git push --follow-tags` — no local `npm publish`, no local registry-auth check.
 - CI performs the publish: the tag-triggered Actions run passes `test`/`dogfood`/`pack-install-e2e` (including the D-05 tarball-leak assertion), then the `publish` job runs `npm publish` and `gh release create --generate-notes`, each independently guarded against re-running on an already-published version/release.
 - The maintainer verifies the Actions run is green, the registry has the new version (`npm view`), and the GitHub Release exists (`gh release view`) before doing any Post-Release Housekeeping.
 - If CI publish fails, recovery is `gh run rerun <id> --failed` for transient/config failures (or, as an emergency-only escape hatch, a manual `npm publish` from the tagged commit), or a new version bump + new matching tag for tag/version-mismatch guard failures — never deleting or recreating the git tag.
 - `PROJECT.md` and `MILESTONES.md` are updated to reflect the new shipped state.
-- The zero-tokens follow-through (Step 9: token revocation, npm-side trusted-publisher-only lockdown, provenance verification) runs once — the first OIDC-live release only — never as a per-release step.
+- The zero-tokens follow-through (Step 10: token revocation, npm-side trusted-publisher-only lockdown, provenance verification) runs once — the first OIDC-live release only — never as a per-release step.
 
 </success_criteria>

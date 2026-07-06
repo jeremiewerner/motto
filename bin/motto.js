@@ -41,6 +41,13 @@
  *   ALL "✗" error lines (lint, build, init) write to stderr, never stdout
  *     (D-05, D-07) — CLIX-03.
  *
+ * Skew warnings (Phase 23, VER-02): lint/build results may carry an additive
+ *   `warnings[]` array (e.g. a mottoVersion/tool skew advisory). "⚠ <skill>:
+ *   <message>" lines print to stderr, independent of both `ok` and `--quiet`
+ *   (quiet only ever suppresses the success line) — never in `--format json`
+ *   mode, since JSON already serializes `warnings` verbatim. Warnings never
+ *   change the exit code.
+ *
  * Exit codes: always set via process.exitCode — never process.exit(), which
  * can truncate buffered output on platforms where pipe writes are async
  * (e.g. Windows) — Pitfall 7. The parseArgs catch reports the error and
@@ -187,19 +194,35 @@ function checkFormatValue(formatValue) {
  * json mode (D-09). exitCode is set to 1 whenever `!result.ok`, in every
  * mode; process.exit() is never called (Pitfall 7).
  *
- * @param {{ok: boolean, errors: Array<{skill:string, message:string}>}} result
+ * Warnings (VER-02, D-R2): `result.warnings` (a non-blocking, additive
+ * advisory list — currently only mottoVersion/tool skew) render as
+ * `⚠ <skill>: <message>` lines to stderr in TEXT mode only, independent of
+ * both `ok` and `quiet` — quiet only ever suppresses the success line
+ * (see doc note above). `format: 'json'` already serializes `warnings`
+ * verbatim via JSON.stringify(result), so the ⚠ loop is skipped entirely
+ * in json mode to avoid duplicate output. exitCode logic is untouched —
+ * warnings never flip it.
+ *
+ * @param {{ok: boolean, errors: Array<{skill:string, message:string}>, warnings?: Array<{skill:string, message:string}>}} result
  * @param {{format?: string, quiet?: boolean, successLine: string}} opts
  */
 function renderResult(result, { format, quiet, successLine }) {
   if (format === 'json') {
     process.stdout.write(JSON.stringify(result) + '\n');
-  } else if (result.ok) {
-    if (!quiet) {
-      process.stdout.write(`${successLine}\n`);
-    }
   } else {
-    for (const e of result.errors) {
-      process.stderr.write(`✗ ${e.skill}: ${e.message}\n`);
+    if (result.ok) {
+      if (!quiet) {
+        process.stdout.write(`${successLine}\n`);
+      }
+    } else {
+      for (const e of result.errors) {
+        process.stderr.write(`✗ ${e.skill}: ${e.message}\n`);
+      }
+    }
+    // ⚠ warnings render unconditionally relative to the ok/quiet branch above
+    // — text mode only (json already carries warnings verbatim).
+    for (const w of result.warnings ?? []) {
+      process.stderr.write(`⚠ ${w.skill}: ${w.message}\n`);
     }
   }
   if (!result.ok) process.exitCode = 1; // D2-11; process.exit() NOT used (Pitfall 7)

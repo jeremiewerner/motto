@@ -125,6 +125,46 @@
 
 ---
 
+## Milestone: v0.0.7 — Version Awareness
+
+**Shipped:** 2026-07-06
+**Phases:** 3 | **Plans:** 9 | **Commits:** 70
+
+### What Was Built
+- Pure `src/version.js` (`getOwnVersion`/`parseVersion`/`checkSkew`) — memoized package.json read, ~10-line semver-free compare; `motto init` stamps `mottoVersion` into `motto.yaml`, distinct from the project `version`
+- `lint`/`build` skew advisory: direction-aware, non-blocking `warnings[]` on stderr, never flips `ok`/exit code, never rewrites `motto.yaml` (test-guarded); unstamped projects silent; malformed stamps → clean `errors[]` via 7-case adversarial matrix
+- `UPGRADING.md` breaking-change ledger (retroactive v0.0.5 `<role>` entry + v0.0.7 stamp adoption) named by the skew warning, with a heading-presence backstop test
+- Standing upgrade-path policy: blocking Ledger Gate as release-skill Step 4 + constraint synced into CLAUDE.md/PROJECT.md
+- v0.0.6 operator debt closed: token revoke + trusted-publisher lock (leak-safe evidence), marketplace stranger re-walk with installed-content diff, README plugin-cache caveat fixed to `claude plugin update motto@motto`
+
+### What Worked
+- Live consumer validation: magma stamped from UPGRADING.md prose alone during Phase 24 — the walkthrough immediately exposed two broken version-discovery commands (`motto --version` doesn't exist), fixed before ship
+- Content-diff over cache-status: DEBT-06's pass condition was diffing the installed plugin against dist rebuilt from the released tag, which caught nothing wrong but also proved the check falsifiable — and review still caught the README caveat's refresh command being a no-op (WR-01), closed by a gap-closure plan validated against a real stale cache
+- Attestation pattern for agent-unfalsifiable claims: npmjs.com token revocation / publisher lock / stranger-env checks recorded as explicit maintainer attestations with agent-run corroboration (npm provenance cross-check), never silently marked passed
+- Single-day milestone (07:30 → 21:19): coarse 3-phase split (code / docs+policy / operator checkpoint) kept waves tight
+
+### What Was Inefficient
+- Auto-extracted MILESTONES.md accomplishments failed a THIRD consecutive close (v0.0.5 asterisk truncation, v0.0.6 wrong field, v0.0.7: one accomplishment was literally "`src/version.js`" and another a full implementation paragraph) — summary-extract one-liners are not close-ready; manual curation is now the de facto standing step
+- Phase 24 UAT's 2 human sign-off scenarios reached close still `[pending]` and had to be acknowledged as deferral — substance was agent-verified days earlier; end-of-phase human_verify_mode should have flushed them at phase close
+- STATE.md velocity table duplicate rows still uncleaned (carried from v0.0.5 — second retro mention)
+
+### Patterns Established
+- Detection before mechanism: ship the skew *signal* (stamp + advisory) and defer the *fix* (`motto upgrade`) until a real break demands it — the YAGNI split kept the milestone to 943 code-diff lines
+- Anti-feature table in REQUIREMENTS.md Out of Scope (no auto-restamp, no semver dep, no fourth verb, no hard error) — rejected designs recorded with rationale at requirements time, not litigated in review
+- Ledger entries are validated by walking them on a real project (magma), not by proofreading
+
+### Key Lessons
+1. Docs that instruct commands must be executed, not reviewed: both doc defects this milestone (ledger's `motto --version`, README's no-op refresh) were caught only when someone ran the words on a real system.
+2. Human-attestation debt should close inside the phase that creates it — UAT checkboxes that outlive their agent-verified substance become pure close-time friction.
+3. The summary-extract → MILESTONES.md pipeline needs a quality gate or a rewrite; three closes of manual repair is the signal (candidate: extract from VERIFICATION truths instead of SUMMARY one-liners).
+
+### Cost Observations
+- Model profile: adaptive
+- Timeline: 1 day (2026-07-06, ~14h wall clock)
+- Notable: first milestone under the standing upgrade-path constraint it itself introduced; first close with a real external consumer (magma) in the verification loop
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -137,6 +177,7 @@
 | v0.0.4 | 4 | Tech-debt phase inserted pre-close; audit re-run to passed |
 | v0.0.5 | 5 | Review-before-verify systematized; quick tasks close debt same-day; D-NN decision format makes coverage gate mechanical |
 | v0.0.6 | 4 | Ship-then-close: milestone close doubles as the pipeline's live UAT; artifact audit blocks close until deferred items resolve or get fixed |
+| v0.0.7 | 3 | Real-consumer validation loop: magma walks the docs live; attestation pattern formalized for agent-unfalsifiable operator claims |
 
 ### Cumulative Quality
 
@@ -148,9 +189,11 @@
 | v0.0.4 | 131 | 1 |
 | v0.0.5 | 213 | 1 |
 | v0.0.6 | 243 | 1 |
+| v0.0.7 | 293 | 1 |
 
 ### Top Lessons (Verified Across Milestones)
 
 1. Adversarial malformed-input tests are the only real guard for the never-throw invariant — milestone gates under-verify it (v0.0.2 code review, v0.0.4 WR-01 closure, v0.0.5 CR-01: violations arrive through NEW code paths, so every validator-touching diff needs a review-time check).
 2. Side-effect claims (publish, tag, summary written) must be verified against git/npm reality, not documentation (v0.0.3 Phase 7, v0.0.4 quick-task artifact).
 3. Single-sourcing validation rules prevents divergence classes by construction (NAME_KEBAB: v0.0.2 quick task, v0.0.4 INIT-05).
+4. Command-bearing docs are only verified by executing them on a real system (v0.0.6 README publish-flow staleness, v0.0.7 ledger + plugin-cache caveat defects — all caught by walking, none by reading).

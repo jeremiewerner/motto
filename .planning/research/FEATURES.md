@@ -1,181 +1,175 @@
 # Feature Research
 
-**Domain:** CI/CD + release engineering + CLI ergonomics for a small single-maintainer OSS npm CLI (Node ≥20, plain ESM, `node --test`)
-**Researched:** 2026-07-03
-**Confidence:** MEDIUM (websearch cross-checked against official docs — GitHub Docs, npm Docs, ESLint docs, ShellCheck source — appearing directly in search results; no single-source claims treated as authoritative; some npm-registry facts verified live against this repo)
+**Domain:** Version stamping + version-skew detection for a scaffolding/lint/build CLI (Motto v0.0.7 "Version Awareness")
+**Researched:** 2026-07-06
+**Confidence:** MEDIUM (cross-checked pattern across 8+ independent tools; individual tool details are web-search-sourced, not primary-doc-verified — treat specific error-message wording as illustrative, not exact quotes)
 
 ## Grounding: current CLI shape (read from source, not assumed)
 
-`bin/motto.js` already returns structured result objects from `lintProject`/`buildProject`: `{ ok, count/skillCount, errors: [{ skill, message }] }`. Output today is hand-written `process.stdout.write('✓ ...')` / `✗ ${e.skill}: ${e.message}` lines, `parseArgs({ strict: true })` per-subcommand with only `force`/`help` currently defined. This means `--format json` is a **thin serialization layer over data that already exists** — not a new data model. `--quiet` is a **new output-suppression branch**, not new data.
+`src/lint.js` and `src/build.js` already return `{ ok: boolean, errors: Array<{ skill: string, message: string }>, count: number }` (lint) and the equivalent shape for build (`errors`, `outDir`, `skillCount`, `bucketCount`). There is **no `warnings` array today** — everything that surfaces is either a hard error or nothing. `motto.yaml`'s current scaffolded template (`src/init.js` line ~149) is:
 
-Confirmed live drift (2026-07-03): `package.json` version = `0.0.3`, `motto.yaml` version = `0.0.3`, latest git tag = `v0.0.5`, npm registry latest = `0.0.3`. Three independent version sources (package.json, motto.yaml, npm registry) already disagree with the git tag — this is not a hypothetical, it's the exact bug CLIX/CI-drift work targets.
+```yaml
+name: <name>
+version: "0.1.0"
+description: <description>
+plugins:
+  public: <name>
+```
+
+There is no field recording which Motto version scaffolded the project — this milestone adds the first one. `--format json`/`--quiet` (shipped v0.0.6) already give Motto a structured-output surface a skew field can extend without inventing a new output mode.
+
+## Prior Art Table
+
+| Tool | What's stamped | Where | Stamped at | Re-stamped on...? | Skew direction enforced | Warn vs error | Message style |
+|------|----------------|-------|------------|-------------------|------------------------|---------------|----------------|
+| **Rails** | Framework-defaults version (`X.Y`) | `config.load_defaults X.Y` in `config/application.rb`; Rails version also dumped into `schema.rb` | App generation (`rails new`) | **Never automatically.** Only a human, after manually testing each new default via a generated `new_framework_defaults_X_Y.rb` scratch file, bumps the call by hand. | Project-older-than-installed-gem is the only direction that matters (gem is always ≥ app's stamped defaults) | Neither — it's a *silent behavior change* if you don't run `app:update`; Rails instead makes the migration path a first-class generated file, not a runtime warning | The generated file lists every changed default as a commented-out line with inline doc links — maximally actionable, zero ambiguity |
+| **Terraform** | Exact CLI version constraint | `required_version` in a `terraform {}` block | Authored by hand (rarely auto-written) | Never auto-changed | **Both directions** — CLI too old *or* too new both fail if outside the range | **Hard error**, blocks all operations (plan/apply/state) | `Error: Unsupported Terraform Core version` + file/line + the exact constraint string + the actual running version |
+| **Cargo (Rust)** | Minimum supported Rust version | `rust-version` in `Cargo.toml` | Manually authored | Never auto-bumped; drifts silently as transitive deps raise the real floor — a known, named problem; `cargo-msrv` is a separate opt-in tool to detect drift | Project-requires-newer-than-installed only | **Hard error** at dependency resolution (`cargo` refuses to resolve the graph) | Resolver error naming the dependency that raised the floor — sometimes confusing because it surfaces as a resolution failure, not a clear "your Rust is too old" message |
+| **ESLint** | Config schema/format version | Implicit in which config file exists (`.eslintrc.*` vs `eslint.config.js`) | N/A — inferred from file presence | N/A | Old-format-under-new-tool | **Long deprecation window, then hard break at a major version** (v9 warns/shims, v10 removes support entirely) | Migration guide + automated CLI migrator tool, not a runtime message |
+| **Volta** | Exact tool versions (node/npm/pnpm) | `"volta": {...}` key in `package.json`, separate from `engines` | `volta pin` (explicit user command) | Re-pinned only by explicit `volta pin` | Any mismatch between `engines` and `volta`, or between pinned and active | **Warning only** (`WARN Unsupported engine...`), does not block | Wanted vs current shown side by side |
+| **npm lockfileVersion** | Lockfile schema version (integer) | `lockfileVersion` field in `package-lock.json` | Every `npm install` | **Silently auto-upgraded** by newer npm on next install | Tool-older-than-lockfile only matters (newer npm reading older lockfile just upgrades it) | **Warning** when tool is older than lockfile; **silent auto-upgrade** when tool is newer | Plain "created with an old version of npm" warning |
+| **Angular CLI** | Framework version implicit in installed packages; `angular.json` has no explicit stamped version field | Migration schematics keyed by `--from`/`--to` version flags on `ng update` | N/A (inferred from installed package.json versions) | Migrations run explicitly via `ng update`, never automatically | Both directions can break: stale detection of "current" version is a **recurring bug source** — the tool assuming the wrong current version is a top complaint | Command aborts / skips migrations silently when version-detection is wrong (an anti-pattern, not a design goal) | Weakest of the prior art — cited GitHub issues show this is a pain point, not a solved problem |
+| **Yeoman** | Optional generator version | `.yo-rc.json`, namespaced per generator | Scaffold time, only if the generator author opts in | Never — no core mechanism at all | None enforced by core Yeoman | N/A — not a framework feature, a community convention | N/A |
+| **cookiecutter** | Nothing, by default | N/A | N/A | N/A | None | None | Explicitly named as a gap: users have open feature requests (`#1921`, `#1135`) asking for exactly this capability — evidence that its absence is felt as a real deficiency |
+
+**Reading across the table:** the tools with the *best* reputations here (Rails, Terraform) both (a) stamp explicitly and legibly, (b) never silently re-stamp, and (c) treat the human as the one who decides when the project has "caught up." The tools with a bad reputation here (Angular CLI, cookiecutter) either have no explicit stamp at all or get the "what version are we actually on" detection wrong. This directly validates Motto's plan: explicit `motto.yaml` stamp + never-auto-restamp + explicit message.
 
 ## Feature Landscape
 
-### Table Stakes (Users/Maintainer Expect These)
+### Table Stakes (Users Expect These)
 
-Features any small OSS CLI's "we have CI" claim implies. Missing these = the CI is decorative.
+Features users assume exist once a tool claims "version awareness." Missing these = the feature feels half-built or actively misleading.
 
 | Feature | Why Expected | Complexity | Notes |
 |---------|--------------|------------|-------|
-| Node version test matrix (20/22/24) via `strategy.matrix` | `engines.node: ">=20"` is a promise; matrix is how it's kept honest | LOW | `fail-fast: false` so one version's break doesn't hide others; `actions/setup-node@v4` + `cache: npm` |
-| Single lint/dogfood job (not matrixed) | Dogfooding (`motto lint`/`build` on Motto's own `skills/`) is deterministic across Node versions — running it N times wastes CI minutes for zero signal | LOW | Run on one Node version (latest LTS, 22) only |
-| `npm ci` (not `npm install`) in every job | Reproducible installs from lockfile; standard CI convention everywhere in the ecosystem | LOW | Requires committing `package-lock.json` if not already tracked — verify |
-| Pack-install E2E job (tarball → tmp dir → `init`/`lint`/`build`) | `files` allowlist (`bin/`, `src/`, `dist/public/`) is a real risk surface — a file needed at runtime but excluded from `files` only breaks for *installed* users, never for repo-local `npm test` | MEDIUM | Needs `npm pack`, extract/install into a scratch dir, then exercise the 3 subcommands against a scaffolded project — this is the only job that would have caught the current package.json/motto.yaml drift class of bug if it also asserted version consistency |
-| `husky` prepare-script CI compatibility | `"prepare": "husky"` runs on every `npm ci`/`npm install`; fails or is a no-op depending on `.git` presence and CI flags | LOW | `actions/checkout` provides `.git`, so this is usually a non-issue on GitHub-hosted runners — but the pack-install E2E job installs from a *tarball* into a scratch dir with no `.git` and no devDependencies (`husky` isn't in `files`/is a devDep) — verify `prepare` doesn't fire or fails silently there; if it's in `package.json` `scripts.prepare` it fires for **every** `npm install` regardless of `files`, so a tarball-install test could break on this alone unless `--ignore-scripts` or a `NODE_ENV`/`CI` guard is used |
-| Tag-triggered publish (not push-to-main-triggered) | Matches this project's existing manual release skill (bump → tag → push); publishing on every merge is wrong for a project with deliberate version bumps | LOW–MEDIUM | Trigger on `push: tags: ['v*']` (git-tag push) — note GitHub's *own* trusted-publishing docs increasingly assume `on: release: types: [published]` (a GitHub Release object), not a bare tag push; these are two different trigger shapes with different OIDC validation behavior — decide explicitly, don't default |
-| `--quiet` suppresses non-essential/progress output only; errors always print; exit code unaffected | Universal CLI convention (confirmed across general CLI convention guides and ESLint's own `--quiet`) | LOW | For `lint`: `--quiet` should suppress the "✓ N skills OK" success line but never suppress `✗` error lines; exit code stays whatever it already is — quiet is a display concern, not a severity filter (ESLint's `--quiet` suppressing *warnings* doesn't map cleanly since Motto's lint has no warning/error severity split today — verify before copying that exact semantic) |
-| `--format json` emits machine-readable, stable-shaped output on stdout; human text goes away entirely (not mixed) | Precedent: ESLint and ShellCheck never mix formats in one stream — `--format json` replaces the human formatter, doesn't append to it | LOW–MEDIUM | Natural schema: serialize the existing `{ ok, count, errors: [{ skill, message }] }` result object directly — no line/column fields needed unless the underlying `yaml` parser's error objects already carry position info worth surfacing later |
+| Stamp the tool version at scaffold time (`motto init`) | Universal pattern (Rails, Volta, Yeoman-when-used, Terraform-adjacent). Without it there's no signal to detect skew at all — this is the precondition for everything else in this milestone. | LOW | Add a `motto:` key (or similar, e.g. `scaffolded_with:`) to `motto.yaml` alongside existing `name`/`version`/`description`. One-line change to the `src/init.js` template string. |
+| Detect skew and print an explicit message during `lint`/`build` | Terraform and Rails both treat this as core, not optional. A stranger (magma) hitting a hard break with zero warning (v0.0.5's `<role>` migration) is exactly the failure this milestone exists to prevent. | LOW–MEDIUM | Read stamped version from `motto.yaml`, compare via semver-order to the running package's own version (already available from `package.json` at runtime). No new dependency — major/minor/patch comparison is simple integer parsing; a real `semver` package is unnecessary for this scope and would violate the project's single-dependency (`yaml`) constraint. |
+| Message names both versions and gives a next step | Every credible prior-art tool (Terraform's error, Rails' generated file, Volta's WARN) shows *wanted vs actual* side by side. A message that says only "version mismatch" without both numbers is useless — Angular CLI's vague failures are the cautionary example in this research. | LOW | Message template: `Project scaffolded with motto vX.Y.Z; running motto vA.B.C. <specific guidance>`. Fits directly into the existing `{ ok, errors: [{skill, message}] }` result shape — a skew finding is just another entry (or a new `warnings` array — see open question below). |
+| Missing/absent stamp is handled gracefully, not a crash | Every real Motto project shipped before v0.0.7 (v0.0.1–v0.0.6 era, including magma if scaffolded pre-upgrade) has no stamp field at all. A stranger's project must not explode on this — consistent with Motto's own repeatedly-hardened never-throw invariant. | LOW | Treat missing field as "unknown, assume compatible" — skip the skew check silently rather than erroring on absence, matching how other optional `motto.yaml` fields are already handled in `config.js`. |
 
-### Differentiators (Competitive/Trust Advantage for a Solo-Maintainer Project)
+### Differentiators (Competitive Advantage)
 
-Features that go beyond "has CI" and build trust that the published package matches the tagged source.
+Features that set this apart from the sloppier prior art (Angular CLI, cookiecutter) without over-building.
 
 | Feature | Value Proposition | Complexity | Notes |
 |---------|-------------------|------------|-------|
-| npm-registry version-drift warning | Catches exactly the class of bug this repo already has live (package.json/motto.yaml/npm registry disagreeing with git tags) *before* it silently persists across 2 more milestones | MEDIUM | Two independent checks worth separating: (1) **pre-publish**: does `package.json` version already exist on the registry? (`npm view <pkg> version`, or the `NPM Published Version Check` GitHub Action pattern) — gates the publish step; (2) **drift audit**: does `motto.yaml` version match `package.json` version match latest git tag? — this is the check that would have caught the *actual* current bug and doesn't exist as an off-the-shelf action; write it as a small script, not a dependency |
-| Auto-generated GitHub Release notes (`generate_release_notes: true`) | Near-zero implementation cost, immediate changelog value; GitHub natively groups by merged-PR labels | LOW | `softprops/action-gh-release@v2` with `generate_release_notes: true` is the standard low-effort path; requires PRs (not direct-to-main commits) to have meaningful groupings — if this project merges phase work via direct commits (not PRs), auto-notes degrade to a flat commit-adjacent list — verify actual merge pattern before promising rich categorized notes |
-| Secrets-scan gate before repo-public flip | The repo-public flip is explicitly a one-way door (per PROJECT.md); a scan *after* going public is too late — bots scrape new public repos within minutes | MEDIUM | `gitleaks` (fast, regex-based, good default ruleset, runs well as a one-off full-history scan with `fetch-depth: 0`) is the right tool for a **one-time gate**, not `trufflehog` (whose differentiator — live-credential verification — matters more for continuous PR scanning than a single pre-flip audit). If gitleaks finds anything: rotate the secret first, decide history rewrite (`git filter-repo`, not BFG — BFG is unmaintained/Scala/JVM-dependent, `git filter-repo` is the currently-recommended tool) only if something real is found — do not build automatic rewrite tooling speculatively |
-| npm provenance attestation | Public, verifiable link from the published tarball back to the exact CI run/commit that built it — real trust signal for a package other agents/projects will `npm install` | LOW (if using `NPM_TOKEN` + `--provenance` flag) / MEDIUM (if migrating to full OIDC trusted publishing) | Provenance and trusted-publishing are **separable**: `npm publish --provenance` with `id-token: write` permission works today even with `NPM_TOKEN`-based auth on a GitHub-hosted runner, before any trusted-publisher config exists. Trusted publishing (no long-lived token at all, npm ≥11.5.1 required) is the stronger long-term posture but PROJECT.md already sequences it *after* the public flip — don't front-load that complexity into this milestone |
+| Distinguish skew **direction** in the message (project newer than tool vs tool newer than project) | Most prior art (Volta, npm) treats skew as one bucket. Terraform is the only prior-art tool studied that explicitly handles both directions symmetrically — worth emulating. "Tool newer than project" (project hasn't been touched since an upgrade) is the common, higher-risk case — most likely to hit a real structural break like the `<role>` migration. "Project newer than tool" (stale global install, or downgraded local dep) is a different problem with different advice. | LOW–MEDIUM | Direction changes the actionable advice: tool-newer-than-project → "check CHANGELOG for structural changes between vX and vY"; project-newer-than-tool → "upgrade motto itself." |
+| Severity keyed to **semver distance / documented breaking boundary**, not just "any mismatch" | Patch/minor skew is almost always harmless — most Motto version bumps to date (v0.0.1→v0.0.6) were not structural breaks. Warning loudly on every patch bump would train users to ignore the message (the npm lockfileVersion "just a warning, ignore it" fatigue is the cautionary tale). Reserve strong language for skew spanning a *documented* breaking change. | MEDIUM | Requires a short, hand-maintained ledger of which versions introduced breaking structural changes (starting with v0.0.5's `<role>` migration, documented retroactively). This ledger **is** the "standing upgrade-path policy" PROJECT.md already commits to for this milestone — same artifact, not two separate ones. |
+| `--format json` skew field for CI/agentic consumers | Motto already ships `--format json` (v0.0.6, CLIX-01..03). Surfacing skew as a structured field (e.g. `{ skew: { projectVersion, toolVersion, direction, severity } }`) lets scripts/agents act on it programmatically instead of parsing prose. | LOW | Extends the existing JSON output shape — no new output mode, just a new optional field, populated only when a stamp exists and differs. |
 
-### Anti-Features (Commonly Reached For, Wrong Fit Here)
+### Anti-Features (Commonly Requested, Often Problematic)
+
+Features that seem helpful but would undermine the point of version awareness, contradict prior art, or violate Motto's own constraints.
 
 | Feature | Why Requested | Why Problematic | Alternative |
 |---------|---------------|------------------|-------------|
-| Full `release-please`/`semantic-release` automation | "Automate the whole release, why bump versions by hand" | Adds a dependency + a Conventional-Commits discipline this project doesn't currently follow (commit history reads as GSD phase commits, not `feat:`/`fix:`); contradicts the explicit "local = bump + tag + push only" design already chosen for v0.0.6; a solo maintainer doing ~1 release/week doesn't need release-PR automation overhead | Keep the existing `release` skill as the human-in-the-loop bump step; CI's job is verification + publish, not decision-making |
-| OS matrix (macOS + Windows runners) alongside Node-version matrix | "Real CI tests all platforms" | Motto is pure ESM Node with `fs/promises`/`path` — no native deps, no shell-outs beyond `git` in the release skill; doubles/triples CI minutes for a risk surface that's near-zero today (Windows path-separator bugs were already a named pitfall fixed in v0.0.1–v0.0.2, not a live gap) | Single OS (`ubuntu-latest`), Node-version matrix only; revisit if a Windows-specific bug report ever lands |
-| ESLint-style rich JSON schema (per-message `ruleId`, `messageId`, `fix` suggestion objects, `endLine`/`endColumn`) | "Match the industry-standard shape so tools like `reviewdog` can consume it directly" | Motto's linter doesn't autofix and doesn't currently track line/column per error (errors are `{skill, message}`, not per-token) — inventing fields that don't correspond to real data produces a schema consumers will trust and then get burned by (always `null`/absent fields) | Serialize the existing `{ ok, count, errors: [{ skill, message }] }` shape as-is; add `line`/`column` later only if/when the underlying `yaml` parser's position data is actually threaded through to error objects |
-| `--quiet` suppressing warnings (ESLint semantic) | ESLint precedent is the most familiar `--quiet` behavior to reach for | Motto's `lintProject` result has no warning/error severity split today — copying ESLint's exact semantic requires inventing a severity model that doesn't exist yet, which is a scope-creep feature, not a CLI-flag feature | `--quiet` in Motto means "suppress the success/progress line, not error lines" — a pure verbosity control, decoupled from any future severity system |
-| Automatic git-history rewrite (BFG/`git filter-repo`) wired into the pre-public CI gate | "If we're scanning for secrets, auto-clean them too" | History rewrite is destructive, breaks every existing clone/fork/tag reference, and should never run unattended on a `.git` history that also carries this project's entire GSD `.planning/` audit trail | Secrets scan is detect-only in CI; if it finds something, that's a stop-the-line human decision (rotate + manually decide whether/how to rewrite), not an automated remediation step |
+| **Auto-update the stamp silently** (e.g. `motto build` rewrites `motto.yaml`'s stamped version to match the running tool on every run) | Feels convenient — "just keep it in sync automatically" | Contradicts every credible prior-art tool studied. Rails explicitly refuses to auto-bump `load_defaults` — the stamp exists to represent "what the project has been *verified* to work with," not "what tool happens to be installed right now." Auto-updating destroys that signal and silently erases evidence that an upgrade step was skipped — exactly the failure mode this milestone exists to make visible, and exactly what the user's own framing named as "surprising." | Stamp is written once at `init`. Only a future, explicit `upgrade` command (deliberately deferred this milestone) should ever change it, and only after any required structural changes have actually been applied. |
+| **Build the `upgrade` command this milestone** | Feels like the "complete" feature — detect *and* fix in one milestone | Explicitly out of scope per PROJECT.md ("upgrade COMMAND is deliberately deferred (YAGNI) — only detection/awareness this milestone"). Designing a migration mechanism (Angular-CLI-style schematics) before there's a second real breaking change to validate it against repeats the exact premature-generality trap Motto's stated philosophy (mechanism over features, YAGNI ruthlessly) exists to avoid — and echoes how `template:` was correctly deferred until designed against the real `release` skill in v0.0.5. | Ship detection + an actionable message only. Design the upgrade mechanism against the *next* real structural break, the same way prior features were designed against concrete cases. |
+| **Blocking hard error on any skew, including patch/minor** | Mirrors Terraform's hard-block model, feels "safe" | Terraform's users provision infrastructure — a wrong version can corrupt state; the stakes justify a hard stop. Motto lints/builds skill files; most historical bumps involved no structural break at all. Hard-erroring on every skew would cry wolf constantly and train users to route around or ignore the check (the same fatigue npm lockfileVersion warnings already show in the wild). | Warn by default; reserve stop-and-look language for skew spanning a documented breaking-change boundary (see severity differentiator above). |
+| **Full semver range/constraint syntax in `motto.yaml`** (Terraform-style `required_version = ">= X, < Y"`) | Looks more "correct" / expressive than a single stamped value | Motto isn't a library with many external consumers pinning ranges against many providers — it's a single first-party CLI a project was scaffolded by once. There is exactly one "current installed tool version" to compare against at any time. A range parser adds real semver-range-parsing complexity and a new dependency, contradicting the project's explicit single-dependency (`yaml`) / minimal-maintenance-surface constraint. | Store one exact version string; compare via simple parsed-integer major/minor/patch ordering, no new dependency required. |
+| **Version check as its own subcommand** (`motto check-version`) | Seems modular, "does one thing" | Adds a fourth top-level verb to a CLI that has deliberately stayed minimal (`init`, `lint`, `build`, plus `--help`). Users would have to remember to run it separately — defeating the point, since skew should be caught for free during commands they already run routinely. | Fold the check into the start of `lint` and `build` (both already read `motto.yaml`) — zero new commands, zero new user habit required. |
 
 ## Feature Dependencies
 
 ```
-[Existing: motto lint/build return structured {ok, errors[]} results]
-    └──enables (no new data model needed)──> [--format json]
+[Stamp motto version at init]
+    └──requires──> [motto.yaml schema gains a version-of-motto field]
+                       (config.js/schema.js must tolerate its presence AND its absence)
 
-[Existing: parseArgs strict:true per-subcommand options]
-    └──requires extension (add `quiet`, `format` to options objects)──> [--quiet]
-    └──requires extension──────────────────────────────────────────────> [--format json]
+[Skew detection in lint/build]
+    └──requires──> [Stamp motto version at init]
+                       (nothing to compare without a stamp — this is a strict prerequisite,
+                        not a parallel track)
+    └──requires──> [Running tool's own version accessible at runtime]
+                       (read from package.json — already trivial in Node, no new work)
 
-[CI: Node matrix job] ──independent of──> [CI: single dogfood lint/build job]
-[CI: pack-install E2E job] ──requires──> [package.json `files` allowlist already correct]
-[CI: pack-install E2E job] ──surfaces risk from──> [husky "prepare" lifecycle script + missing .git in tarball-install scratch dir]
+[Skew-severity table / breaking-change ledger]
+    └──requires──> [Standing upgrade-path policy]      (PROJECT.md constraint, already decided)
+    └──enhances──> [Skew detection in lint/build]       (turns "any difference" into
+                        "meaningfully actionable difference")
 
-[Publish-on-tag CI workflow] ──requires──> [Release skill rewrite: local bump+tag+push only]
-[Publish-on-tag CI workflow] ──requires──> [D-05 tarball assertion moved into CI (pack-install E2E)]
-[npm-drift warning] ──requires──> [network reachability to npm registry from CI job]
-[npm-drift warning] ──enhances──> [Publish-on-tag CI workflow] (pre-publish existence check avoids a failed `npm publish` on duplicate version)
+[--format json skew field]
+    └──requires──> [Skew detection in lint/build]
+    └──enhances──> [Existing --format json output]      (v0.0.6, CLIX-01..03)
 
-[Trusted publishing (OIDC)] ──requires──> [Repo-public flip already done] (PROJECT.md sequencing)
-[Trusted publishing (OIDC)] ──requires──> [npm ≥ 11.5.1 in the publish job]
-[npm --provenance flag] ──requires only──> [id-token: write permission + GitHub-hosted runner] (does NOT require trusted publishing first)
+[Auto-update stamp silently] ──conflicts──> [Skew detection in lint/build]
+    (anti-feature: if the stamp is silently rewritten, there is nothing left to detect —
+     the two are mutually exclusive by design, not sequential)
 
-[Repo-public flip] ──requires──> [Secrets scan gate: clean result]
-[Repo-public flip] ──requires──> [Explicit .planning/ visibility decision] (independent of secrets scan — a content-inclusion choice, not a leak check)
-
-[GitHub Release notes step] ──requires──> [Publish-on-tag CI workflow already producing a tagged, published artifact to attach notes to]
+[Upgrade command] ──deferred, not built this milestone──> [Skew detection in lint/build]
+    (skew detection is the prerequisite signal a future upgrade command would consume;
+     building the command first would be backwards)
 ```
 
 ### Dependency Notes
 
-- **`--format json` requires no new data model** because `lintProject`/`buildProject` already return `{ ok, count, errors: [{skill, message}] }`. The work is: (1) add `--format`/`--quiet` to each subcommand's `parseArgs` options object, (2) branch the existing `process.stdout.write` calls on `parsed.values.format === 'json'` to `JSON.stringify(result)` instead of the hand-written lines. This is genuinely low complexity — the risk is scope creep into inventing fields (see Anti-Features).
-- **Pack-install E2E surfaces the husky risk** that a matrix/lint job never would, because it's the only job that installs from a *tarball* (not a git checkout with `.git` present) — this is exactly the gap where `"prepare": "husky"` can fail or silently no-op differently than in the repo-checkout CI jobs.
-- **npm-drift warning enhances (not blocks) publish-on-tag**: treat it as informational-first (warn, don't fail the workflow) for this milestone, since the existing three-way drift (package.json/motto.yaml/registry) is already live and a hard-fail CI gate landing on top of unresolved drift would immediately red the pipeline. Catch-up publish of 0.0.5 (per PROJECT.md) must happen *before* this gate is made blocking.
-- **Trusted publishing requires the public flip first, not the reverse** — OIDC trust configuration on npm's side can technically be set up against a private repo, but PROJECT.md already made the sequencing decision (`NPM_TOKEN` interim → OIDC after public). Provenance (`--provenance` flag) is the one piece of the trust story available immediately, independent of that sequencing.
-- **Secrets scan and `.planning/` visibility are two different gates**, not one: secrets scan is "did we leak a credential," `.planning/` visibility is "do we want the audit trail (GSD phase history, decisions, deferred debt) public." Conflating them risks skipping the deliberate content decision because the automated scan came back clean.
+- **Skew detection strictly requires the stamp to exist first.** Motto has zero pre-existing projects with a version stamp today — the *first* real skew check any project will ever run is "no stamp found." This must ship in the same phase as (or immediately after) the stamping feature, not as an independent parallel track.
+- **Auto-update conflicts with detection by design, not by oversight.** These are not sequential features to build one after the other — naming the conflict explicitly in the roadmap prevents someone from "helpfully" adding auto-restamp as a later follow-on that quietly defeats the entire point of this milestone.
+- **The severity table *is* the upgrade-path policy, not a separate artifact.** PROJECT.md already names "standing constraint: every structure/schema change ships with a documented upgrade path" as a target for this milestone. The ledger of which versions broke structure is the same data the severity-aware message needs to consult. Building them as two separate files would duplicate data and risk drift between them.
+- **Upgrade command depends on detection, never the reverse** — PROJECT.md is explicit about this sequencing ("version awareness is the detection layer that makes that future command possible"). Scope creep pulling the command into this milestone should be resisted.
 
 ## MVP Definition
 
-### Launch With (v0.0.6)
+### Launch With (v0.0.7)
 
-Minimum viable set — matches the milestone's stated target features, scoped to what's needed now.
+- [ ] `motto init` stamps the running motto version into `motto.yaml` — the precondition for all detection
+- [ ] `motto lint`/`motto build` read the stamp, compare to the running tool's own version, and emit an explicit, actionable, never-throw message on any detected skew (both directions handled, at minimum via plain major/minor/patch comparison)
+- [ ] Message names both versions and gives at least a generic next step (e.g. "see CHANGELOG for changes between vX and vY")
+- [ ] Missing stamp (pre-v0.0.7 projects, including magma if scaffolded earlier) is handled as "unknown" — no crash, no false-positive warning
+- [ ] A written, versioned ledger of breaking structural changes (starting with the v0.0.5 `<role>` migration, documented retroactively) that both the severity logic and the "standing upgrade-path policy" reference
 
-- [ ] CI: Node 20/22/24 matrix test job (`fail-fast: false`) — validates `engines.node` promise
-- [ ] CI: single dogfood lint/build job (latest LTS only) — validates Motto lints/builds its own `skills/` tree
-- [ ] CI: pack-install E2E job (tarball → tmp dir → `init`/`lint`/`build`) — validates the `files` allowlist and surfaces the husky-in-tarball risk
-- [ ] CI: publish-on-tag workflow (`NPM_TOKEN` interim, per PROJECT.md sequencing) + `--provenance` flag (cheap trust win, no OIDC prerequisite)
-- [ ] CI: npm-drift warning (informational, non-blocking given known existing drift) — package.json vs motto.yaml vs latest git tag vs registry
-- [ ] Release skill rewrite: local script does bump + tag + push only; publish + D-05 tarball assertion move into CI
-- [ ] Pre-public gate: `gitleaks` one-time full-history scan (detect-only, human decides remediation) + explicit `.planning/` visibility decision documented as a real decision, not a default
-- [ ] `--quiet` flag on `lint`/`build` (suppress success/progress line only, never error lines, no exit-code change)
-- [ ] `--format json` flag on `lint`/`build` (serialize existing result object, no invented fields)
-- [ ] GitHub Release notes: `generate_release_notes: true` wired into the publish-on-tag workflow
+### Add After Validation (v0.0.7.x / next milestone)
 
-### Add After Validation (v0.0.6.x / next milestone)
+- [ ] `--format json` structured skew field, once plain-text message wording is validated against a real skew case (magma running an older/newer motto against its scaffolded version)
+- [ ] Severity distinction (patch/minor = quiet or no warning; major or documented-breaking-boundary = louder message), once there's a second real breaking change to calibrate against
 
-- [ ] Make npm-drift warning blocking (hard-fail CI) — once the current three-way drift is resolved and stays resolved for a release or two
-- [ ] Migrate `NPM_TOKEN` → full OIDC trusted publishing — trigger: repo-public flip has landed and npm ≥11.5.1 is confirmed available in the publish job
-- [ ] Extend `--format json` beyond `lint`/`build` if `init` gains machine-consumable failure modes worth exposing
+### Future Consideration (v2+ / not this milestone)
 
-### Future Consideration (v2+)
-
-- [ ] OS matrix (macOS/Windows) in CI — defer until an actual platform-specific bug report lands
-- [ ] Conventional-Commits-driven changelog automation (`release-please`/`semantic-release`) — defer until commit discipline shifts toward Conventional Commits and/or multiple contributors make the manual bump step real friction
-- [ ] Per-message line/column position in `--format json` errors — defer until the `yaml` parser's position data is actually threaded into `lintProject`'s error objects
+- [ ] An actual `upgrade` command walking a project through structural changes — deferred explicitly per PROJECT.md until the next real schema break demands it
+- [ ] Any semver-range constraint syntax in `motto.yaml` — no present use case; a single exact-version stamp is sufficient
 
 ## Feature Prioritization Matrix
 
 | Feature | User Value | Implementation Cost | Priority |
 |---------|------------|----------------------|----------|
-| Node 20/22/24 CI matrix | HIGH | LOW | P1 |
-| Dogfood lint/build CI job | HIGH | LOW | P1 |
-| Pack-install E2E job | HIGH | MEDIUM | P1 |
-| Publish-on-tag workflow | HIGH | MEDIUM | P1 |
-| Release skill rewrite (local = bump/tag/push only) | HIGH | LOW | P1 |
-| Pre-public secrets scan + `.planning/` decision | HIGH (one-way door) | MEDIUM | P1 |
-| `--quiet` flag | MEDIUM | LOW | P1 |
-| `--format json` flag | MEDIUM (HIGH for CI consumers specifically) | LOW–MEDIUM | P1 |
-| GitHub Release notes (auto-generate) | MEDIUM | LOW | P1 |
-| npm-drift warning (informational) | MEDIUM | MEDIUM | P1 |
-| `--provenance` flag on publish | MEDIUM (trust signal) | LOW | P2 |
-| OIDC trusted publishing migration | MEDIUM | MEDIUM | P2 (deferred by design) |
-| npm-drift warning made blocking | MEDIUM | LOW (once P1 version lands) | P3 |
-| OS matrix (macOS/Windows) | LOW | MEDIUM | P3 |
-| release-please/semantic-release | LOW (for a solo maintainer) | HIGH | P3 |
+| Stamp version at init | HIGH | LOW | P1 |
+| Skew detection + message in lint/build | HIGH | LOW–MEDIUM | P1 |
+| Graceful handling of missing stamp | HIGH (prevents regressions on existing projects) | LOW | P1 |
+| Breaking-change ledger / upgrade-path policy doc | HIGH (this *is* the standing constraint PROJECT.md names) | LOW–MEDIUM | P1 |
+| Skew direction distinguished in message | MEDIUM | LOW | P2 |
+| Severity keyed to semver distance / breaking-boundary | MEDIUM | MEDIUM | P2 |
+| `--format json` skew field | LOW–MEDIUM (mainly for CI/agentic consumers) | LOW | P2 |
+| Upgrade command | Deferred — not evaluated this milestone | — | P3 (explicitly out of scope) |
 
 **Priority key:**
-- P1: In this milestone (v0.0.6)
-- P2: Sequenced-next by explicit PROJECT.md decision, not this milestone
-- P3: Backlog, revisit only on real friction/bug signal
+- P1: Must have for v0.0.7 launch
+- P2: Should have, add once P1 is validated against a real skew (magma)
+- P3: Nice to have, explicitly deferred by PROJECT.md
 
-## Precedent Tool Analysis
+## Competitor Feature Analysis
 
-Framed as precedent tools rather than competitors — Motto isn't competing with these, but its CLI ergonomics inherit expectations set by them.
-
-| Concern | ESLint | ShellCheck | Motto's Approach |
-|---------|--------|------------|-------------------|
-| `--format json` top-level shape | Bare array of `{filePath, messages[], errorCount, warningCount}` per file | Object wrapper: `{comments: [{file, line, column, level, code, message, fix}]}` | Neither — serialize Motto's own existing `{ok, count, errors: [{skill, message}]}` result shape verbatim; don't adopt either precedent's field names since Motto's error unit is "skill," not "file+line" |
-| `--quiet` semantics | Suppresses warning-severity messages only; errors always shown; exit code driven separately by `--max-warnings` | N/A (no severity-based quiet mode in ShellCheck) | Suppress success/progress output only; no severity model exists in Motto today — don't invent one to match ESLint |
-| Publish/release automation | N/A (project-specific) | N/A | GitHub Actions tag-triggered workflow, `NPM_TOKEN` interim → OIDC trusted publishing after public flip (PROJECT.md-sequenced) |
-| Release notes | N/A | N/A | `generate_release_notes: true` (GitHub-native), not a hand-maintained CHANGELOG.md — lowest-effort option consistent with "mechanism over features" |
+| Feature | Rails (best-in-class) | Angular CLI (cautionary) | Motto's Approach |
+|---------|------------------------|---------------------------|-------------------|
+| Explicit stamp of scaffolding-time version | Yes (`load_defaults X.Y`) | No — inferred from installed packages, a recurring bug source | Yes — `motto.yaml` field, single source of truth |
+| Auto re-stamp | Never (human-gated) | N/A | Never (anti-feature, explicitly rejected) |
+| Message actionability | Very high — generates a file listing every changed default | Low — version-detection failures surface as confusing migration skips | High — names both versions + next step; severity-aware follow-up planned |
+| Hard error vs warning | Neither (behavior-change-if-ignored, not a runtime check) | N/A (detection bugs, not a deliberate warn/error design) | Warn by default; reserve stronger language for documented breaking boundaries |
 
 ## Sources
 
-- [Building and testing Node.js — GitHub Docs](https://docs.github.com/en/actions/tutorials/build-and-test-code/nodejs) — Node CI matrix conventions
-- [actions/setup-node](https://github.com/actions/setup-node) — matrix + npm caching mechanics
-- [GitHub Actions Matrix Builds — BetterLink Blog](https://eastondev.com/blog/en/posts/dev/20260428-github-actions-matrix/) — matrix vs single-job cost/signal tradeoff
-- [Trusted publishing for npm packages — npm Docs](https://docs.npmjs.com/trusted-publishers/) — OIDC requirements, npm ≥11.5.1
-- [npm trusted publishing with OIDC is generally available — GitHub Changelog](https://github.blog/changelog/2025-07-31-npm-trusted-publishing-with-oidc-is-generally-available/) — GA status, `id-token: write` requirement
-- [Generating provenance statements — npm Docs](https://docs.npmjs.com/generating-provenance-statements/) — `--provenance` flag independent of trusted publishing
-- [Things you need to do for npm trusted publishing to work — philna.sh](https://philna.sh/blog/2026/01/28/trusted-publishing-npm/) — tag-push vs GitHub-Release trigger distinction, common misconfigurations
-- [NPM Published Version Check — GitHub Marketplace](https://github.com/marketplace/actions/npm-published-version-check) — pre-publish existence-check pattern
-- [npm-publish — npm Docs](https://docs.npmjs.com/cli/v11/commands/npm-publish/) — default duplicate-version-publish failure behavior
-- [ShellCheck JSON formatter source](https://github.com/koalaman/shellcheck/blob/master/src/ShellCheck/Formatter/JSON.hs) — `comments[]` wrapper schema, `fix` object shape
-- [ESLint Formatters Reference](https://eslint.org/docs/latest/use/formatters/) — bare-array JSON shape, `messages[]`/`errorCount`/`warningCount`
-- [Implement --quiet to only output errors and not warnings — eslint/eslint#905](https://github.com/eslint/eslint/issues/905) — `--quiet` origin/semantics
-- [ESLint Command Line Interface Reference](https://eslint.org/docs/latest/use/command-line-interface) — `--quiet`/`--max-warnings` interaction, exit codes
-- [CLI conventions — dmyersturnbull](https://dmyersturnbull.github.io/convention/cli/) — general `--quiet` / stdout-stderr conventions
-- [Clean non-interactive stdout — github/copilot-cli#3397](https://github.com/github/copilot-cli/issues/3397) — quiet-mode UI-chrome-to-stderr pattern
-- [Automatically generated release notes — GitHub Docs](https://docs.github.com/en/repositories/releasing-projects-on-github/automatically-generated-release-notes) — native PR-grouping behavior
-- [softprops/action-gh-release — GitHub Marketplace](https://github.com/marketplace/actions/generate-github-release-notes) — `generate_release_notes: true` usage
-- [Automated GitHub Releases with GitHub Actions and Conventional Commits — Kubesimplify](https://blog.kubesimplify.com/automated-github-releases-with-github-actions-and-conventional-commits) — release-please pattern (evaluated and rejected — see Anti-Features)
-- [Fixing "husky: not found" as a devDependency in CI — Medium](https://medium.com/@albertodeagostini.dev/fixing-husky-not-found-as-a-devdependency-in-the-ci-ec438cf73aa0) — `prepare` script CI failure modes
-- [Skip installing hooks on CI — typicode/husky#920](https://github.com/typicode/husky/issues/920) — CI/NODE_ENV guard pattern
-- [BFG Repo-Cleaner](https://rtyley.github.io/bfg-repo-cleaner/) and [BFG & git-filter-repo comparison — Elegant Software Solutions](https://www.elegantsoftwaresolutions.com/blog/bfg-git-filter-repo-cleaning-leaked-secrets-from-history) — history-rewrite tool tradeoffs (evaluated, kept out of CI — see Anti-Features)
-- [gitleaks/gitleaks](https://github.com/gitleaks/gitleaks) — one-time full-history scan pattern (`fetch-depth: 0`)
-- Live verification against this repo (2026-07-03): `package.json`/`motto.yaml` both at `0.0.3`, latest git tag `v0.0.5`, `npm view @jeremiewerner/motto version` → `0.0.3` — confirms the three-way drift the npm-drift feature must address
+- `oneuptime.com/blog/post/2026-02-23-how-to-fix-terraform-version-constraint-errors` — Terraform version constraint error format and enforcement behavior. Confidence: MEDIUM (secondary blog, cross-checked against HashiCorp support article in the same result set).
+- `developer.hashicorp.com/terraform/language/expressions/version-constraints` — Terraform `required_version` official semantics. Confidence: MEDIUM (official docs, summarized via search snippet, not directly fetched).
+- `rust-lang.github.io/rfcs/2495-min-rust-version.html`, `doc.rust-lang.org/cargo/reference/rust-version.html` — Cargo `rust-version`/MSRV official semantics. Confidence: MEDIUM.
+- `github.com/rust-lang/cargo/issues/16549` — `rust-version` field is "misleading," known silent-drift problem. Confidence: MEDIUM (maintainer-acknowledged issue).
+- `angular.dev/cli/update`, `github.com/angular/angular-cli/issues/32517`, `#25925` — `ng update` behavior and version-detection bugs. Confidence: MEDIUM (official docs + multiple corroborating GitHub issues).
+- `eslint.org/docs/latest/use/migrate-to-9.0.0`, `migrate-to-10.0.0`, migration guide — ESLint flat-config deprecation timeline. Confidence: MEDIUM (official docs).
+- `github.com/volta-cli/volta` issues (`#742`, `#1774`, `#1033`, `#986`), `docs.volta.sh/reference/pin` — Volta engines/pin behavior and warning format. Confidence: MEDIUM (project issue tracker + official reference doc).
+- `yeoman.io/authoring/storage.html`, `npmjs.com/package/update-yeoman-generator` — `.yo-rc.json` version-stamping convention (community pattern, not core Yeoman). Confidence: MEDIUM.
+- `guides.rubyonrails.org/configuring.html`, `guides.rubyonrails.org/upgrading_ruby_on_rails.html`, `fastruby.io` (2 articles), `dev.to/michymono77` — Rails `config.load_defaults` and `schema.rb` version-stamping/upgrade-guide mechanics. Confidence: MEDIUM (official guides + specialized Rails-upgrade consultancy blog, cross-corroborated).
+- `bobbyhadz.com/blog/npm-warn-old-lockfile...`, `docs.npmjs.com/cli/v11/configuring-npm/package-lock-json`, `github.com/npm/cli/issues/4596` — npm `lockfileVersion` warning and silent-upgrade behavior. Confidence: MEDIUM (official docs + corroborating issue).
+- `github.com/cookiecutter/cookiecutter/issues/1921`, `#1135`, `pypi.org/project/cookiecutter-project-upgrader` — cookiecutter's *lack* of built-in version tracking, used as negative-example prior art. Confidence: MEDIUM.
+- Motto codebase (`src/lint.js`, `src/build.js`, `src/init.js`) — directly read to confirm existing `{ ok, errors: [{skill, message}], count }` result shape and current `motto.yaml` template has no motto-version field yet. Confidence: HIGH (primary source, own codebase).
 
 ---
-*Feature research for: CI/CD + release engineering + CLI ergonomics (Motto v0.0.6 "Prove & Publish")*
-*Researched: 2026-07-03*
+*Feature research for: Motto v0.0.7 Version Awareness*
+*Researched: 2026-07-06*
