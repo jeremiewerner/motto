@@ -1,260 +1,242 @@
 # Pitfalls Research
 
-**Domain:** CI-driven npm publishing (tag-triggered), OIDC/trusted publishing, going repo-public, CLI machine-output ergonomics
-**Researched:** 2026-07-03
-**Confidence:** MEDIUM (npm/GitHub official docs cross-checked with multiple independent community write-ups; two items — partial-publish recovery, retroactive tagging — are LOW, no first-party guidance exists and the recommendation is synthesized from adjacent policy)
+**Domain:** Retrofitting version stamping + skew detection onto an already-shipped CLI (Motto) with real, already-scaffolded consumer projects (Motto's own repo, and "magma") that predate the stamp
+**Researched:** 2026-07-06
+**Confidence:** MEDIUM overall — the never-throw/malformed-input and bootstrap-compatibility patterns are well-established software engineering practice (schema-versioning literature, semver.org spec, Terraform's own constraint-checking design) cross-checked across multiple independent sources (MEDIUM); the Claude Code marketplace-cache findings are HIGH-relevance because they are confirmed, numbered, currently-open upstream GitHub issues against `anthropics/claude-code` itself (MEDIUM-verified, cross-checked across 7 independent issue reports); single-source web summaries not otherwise corroborated are flagged LOW inline.
 
-This research is scoped to **v0.0.6 "Prove & Publish"**, added onto Motto's *existing* setup: `prepublishOnly` runs `motto build`; `version` lifecycle script edits `motto.yaml`; husky pre-commit hook; `files` allowlist (`bin/`, `src/`, `dist/public/`); `release` skill currently does local `npm publish`; npm registry is stuck at `0.0.3` while git has tags through `v0.0.5`; CLI (`bin/motto.js`) currently writes **both** success and error lines to `stdout` (only parseArgs/unknown-flag/directory-guard errors go to stderr) and always sets `process.exitCode` (never `process.exit()`).
+This research is scoped to **v0.0.7 "Version Awareness"**: adding a `motto.yaml` version stamp (written at `init`) and skew detection (compared at `lint`/`build`) into a codebase where **zero existing consumer projects have this field** — including Motto's own dogfooded `skills/` tree and the real external project **magma** (`motto init magma`, scaffolded before this milestone existed). The critical constraint is Motto's own **never-throw invariant**, already violated 5 times historically (v0.0.2, Phase 10 fs-errors, Phase 15 cwd-resolve bypass, Phase 18 widened-param shape, Phase 20 never-red CI substitution) — every one of those escapes was a "tests were green but the boundary was still broken" failure, which is exactly the failure shape version-stamp parsing invites if adversarial cases aren't enumerated up front.
 
 ## Critical Pitfalls
 
-### Pitfall 1: Trusted-publishing OIDC config drifts from the actual workflow identity → silent 404/401 on publish
+### Pitfall 1: The bootstrap problem — treating "no stamp" as an error instead of the expected state of every pre-existing project
 
 **What goes wrong:**
-`npm publish` from the CI job fails with a 404 (npm can't match the OIDC token to a Trusted Publisher rule) or a 401 (enterprise-issuer mismatch), even though everything "looks" configured.
+The very first real-world input to the new skew-detection code is a project **without** `motto.yaml` version field at all — both magma and Motto's own repo predate this feature. If the lint/build code path treats a missing stamp as a validation failure (throws, exits non-zero, or produces a scary error), every existing consumer project breaks the moment they run their next `lint`/`build` with the upgraded CLI — before they've done anything wrong.
 
 **Why it happens:**
-npm's Trusted Publisher record must match the workflow **exactly**: GitHub org/user (case-sensitive), repo, workflow **filename** (not job name), and environment name if one is declared. A renamed workflow file, a workflow split into a reusable/caller pair (npm authorizes the *caller*, not the reusable workflow), a missing `permissions: id-token: write` block, or a leftover `NPM_TOKEN` env var silently falling back to token auth are all invisible until publish runs. Self-hosted runners are not supported at all. Trusted publishing also requires **npm CLI ≥ 11.5.1** — Node 20 and Node 22 LTS do **not** bundle a new-enough npm by default (only Node 24+ ships npm 11.x out of the box), so a matrix job running on Node 20/22 that reaches the publish step will fail even with a perfectly configured Trusted Publisher, because the runner's npm binary is too old.
+Version-awareness features are almost always designed and tested against the "happy path" of a freshly-stamped project, because that's the only state the *developer* has ever seen while building the feature. The retrofit angle — "this field has existed for zero seconds in every project that currently exists" — is easy to forget precisely because it's not a new-project concern, it's a whole-installed-base concern. The standard fix pattern across schema-versioning systems (config files, database migrations, Cosmos DB documents) is: **absence of a version field means "the oldest version," not "invalid."** Treating the pre-versioning state as a first-class, valid, silently-migratable case is the load-bearing decision here. [confidence: LOW — general schema-versioning pattern, not Motto-specific, synthesized from a single web source]
 
 **How to avoid:**
-- Set the publish job's Node version explicitly to the newest LTS in the matrix (or add `npm install -g npm@latest` as the first step of the publish job) — do not assume the CI Node-matrix's lowest version is fine for the publish leg.
-- Configure the Trusted Publisher with the workflow **filename** exactly as committed (`.github/workflows/publish.yml`, not a display name), no environment unless one is actually declared in the workflow.
-- Add `permissions: { id-token: write, contents: read }` at the job level (not just workflow level) for the publish job specifically.
-- Per this milestone's plan, ship with `NPM_TOKEN` as the interim mechanism and sequence OIDC *after* the public flip (already the stated plan) — don't attempt both in the same phase; token auth is simpler to debug first, OIDC can replace it once the token path is proven.
+- Missing `version:` key in `motto.yaml` is **not an error condition** in lint/build's core validation — it's a distinct, named state (e.g. `unstamped`) that produces an **informational** message ("this project predates version stamping; run `motto init --stamp` — or whatever the chosen backfill mechanism is — to add one") rather than a lint failure.
+- Never gate `lint`/`build` exit code on presence of the stamp. Skew detection should degrade to "no comparison possible" when there's nothing to compare against, not "comparison failed."
+- Test the exact two real-world fixtures this milestone names: a `motto.yaml` with no `version` key at all (Motto's own tree pre-migration), and a freshly-scaffolded-pre-v0.0.7 shape (magma). Both must lint/build clean with only an advisory note, zero exit-code change, zero thrown errors.
 
 **Warning signs:**
-- `npm publish` in CI returns 404/403/401 despite `npm whoami` working locally.
-- The publish job's Node version differs from what you tested trusted-publishing setup against locally.
+- Any code path that does `if (!motto.version) throw` or `if (!motto.version) return { valid: false }` inside the core validator.
+- A test suite where every skew-detection fixture already has a `version:` field — meaning the unstamped case was never actually exercised.
 
 **Phase to address:**
-CI workflow phase (publish-on-tag) — verify with a dry-run/canary publish (e.g. a prerelease tag to a scratch scope, or `npm publish --dry-run` in the workflow) before trusting it against the real package on a real tag.
+The stamping/skew-detection implementation phase itself — this must be the *first* adversarial test written (before the happy-path "versions match" test), because it defines the shape of every other check.
 
 ---
 
-### Pitfall 2: Tag pushed, CI publish fails — no built-in recovery path, and re-running is not idempotent
+### Pitfall 2: Malformed stamp values crash the never-throw boundary
 
 **What goes wrong:**
-`git push --follow-tags` succeeds, the workflow triggers on the tag, but the publish step fails (network blip, OIDC misconfig, lint/test flake). The tag now exists and points at unpublished code. Re-running the workflow may re-attempt side effects (e.g. GitHub Release creation) if the workflow isn't structured to be safely re-runnable.
+`version:` in `motto.yaml` is user/hand-edited YAML. Real malformed inputs that will eventually occur: `version: 7` (bare number, YAML parses as a number not a string), `version: [0, 0, 7]` (array), `version: {major: 0, minor: 0, patch: 7}` (object), `version: ""` (empty string), `version: "not-a-version"` (garbage string), `version: true`, `version: null`. If the skew-detection code assumes `motto.yaml.version` is always a parseable semver string and calls `.split('.')` or a semver comparator directly on it, a non-string shape throws a `TypeError` inside `motto lint`, taking down the whole CLI run — a direct, concrete repeat of the project's 5 historical never-throw violations, all of which were exactly this shape: an assumption about input shape that held in every test fixture but not in the wild.
 
 **Why it happens:**
-Tag-push triggers are commonly built assuming "tag exists ⇒ publish already happened or is about to," but nothing enforces that invariant. Unlike `npm version` (which is transactional locally — bump, commit, tag, and if the pre-commit hook/tests fail, nothing is created), a CI publish failure leaves git and npm out of sync with no rollback. There is no official npm/GitHub guidance for this exact recovery flow — this is a known-thin area (LOW confidence beyond first principles).
+YAML's type coercion means `version: 0.0.7` and `version: "0.0.7"` parse identically as strings (fine), but `version: 7` parses as a number, and `version: 0.7` parses as a float, silently dropping information (`0.7` vs `0.0.7` vs `0.70` are all different semver strings but overlapping YAML number literals). This is a much easier trap to fall into than a "someone typed garbage" error, because well-intentioned users writing YAML by hand can produce a type-wrong-but-visually-fine file without realizing it.
 
 **How to avoid:**
-- Make every step in the publish job idempotent and re-runnable: gate `npm publish` with a version-existence check (`npm view <pkg>@<version> version` — if it already resolves, skip publish rather than error) so a workflow re-run after a transient failure doesn't need manual intervention.
-- Keep GitHub Release creation and changelog steps separate from (and after) the npm publish step, each independently safe to re-run or skip if already done.
-- Never delete/retag `vX.Y.Z` to "retry" — a version number is either published or it isn't; if the tag's content was broken, cut `vX.Y.Z+1` instead. Deleting and re-pushing a tag after a *partial* publish attempt risks the two diverging from what's actually on the registry.
-- Document the manual recovery runbook explicitly in the release skill: "if CI publish fails after tag push, do NOT re-tag the same version; fix the workflow/config, then either re-run the existing workflow run (safe if the version-existence guard above is in place) or publish the same tag's commit under the next patch version."
+- The stamp reader must **type-check before parsing**: reject (as a lint error entry, never a throw) anything that isn't `typeof === 'string'` at the YAML-parse boundary, with a message that names the actual received type/value (`"motto.yaml version must be a string like \"0.0.7\", got number (7)"`).
+- Semver-string validation must be a **pure boolean-returning function** (regex match against `^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$` is sufficient — the project needs comparison, not full semver-lib parsing, given the zero-dependency philosophy), never a function that throws on non-matching input.
+- Enumerate and test every case above as a named adversarial test: non-string types (number, array, object, boolean, null), empty string, and syntactically-invalid-but-string values (`"v0.0.7"` with a leading v, `"0.0"` missing patch, `"latest"`, `"0.0.7.1"` four segments). Every one must produce a clean error/advisory entry, not a crash — this is the literal never-throw invariant the project already tracks in memory as a recurring risk.
 
 **Warning signs:**
-- A `vX.Y.Z` tag exists on GitHub with no matching version on npm (`npm view <pkg> versions`).
-- CI workflow run for a tag shows a red X on the publish job.
+- Any direct string method call (`.split`, `.match`, `.localeCompare`) on `motto.yaml.version` without a preceding `typeof` guard.
+- A comparison function whose only tests use valid semver strings on both sides.
 
 **Phase to address:**
-CI workflow phase — build the version-existence guard into the publish step from day one; document the recovery runbook in the release-skill rewrite phase (local = bump+tag+push only).
+Same phase as Pitfall 1 — malformed-stamp handling and missing-stamp handling are two branches of the same "untrusted input" boundary and should be designed and reviewed together, then explicitly covered by `/gsd-code-review high` per this project's established post-milestone hardening pattern (caught real never-throw violations in v0.0.2, v0.0.4, and structurally in v0.0.5 Phase 18).
 
 ---
 
-### Pitfall 3: `npm ci` triggers `prepublishOnly` and other lifecycle scripts in CI — unexpected side effects and untrusted code execution
+### Pitfall 3: Skew message tells the user to move in the wrong direction
 
 **What goes wrong:**
-`prepublishOnly` does not fire on `npm publish`'s internal dependency resolution, but it (and `prepare`) **does** fire on any `npm ci` / `npm install` — including the CI job's initial dependency-install step, long before the actual publish step runs. In Motto's case, `prepublishOnly` runs `motto build`, which is cheap and idempotent, so this is low-risk here — but it means `motto build` output could already be regenerated multiple times across a matrix (once per Node version) before the publish job even starts, and any *new* lifecycle script added later must be audited for this same double-fire behavior.
+Version skew is inherently bidirectional — a project's stamped version can be *behind* the installed tool (the common case: tool was upgraded, project wasn't rebuilt) or *ahead* of it (a less common but real case: a project was stamped by a newer Motto than what's currently installed, e.g. a teammate on a newer global install, or a rolled-back local install). A skew message that always says "your project is out of date, re-run `motto init`/upgrade" regardless of which direction the mismatch actually goes will, in the ahead-case, send the user toward the *wrong* remedy — reinitializing or "upgrading" a project that's actually fine, while the real fix is upgrading their *local tool*.
 
 **Why it happens:**
-Lifecycle scripts are a package-level concept keyed to the *action being performed on the current package* (install vs publish), not to a specific CI step. `npm ci` always runs `prepare` (that's how husky gets (re)installed) and, because `npm ci` internally performs an install of the current package into its own tree, `prepublishOnly`-adjacent hooks can be triggered depending on npm version and command context. Treat all lifecycle scripts as "will run on every `npm ci`/`npm install`," not "only runs when I expect."
+It's tempting to write one generic skew string ("version mismatch detected") and reuse it for both directions because the detection logic (`stamped !== installed`) is symmetric even though the remedy is not. Terraform's `required_version` constraint checking is the closest prior art here: its error explicitly states whether the local binary is "too new" or "too old" for the constraint and points the fix at whichever side is actually wrong (upgrade the Terraform CLI vs. relax the config's constraint) — never a single undirected "mismatch" string. [confidence: MEDIUM — corroborated by both HashiCorp's own docs and independent community write-ups on constraint-error UX]
 
 **How to avoid:**
-- Use `npm ci` (not `npm install`) in every CI job for determinism (respects the lockfile exactly, fails hard on drift) — already implied by the existing `package-lock.json` commit-in-release-commit pattern.
-- Audit every lifecycle script (`prepare`, `version`, `prepublishOnly`) for idempotency and side-effect safety under repeated invocation, since CI may run `npm ci` once per matrix leg (3× for Node 20/22/24) plus once more in the publish job.
-- Do not add new lifecycle scripts that assume they run exactly once per release; assume N times.
+- Skew detection must compute and branch on **direction**, not just inequality: `stampedVersion < installedVersion` (project is behind — normal case, likely wants a rebuild/re-stamp path once that command exists) vs. `stampedVersion > installedVersion` (tool is behind — the fix is `npm install -g @jeremiewerner/motto@latest` or equivalent, not touching the project at all).
+- Each direction gets its own message string naming the concrete remedy for *that* direction. Never emit one shared "version mismatch" string for both.
+- Given this milestone deliberately defers the upgrade *command* (YAGNI until a real schema break demands it), the behind-case message should say what's true today — "project was scaffolded/built with an older Motto (X); no action required unless you hit an incompatibility" — not imply a migration command that doesn't exist yet.
 
 **Warning signs:**
-- `motto build`'s `dist/` output changes between matrix legs for reasons unrelated to source changes (should be fully deterministic — flag if not).
-- A future lifecycle script writes to a file or makes an external call — that becomes unsafe to run N times.
+- A single template string interpolated with both versions but no conditional on which one is larger.
+- Tests that only cover one direction of skew (almost always "tool is newer" since that's what a developer sees constantly during their own development) and never the "tool got downgraded / project stamped by a newer version" direction.
 
 **Phase to address:**
-CI workflow phase — when writing the test-matrix job, note explicitly (in a comment) that `prepublishOnly`/`prepare` fire on every `npm ci`, so the matrix's install step is not "free" of side effects.
+The skew-detection phase — write the direction-aware message and its two adversarial tests (project-behind, project-ahead) as part of the initial implementation, not as a follow-up polish pass.
 
 ---
 
-### Pitfall 4: husky's `prepare` script fails in CI when `devDependencies` are pruned or `.git` is absent
+### Pitfall 4: Stamp drift — no defined update trigger means the stamp silently goes stale immediately
 
 **What goes wrong:**
-Any CI step that runs `npm ci` (or `npm install`) triggers `"prepare": "husky"`. If that step ever runs with `--omit=dev` / `NODE_ENV=production` (pruning `devDependencies`, where `husky` lives), the `husky` binary isn't installed and the prepare script fails with `sh: husky: not found`, aborting the entire install step — including in the **pack-install E2E** step this milestone adds (tarball → tmp dir → `init`/`lint`/`build`), where the extracted tarball almost certainly won't have a `.git` directory at all (husky's install step assumes a git repo to attach hooks to).
+If `motto.yaml`'s version is written **only** at `init` and never touched again, it starts drifting the moment the user upgrades their global Motto install and runs `lint`/`build` again — the stamp will forever say the `init`-time version even after years of using a newer tool, making skew detection permanently "on" for every long-lived project and training users to ignore the warning (alert fatigue), which defeats the entire feature.
 
 **Why it happens:**
-`prepare` is unconditionally wired into `package.json` for the local dev workflow (git hooks on `git commit`) but ships as a script that npm will try to run in *any* context that does a full install, including CI matrix jobs and — critically for this milestone — the tarball-install E2E test which extracts the published package into a bare temp directory with no `.git` at all.
+"Stamp at init" is the obvious, minimal-surface-area implementation (matches this project's YAGNI philosophy and the fact that the upgrade command itself is explicitly deferred), but it leaves an open question the milestone doesn't yet answer: does `build` (or `lint`, or neither) ever *rewrite* the stamp to the currently-installed version once skew is detected and presumably tolerated? Without an explicit answer, the default behavior (never rewritten) is a decision made by omission, not by design — and "silently stale forever" is a materially different, worse UX than "intentionally version-locked."
 
 **How to avoid:**
-- Guard the `prepare` script so it no-ops cleanly outside a git repo and/or outside dev installs, e.g. `"prepare": "husky || true"` (or check `process.env.CI`/absence of `.git` and exit 0) — do this **before** adding the pack-install E2E step, since that step will otherwise fail on `npm ci`/`npm install` inside the extracted tarball even though `husky` isn't in the published `files` allowlist and isn't meant to run there at all.
-- In the CI test-matrix job, if dependency install ever uses `--omit=dev` for speed, either skip that flag or explicitly guard `prepare`.
-- Confirm the guard doesn't silently swallow a *real* husky install failure during normal local `npm install` — scope the guard to CI/no-git conditions specifically, not "always succeed."
+- Make the update-trigger decision **explicit and documented** in this milestone, even if the answer is "never, by design, until the upgrade command exists" — write it down as a Key Decision in PROJECT.md, not left implicit.
+- If the decision is "stamp never auto-updates," the skew message (Pitfall 3) must reflect that permanence — i.e. don't word it as if the drift is temporary/accidental when it's actually the intended standing state.
+- Consider whether `build` (which already touches the project tree and is run far more often than `init`) is a more natural rewrite point than `init`-only — but only if the project explicitly wants "skew is always transient," which contradicts the deferred-upgrade-command stance from PROJECT.md ("the upgrade command is deliberately deferred until the first real schema break demands it"). Given that stance, "never auto-rewrites" is the more consistent design — surface skew as a persistent, informational fact of life, not a bug to auto-heal away.
 
 **Warning signs:**
-- Pack-install E2E step fails immediately on its `npm ci`/`npm install` with `husky: not found` or `.git can't be found`.
-- CI test-matrix job fails only in a leg that uses a pruned/production install.
+- No test exists for "run build twice with two different installed-tool versions" to observe whether the stamp changes between runs.
+- The skew message's wording implies an action loop that doesn't actually exist yet (e.g. "will be updated automatically" when nothing updates it).
 
 **Phase to address:**
-CI workflow phase, specifically before/alongside adding the pack-install E2E job — this is the step most likely to hit it, since it's the first time the published tarball's `npm ci` behavior is exercised outside a git worktree.
+The stamping-mechanism phase — this is a design decision to lock (and record in Key Decisions), not just an implementation detail; it directly determines what the skew message in Pitfall 3 is allowed to promise.
 
 ---
 
-### Pitfall 5: Going public exposes full git history, not just the current tree — and GitHub's own scanning only starts *after* the flip
+### Pitfall 5: Semver comparison edge cases when deliberately avoiding a semver library
 
 **What goes wrong:**
-Flipping repo visibility to public instantly exposes every commit, branch, and tag ever pushed — including anything deleted in a later commit but still present in history (old `motto.yaml` drafts, accidentally-committed `.env`, npm tokens pasted into a debugging commit, `.planning/` content if it was ever committed with sensitive notes). GitHub's automatic secret scanning for public repos only activates **after** the repo goes public — it is not a pre-flight gate, so by the time it flags something, the secret has already been publicly visible (and is presumed compromised regardless of subsequent history rewriting, since forks/clones/caches may have already grabbed it).
+Motto's zero-dependency-beyond-`yaml` philosophy means comparison logic will likely be hand-rolled (split-on-dot, compare numerically) rather than pulling in the `semver` package. Hand-rolled comparison breaks on: prerelease/build-metadata suffixes (`0.0.7-beta.1` vs `0.0.7`ordering per spec is *lower*, not higher, than the plain release — a naive string or even naive numeric-tuple compare gets this backwards or ignores the suffix entirely, and Motto's own version history already includes non-monotonic-looking jumps like 0.3 → 0.6 that a naive parser must not choke on), the 0.x "anything can change" convention that has no formal comparison implication but is easy to accidentally encode as special-case logic that doesn't generalize once the project crosses 1.0, and simple segment-count mismatches (`"0.7"` vs `"0.0.7"` — two segments vs three).
 
 **Why it happens:**
-"Delete the file" is conflated with "remove the secret" — deleting in a later commit does not touch earlier commits. Teams also under-scope their secret scan to the current file tree instead of full history (`git log --all --source -p` / a dedicated history scanner), missing anything that was committed-then-removed.
+A minimal string-split-and-compare implementation looks correct against every version string the developer tests it with during development (which will always be well-formed three-segment releases, because that's all Motto has shipped so far), so the gap between "works for every version Motto has actually published" and "works for every string that can end up in a hand-edited YAML file" is invisible until a prerelease tag or malformed segment count shows up in the wild.
 
 **How to avoid:**
-- Run a local, full-history secrets scan (gitleaks or trufflehog, `--all` / full-history mode, including all tags and branches — not just `HEAD`) **before** flipping visibility, as this milestone's "pre-public gate" already plans.
-- Treat any hit as compromised: rotate/revoke first, rewrite history second (`git-filter-repo`, preferred over BFG for control/repeatability) only as cleanup — rewriting history without rotating the actual secret is theater.
-- After a `git-filter-repo` pass: `git reflog expire --expire=now --all && git gc --prune=now --aggressive`, then force-push and require every clone/fork to be re-cloned (rewritten history breaks existing clones).
-- Explicitly resolve the stated `.planning/` visibility decision (already flagged in PROJECT.md as an open gate) — scan `.planning/` history too, since it may contain draft credentials, internal URLs, or notes never meant to ship publicly, even if the current `.planning/` tree looks clean.
-- This is a **one-way door** (already correctly identified in PROJECT.md) — budget time for the scan to actually run and for a human to review flagged hits, not just green-light on "no CI failures."
+- Scope the comparison function narrowly: Motto's own published versions are, and are likely to remain, plain `major.minor.patch` (no prereleases in the tag history to date per PROJECT.md). Write the comparator to handle exactly that shape correctly and **explicitly reject** (as a clean advisory, not attempt-and-guess) anything with a prerelease/build-metadata suffix or a non-3-segment count, rather than silently mis-comparing it. Narrow-and-correct beats broad-and-wrong for a zero-dependency implementation.
+- If prerelease comparison is ever needed later (e.g. Motto ships a `0.0.8-rc.1`), that is the trigger to pull in `semver` as a second dependency — don't hand-roll prerelease ordering rules (numeric-vs-alphanumeric identifier precedence per semver.org) speculatively now.
+- Test explicitly: equal versions, simple greater/less across major/minor/patch, and the "reject cleanly" path for prerelease-suffixed and wrong-segment-count strings — not just the numeric-comparison happy path.
 
 **Warning signs:**
-- `git log --all --oneline -- '*.env' '*.pem' '*token*' '*secret*'` (or equivalent) returns any hits.
-- A secrets scanner flags anything with confidence, even in commits that were later "fixed."
+- A comparator that does `a.localeCompare(b)` or naive string comparison instead of per-segment numeric comparison (`"0.10.0" < "0.9.0"` as strings, which is wrong numerically).
+- No test using a version string with a `-` or `+` suffix.
 
 **Phase to address:**
-Pre-public gate phase — this must complete and be clean *before* the visibility flip, not concurrently with it.
+The comparison-logic implementation phase — pair with Pitfall 2's malformed-input tests since both live in the same "parse and compare an untrusted string" function.
 
 ---
 
-### Pitfall 6: npm registry stuck at 0.0.3, git has tags through 0.0.5 — retroactive backfill is not how npm versioning works
+### Pitfall 6: Tests that assert the literal current version string break on every release
 
 **What goes wrong:**
-The instinct is to "catch up" the registry by publishing `0.0.4` and `0.0.5` retroactively so registry history mirrors git history 1:1. This adds real risk for no real benefit: npm has no concept of "backfilling" — publishing `0.0.4` today publishes *today's* `dist-tags`/metadata under an old-looking version number, which can confuse consumers who `npm view motto versions` and see `0.0.4` published *after* `0.0.5` would be (if `0.0.5` is skipped straight to). Worse, if a mistake is made publishing an intermediate version, that exact version string can **never be reused** — not even after unpublishing (permanent, registry-wide reservation; the 24-hour rule only governs re-publishing *any* version after a full unpublish, not reuse of the same version number).
+The most tempting way to test "the stamp matches the installed tool version" is `assert.strictEqual(stampedVersion, '0.0.7')` — a literal. Every single future release (0.0.8, 0.1.0, 1.0.0…) then requires manually updating this test, and if it's missed, either the test suite fails for a reason unrelated to the change being shipped (noise, erodes trust in red CI) or — worse — someone "fixes" the failure by just updating the literal without checking whether the underlying behavior is actually still correct, defeating the test's purpose entirely.
 
 **Why it happens:**
-The mental model "git tags = source of truth, npm must match" is reasonable for source control but doesn't map onto npm's publish semantics, which are append-only and irreversible per-version. PROJECT.md already states the plan correctly (catch-up publish of 0.0.5 manually via the existing release skill, before CI work lands) — the risk is scope creep into also trying to publish 0.0.4 "for completeness."
+Asserting against a literal is the fastest thing to write and passes immediately, and the coupling to "current version" is invisible until the next release happens — by which point the test was written and merged long ago by someone who's moved on to other work. This is a direct instance of the general brittle-test anti-pattern (hardcoding a value that's expected to change, rather than asserting the *relationship* the code is actually supposed to guarantee). [confidence: LOW — general testing-practice source, not version-specific, single web source]
 
 **How to avoid:**
-- Per the stated plan: publish **only 0.0.5** (the current shipped state) manually via the existing release skill before CI lands. Do not attempt to also publish 0.0.4 retroactively — it shipped nothing users need from the registry specifically, and burns a permanent version slot for zero consumer value.
-- Git tags `v0.0.4`/`v0.0.5` already exist and are fine to leave as pure source-control markers; they do not need a 1:1 npm-published counterpart. Document this explicitly (e.g. a one-line note in CHANGELOG or release skill) so a future maintainer doesn't "fix" the gap by trying to publish `0.0.4` after the fact.
-- Before the catch-up publish, run `npm view @jeremiewerner/motto versions --json` to confirm current registry state matches the assumed `0.0.3` baseline — don't assume drift, verify it fresh (npm state can change independently of what PROJECT.md last recorded).
-- Once CI publish-on-tag lands, the *next* tag after 0.0.5's catch-up publish should be `0.0.6` — establishing "registry version == latest git tag" as the new invariant going forward, enforced by the CI's stated "npm-drift warning."
+- Tests must read the actual installed/package version at test-run time (e.g. from `package.json` via the same code path the CLI itself uses to know its own version) and assert **relationships**: "stamped version after `init` equals whatever `package.json`'s version currently is," "skew is reported when stamped ≠ installed, using two arbitrarily-chosen-but-different fixture strings," "no skew reported when they're equal" — never a hardcoded literal like `'0.0.7'` baked into the assertion.
+- For fixture-based comparator tests (Pitfall 5), use clearly-fake version strings (`'1.2.3'` vs `'1.2.4'`) rather than Motto's real current version, so the tests are permanently decoupled from Motto's actual release number.
 
 **Warning signs:**
-- Any temptation to script "publish every unpublished tag in sequence."
-- `npm view @jeremiewerner/motto versions` showing gaps that don't match `git tag -l` — expected only for 0.0.4 (by design), should not grow further once CI lands.
+- `grep` the test suite for the literal current version string (`0.0.7`) — any hit inside an assertion (not a comment/fixture-setup for an unrelated purpose) is the smell.
+- A test file that needed a diff in the same commit as a routine version bump with no other behavior change.
 
 **Phase to address:**
-Pre-CI catch-up publish (explicitly called out in PROJECT.md as happening manually, before this milestone's CI work) — scope it to 0.0.5 only.
+The stamping/skew implementation phase, at test-writing time — this is a code-review checklist item (`/gsd-code-review`) as much as an implementation concern; flag literal-version greps as part of that phase's review pass given the project's existing pattern of catching invariant violations via review rather than initial test-writing alone.
 
 ---
 
-### Pitfall 7: Adding `--format json` on top of a CLI that already writes errors to stdout breaks machine parsing
+### Pitfall 7: Claude Code marketplace/plugin update caching hides the very skew this feature is meant to detect
 
 **What goes wrong:**
-`bin/motto.js` currently writes **both** success (`✓ …`) and validation-error (`✗ <skill>: <message>`) lines to `stdout` for `lint`/`build`/`init` — only parseArgs failures, unknown-flag errors, and the `[path]` directory guard go to `stderr`. If `--format json` is bolted on naively (e.g. `JSON.stringify(result)` written to stdout alongside — or instead of — the existing `✓`/`✗` text), any consumer piping `motto lint --format json | jq` will get either non-JSON text mixed into the stream (if human-readable lines still leak to stdout in some code path) or, if `--quiet` is added independently, inconsistent behavior where the two flags interact unpredictably (e.g. `--quiet --format json` — does quiet suppress the JSON payload too, or only human text?).
+Motto self-hosts a Claude Code marketplace (`.claude-plugin/marketplace.json` inside the repo, per v0.0.3's distribution decision) to distribute its own skills (`release`, `build-skill`, `changelog`) as a plugin. Multiple **currently open, confirmed** upstream Claude Code issues describe the plugin-marketplace update path serving stale cached plugin files even after the marketplace source has genuinely been updated, with `claude plugin update` reporting "already at latest version" when it is not. If Motto's own consumer-facing skill distribution silently hands out a stale plugin, that's a *second*, invisible version-skew problem sitting one layer above the one this milestone is building detection for (project-vs-tool skew) — and no amount of `motto.yaml` stamping fixes a Claude Code-side caching bug.
 
 **Why it happens:**
-The existing convention (stdout for both success and error human text, exit code carries the real signal) works fine for humans in a terminal but conflates "the primary output stream" with "the human/debug stream." Retrofitting `--format json` requires **stdout to become JSON-only** when the flag is set — meaning every current `process.stdout.write('✗ …')` call must be conditionally routed to `stderr` (or suppressed and folded into the JSON payload) under `--format json`, not just have a JSON block appended alongside the old text.
+This is a bug in the consuming platform (Claude Code), not in Motto — but it's directly relevant to this milestone because "consumer plugin update loop verification (Claude Code marketplace)" is explicitly named in scope. The caching problem is specific to **directory/path-source marketplaces** (which is exactly Motto's self-hosted, in-repo `marketplace.json` setup) — the cached copy at `~/.claude/plugins/marketplaces/<name>/.claude-plugin/marketplace.json` is not reliably re-copied from the source path on update. [confidence: MEDIUM — 7 independent, currently-open GitHub issues against `anthropics/claude-code`: #72616, #61954, #16866, #69020, #17361, #37670, #13799]
 
 **How to avoid:**
-- Adopt the clig.dev convention explicitly for the new flags: `--format json` → stdout carries **only** the JSON payload (one document, or NDJSON if streaming is ever needed), and all human-readable status/progress text moves to stderr (or is suppressed) for that invocation.
-- Design `--quiet` and `--format json` as orthogonal: `--quiet` suppresses non-essential *human* stderr chatter, independent of format; `--format json` changes what goes to stdout. `--quiet --format json` together should still emit the JSON payload to stdout (that's the "essential" output) — only progress/informational stderr lines are suppressed.
-- Since CI is the first real consumer of these flags (stated in PROJECT.md), design the JSON schema and stream discipline *against the actual CI workflow's consumption pattern* (e.g. does CI need machine-parseable lint errors to annotate a PR, or just an exit code?) rather than speculatively.
-- Exit codes stay the single source of pass/fail truth regardless of `--format`/`--quiet` — already correctly established (`process.exitCode`, never `process.exit()`, per the existing Pitfall-7 note in `bin/motto.js`'s own doc comment). Do not let `--format json`'s payload become the thing CI branches on if a plain exit-code check is available; reserve JSON for cases needing structured detail (e.g. which skill failed and why).
+- Do not assume "I pushed a new version to the repo, therefore anyone who runs `claude plugin update` gets it" — verify by actually exercising the update loop end-to-end (uninstall/reinstall or explicit cache-clear as needed) rather than trusting the reported "already at latest" status, per the project's own standing memory note ("verify side-effect claims — check git/npm reality before trusting 'complete'").
+- Document the known workaround (uninstall + reinstall the plugin, or manually clear `~/.claude/plugins/marketplaces/<name>/`) in whatever consumer-facing verification step this milestone produces, since there is currently no first-party fix — this is an upstream platform bug, not something Motto's own code can patch around.
+- Treat this as a **verification gotcha**, not a code-change target: the fix belongs to Anthropic; Motto's responsibility is knowing the loop is unreliable and testing accordingly rather than assuming a green "already at latest" means the marketplace re-walk actually validated the current version.
 
 **Warning signs:**
-- `motto lint --format json` output fails `jq .` because a stray `✓`/`✗` text line is still interleaved on stdout.
-- `--quiet` and `--format json` combined produce different exit codes or missing payloads compared to either flag alone.
+- A "marketplace re-walk" verification step that only checks `claude plugin update` output text rather than diffing actual installed plugin file contents/version against the source.
+- Assuming the existing marketplace re-walk debt item (already tracked in PROJECT.md backlog from v0.0.6) is purely about npm `latest` staleness and not also about this independent caching layer.
 
 **Phase to address:**
-CLI ergonomics phase (`--quiet`, `--format json` — CLIX-01/02) — this is exactly the phase that must also revisit and correct the current stdout-carries-errors behavior, since the two are coupled; treat "stdout becomes JSON-only under `--format json`" as part of the CLIX-01/02 spec, not a follow-on fix.
+Whichever phase in this milestone covers "consumer plugin update loop verification (Claude Code marketplace)" per PROJECT.md's stated v0.0.7 scope — this is explicitly a verification/testing concern, not an implementation one, so it belongs in a UAT/verify pass rather than the core stamping code.
 
 ---
 
 ## Technical Debt Patterns
 
 | Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
-|----------|-------------------|-----------------|------------------|
-| Use `NPM_TOKEN` secret for CI publish instead of OIDC trusted publishing | Ships faster; avoids matching npm CLI version/workflow-identity requirements | Long-lived static secret in GitHub Secrets is a standing attack surface; must be rotated manually | Explicitly acceptable per PROJECT.md as the interim before OIDC — but track it as a follow-up, don't let it become permanent |
-| Skip the version-existence guard on `npm publish` in CI ("it'll probably just work") | Simpler workflow YAML | A transient failure on a re-run either double-fails confusingly or (worse) the guard's absence means a *second* tag push under the same version is the only "fix" someone reaches for, which doesn't work (npm rejects duplicate versions) — leading to a stuck release | Never — the guard is a few lines (`npm view <pkg>@<version>`) |
-| Leave `--format json` and `--quiet` unspecified for interaction (build one, bolt the other on later) | Faster to ship CLIX-01 alone | Retrofitting orthogonality after CI already depends on the first flag's exact behavior risks a breaking change to CI's consumption | Only if both are designed together, even if implemented in sequence |
-| Rely solely on GitHub's post-public secret scanning instead of a pre-flight local scan | Zero extra tooling to run | Secrets are exposed publicly before scanning ever runs — remediation is reactive, not preventive | Never for a one-way-door repo flip |
+|----------|-------------------|----------------|-----------------|
+| Stamp written only at `init`, never rewritten by `build`/`lint` | Minimal surface area, matches YAGNI-deferred-upgrade-command stance | Skew becomes the permanent, expected state for any long-lived project the moment the tool is upgraded once — must be paired with wording that treats this as normal, not a bug | Acceptable now, as an explicit, documented decision (see Pitfall 4) — not acceptable if left implicit |
+| Hand-rolled 3-segment semver comparator, no prerelease support | Zero new dependency, matches existing single-dep (`yaml`) philosophy | Breaks (or must cleanly refuse) the moment Motto or a consumer project ever uses a prerelease/build-metadata tag | Acceptable indefinitely for Motto's own versions as long as Motto never ships a prerelease tag; revisit (pull in `semver`) the moment that changes |
+| Skew detection is advisory-only (no exit-code change) | Never breaks existing CI/scripts that already call `motto lint`/`build` | Users can ignore skew warnings indefinitely with no forcing function | Acceptable and arguably correct — an upgrade *command* doesn't exist yet (deferred), so failing the exit code with no remedy path would be worse UX than an advisory |
+| No backfill command for existing unstamped projects (magma, Motto's own tree) this milestone | Keeps scope to detection only, matches deferred-upgrade-command YAGNI stance | Every currently-scaffolded project stays permanently "unstamped" unless a human manually edits `motto.yaml`, or a future milestone adds a backfill path | Acceptable only if the "unstamped" state (Pitfall 1) is a fully clean, non-error, permanently-supported state — never acceptable if unstamped is treated as merely "temporarily tolerated" |
 
 ## Integration Gotchas
 
 | Integration | Common Mistake | Correct Approach |
-|-------------|------------------|--------------------|
-| npm Trusted Publishing (OIDC) | Assuming any Node LTS in the CI matrix satisfies the npm CLI ≥ 11.5.1 requirement | Pin/upgrade npm explicitly in the publish job (`npm install -g npm@latest` or run publish on the newest matrix leg only) |
-| GitHub Actions tag trigger | Triggering the whole workflow (tests + publish) on `push: tags`, re-running full test suite redundantly and coupling test flakiness to publish risk | Gate publish behind a prior successful test job / `needs:`, and use `if: startsWith(github.ref, 'refs/tags/')` to scope the publish step |
-| husky + `npm ci` in CI | Assuming husky's `prepare` script only matters for local dev and won't be invoked by CI/E2E installs | Guard `prepare` to no-op safely when `.git` is absent or `CI`/production env is detected — required before the pack-install E2E step exists |
-| `files` allowlist + tarball E2E | Assuming `npm pack`'s file list is sufficient verification without actually extracting and running the tarball in a clean environment | The planned pack-install E2E (tarball → tmp dir → init/lint/build) is correct — pair it with the D-05 tarball-leak assertion already in the release skill so both static (file list) and dynamic (actually runs) checks exist |
-| GitHub repo visibility flip | Treating the `.planning/` visibility decision as implicit/default rather than an explicit choice | Make the decision explicit and logged (public vs excluded via `.gitignore`/history-scrub) before the flip, exactly as PROJECT.md already frames it as a gate |
+|-------------|----------------|------------------|
+| `motto.yaml` hand-editing by users | Assuming users only ever produce well-formed `version: "x.y.z"` strings | Type-check (`typeof === 'string'`) before any parsing; treat every other YAML-representable shape (number, array, object, boolean, null, empty string) as a clean, named, never-thrown validation entry (Pitfall 2) |
+| Claude Code plugin marketplace (self-hosted, directory-source) | Trusting `claude plugin update`'s "already at latest" as ground truth when verifying the consumer update loop | Cross-check actual installed plugin file/version against the marketplace source directly; known upstream caching bugs mean the reported status can be wrong (Pitfall 7) |
+| Existing consumer projects with no version awareness at all (magma, Motto's own pre-migration tree) | Treating "missing stamp" as a validation error because every test fixture used during development already had one | Explicitly write the zero-stamp fixture as the *first* test, before any happy-path skew test (Pitfall 1) |
+
+## Performance Traps
+
+Not applicable at this scale — version-stamp read/compare is a single small string operation per `lint`/`build` invocation; no performance concern at any realistic project size for this milestone.
 
 ## Security Mistakes
 
 | Mistake | Risk | Prevention |
 |---------|------|------------|
-| Scanning only the current file tree for secrets before going public | Misses secrets committed-then-deleted in earlier commits, still fully present in history | Full-history scan (`gitleaks detect --source . --log-opts="--all"` or equivalent), across all branches and tags |
-| Rewriting history to remove a secret without rotating it | The secret is presumed already compromised the moment it was ever pushed (even if repo was private, any collaborator/CI log/cache may have seen it) | Rotate/revoke the actual credential first; history rewrite is cleanup, not remediation |
-| Leaving `NPM_TOKEN` as a classic (non-granular) token with full publish rights on a public-CI workflow | A compromised workflow (malicious PR from a fork, dependency confusion) can publish under the maintainer's full npm identity | Use npm granular access tokens scoped to this one package, publish-only, with an expiry — or move to OIDC once sequenced in |
-| Assuming `id-token: write` at the workflow level is sufficient without also scoping `contents: read` explicitly | Overly broad default `permissions:` block gives the OIDC-enabled job more GITHUB_TOKEN scope than it needs | Set minimal `permissions:` explicitly per job, not just enable `id-token: write` |
+| Interpolating the raw `version:` string value directly into a shell command or dynamic `require`/`import` path (e.g. for a future per-version behavior branch) | Path/command injection if a malicious or corrupted `motto.yaml` is ever processed (e.g. a shared/cloned project) | Validate against the strict semver regex (Pitfall 5) *before* any use beyond string comparison/display; never treat the stamp value as trusted enough for dynamic code paths |
 
 ## UX Pitfalls
 
 | Pitfall | User Impact | Better Approach |
-|---------|-------------|-------------------|
-| `--format json` silently ignored if passed to a subcommand that hasn't been updated (e.g. `motto init --format json`) | CI scripts assuming uniform flag support across all subcommands get inconsistent output shapes | Either support `--format json`/`--quiet` uniformly across `init`/`lint`/`build`, or explicitly error (not silently ignore) on an unsupported flag for a given subcommand — consistent with the existing strict `parseArgs` unknown-flag behavior |
-| Exit code differs between "no errors, quiet mode" and "no errors, verbose mode" | Breaks CI scripts that only check exit code but occasionally also grep output | `--quiet` must never change exit-code semantics — only verbosity |
-| JSON payload shape changes between `lint` success/failure without a stable schema (e.g. `errors` key present only on failure) | Consumers must special-case rather than always reading the same shape | Always emit the same top-level shape (`{ ok, count, errors: [] }`) whether success or failure, with `errors` simply empty on success |
+|---------|-------------|-----------------|
+| Generic "version mismatch" message with no direction | User "fixes" the wrong side (re-inits a fine project, or ignores a genuinely outdated tool) | Direction-aware messaging naming the concrete remedy per side (Pitfall 3) |
+| Treating "no stamp" as scary/red output | Every existing project (magma, Motto's own tree) sees new alarming output the moment they upgrade, for doing nothing wrong | Informational, calm, single-line advisory; zero exit-code impact (Pitfall 1) |
+| Skew warning that implies an auto-fix or command that doesn't exist yet | User tries to run an upgrade command that isn't shipped this milestone, hits a wall | Word the message to match what's actually true today — detection only, no remedy command yet (Pitfall 4) |
 
 ## "Looks Done But Isn't" Checklist
 
-- [ ] **CI publish-on-tag workflow:** Often missing the version-existence guard — verify `npm view <pkg>@<version>` check exists before `npm publish` runs, and that a re-run of the same workflow run is safe.
-- [ ] **Trusted publishing setup:** Often "configured" in npm's UI but never actually exercised — verify with a real (or dry-run) publish from the exact workflow file/job/environment that will run for real, on the Node version the publish job actually uses.
-- [ ] **husky guard for CI:** Often only tested against the normal CI test-matrix install, not the tarball/pack-install E2E's install-in-a-`.git`-less-tmp-dir scenario — verify the E2E step specifically.
-- [ ] **Pre-public secrets scan:** Often scoped to `HEAD` only — verify full history (all commits, all tags, all branches) was scanned, not just the current tree.
-- [ ] **`--format json` output:** Often verified only on the success path — verify the error/failure path also produces valid, schema-stable JSON on stdout with nothing else mixed in.
-- [ ] **Catch-up publish scope:** Often creeps into "publish everything we skipped" — verify only 0.0.5 (current shipped state) is published, not a full 0.0.4+0.0.5 backfill.
+- [ ] **Missing-stamp handling:** Often only tested with a `version:` field already present in every fixture — verify at least one lint/build test uses a `motto.yaml` with the key entirely absent, and it passes clean with an advisory only.
+- [ ] **Malformed-stamp handling:** Often only tested with valid-but-different semver strings — verify explicit adversarial tests exist for non-string YAML shapes (number, array, object, boolean, null) and malformed strings (empty, `"latest"`, missing segments, `v`-prefixed).
+- [ ] **Skew direction:** Often only tested in the "tool is newer" direction (the only one the developer naturally encounters) — verify a test exists for the reverse (stamped version newer than installed tool).
+- [ ] **Version literal leakage into tests:** Often the fastest test to write asserts the exact current version string — verify no test asserts a hardcoded literal that must change on every release; `grep` the suite for the current version number outside of intentionally-fake fixture data.
+- [ ] **Marketplace update verification:** Often "verified" by reading `claude plugin update`'s stdout message alone — verify by actually diffing installed plugin content/version against source, given confirmed upstream caching bugs.
 
 ## Recovery Strategies
 
 | Pitfall | Recovery Cost | Recovery Steps |
-|---------|-----------------|-------------------|
-| Tag pushed, CI publish failed, version never landed on npm | LOW | Fix the workflow/config issue; re-run the same workflow run (safe if the version-existence guard is in place) — no new tag needed since nothing was ever published under that version |
-| Tag pushed, CI publish failed *midway* (partially uploaded / registry shows inconsistent metadata) | MEDIUM | Very rare with npm's atomic publish model, but if suspected: `npm view <pkg>@<version>` to confirm actual registry state; if truly broken, do not attempt to republish the same version (impossible) — cut the next patch version instead |
-| Secret found in git history after repo already flipped public | HIGH | Rotate/revoke the credential immediately (treat as compromised regardless of subsequent cleanup); then `git-filter-repo` rewrite + force-push + require all collaborators to re-clone; consider whether to also open a security advisory if the secret had real access |
-| Registry version reused by mistake (published then unpublished within 24h, tried to reuse the number) | HIGH (effectively unrecoverable for that version string) | The version number is permanently burned — publish the next version instead; document why the gap exists (e.g. in CHANGELOG) so it doesn't look like an accident later |
-| `--quiet --format json` combination shipped with inconsistent behavior, caught post-release by a CI consumer | LOW–MEDIUM | Patch release fixing the interaction; since this is pre-1.0 and CI is the only real consumer stated in PROJECT.md, a same-day patch is low-risk |
+|---------|---------------|-----------------|
+| Missing-stamp treated as an error, shipped, breaks magma/existing projects | LOW | Patch release: change the missing-stamp branch to advisory-only; no data migration needed since nothing was corrupted, only over-strict validation |
+| Malformed-stamp value crashes `lint`/`build` (never-throw violation shipped) | LOW–MEDIUM | Patch release with the type-guard added, plus retroactively add the missed adversarial test per this project's established post-incident pattern (as done for the 5 prior never-throw escapes) |
+| Skew message ships with wrong-direction wording | LOW | Patch the message string and its test; no data/state to migrate, purely a copy fix |
+| Stamp-update-trigger decision never made explicit, ships as "silently never updates" | LOW | Document the (already-true) behavior explicitly in PROJECT.md Key Decisions retroactively; no code change required if the behavior itself is acceptable, only the missing documentation |
+| Claude Code marketplace cache serves stale plugin during the consumer verification walk | LOW (workaround exists) | Uninstall + reinstall the plugin, or manually clear `~/.claude/plugins/marketplaces/<name>/`, then re-verify; track as a known external platform limitation, not a Motto bug to fix |
 
 ## Pitfall-to-Phase Mapping
 
 | Pitfall | Prevention Phase | Verification |
-|---------|--------------------|----------------|
-| OIDC config/npm-version mismatch (Pitfall 1) | CI workflow phase (publish-on-tag) | Dry-run/canary publish from the exact workflow, job, and Node version that will run for real |
-| Tag pushed / publish fails, no recovery path (Pitfall 2) | CI workflow phase (publish-on-tag) | Deliberately fail a publish step in a test branch/tag and confirm the version-existence guard makes a workflow re-run safe |
-| `prepublishOnly`/lifecycle scripts firing on every `npm ci` (Pitfall 3) | CI workflow phase (test matrix design) | Confirm `dist/` output is byte-identical across repeated `npm ci` runs on the same commit |
-| husky `prepare` failing outside git/dev context (Pitfall 4) | CI workflow phase, before/with pack-install E2E | Pack-install E2E step passes its own `npm ci`/`npm install` inside the `.git`-less tmp dir |
-| Public repo exposes full history / secrets (Pitfall 5) | Pre-public gate phase | Full-history secret scan reports zero hits before visibility flip; `.planning/` decision explicitly logged |
-| Registry/git version drift, retroactive backfill temptation (Pitfall 6) | Pre-CI catch-up publish (manual, before CI work lands) | `npm view @jeremiewerner/motto versions` shows exactly `0.0.3` then `0.0.5` added (0.0.4 intentionally absent, documented) |
-| `--format json`/`--quiet` breaking on mixed stdout content (Pitfall 7) | CLI ergonomics phase (CLIX-01/02) | `motto lint --format json` (success and failure cases) pipes cleanly through `jq .` with zero non-JSON lines on stdout |
+|---------|------------------|--------------|
+| 1. Bootstrap problem (missing stamp treated as error) | Stamping/skew-detection implementation phase | Test suite includes a zero-version-key `motto.yaml` fixture; lint/build exit code and output reviewed to confirm advisory-only, never a failure |
+| 2. Malformed stamp values crash never-throw boundary | Same phase as #1 (shared boundary code) | Adversarial test matrix: number, array, object, boolean, null, empty string, malformed-string version values — all must produce clean error entries, zero thrown exceptions; gated by `/gsd-code-review high` per project's established hardening pattern |
+| 3. Skew message wrong-direction remedy | Skew-detection phase | Two explicit direction tests (project-behind, project-ahead) each asserting the message names the correct-for-that-direction remedy |
+| 4. Stamp drift / no update trigger | Stamping-mechanism design decision, same phase as #1 | Decision recorded in PROJECT.md Key Decisions; message wording (from #3) reviewed for consistency with the chosen (likely "never auto-updates") behavior |
+| 5. Semver comparison edge cases without a lib | Comparison-logic implementation, paired with #2 | Tests for equal/greater/less across all three segments, plus explicit-reject tests for prerelease-suffixed and wrong-segment-count strings |
+| 6. Version-literal-in-tests brittleness | Test-writing time within the implementation phase | Code-review pass (`/gsd-code-review`) greps the new test files for the literal current version string outside of clearly-fake fixture data |
+| 7. Claude Code marketplace cache hides skew | Consumer plugin update loop verification step (explicitly in v0.0.7 scope per PROJECT.md) | Verification diffs actual installed plugin version/content against marketplace source directly, not just `claude plugin update`'s reported status; known-issue workaround documented |
 
 ## Sources
 
-- [Trusted publishing for npm packages — npm Docs](https://docs.npmjs.com/trusted-publishers/) — official, MEDIUM confidence
-- [npm trusted publishing with OIDC is generally available — GitHub Changelog](https://github.blog/changelog/2025-07-31-npm-trusted-publishing-with-oidc-is-generally-available/) — official, MEDIUM confidence
-- [NPM publish using OIDC on github actions — GitHub community discussion #176761](https://github.com/orgs/community/discussions/176761) — community, corroborated across multiple sources, MEDIUM confidence
-- [Things you need to do for npm trusted publishing to work — philna.sh](https://philna.sh/blog/2026/01/28/trusted-publishing-npm/) — practitioner write-up, cross-checked against official docs, MEDIUM confidence
-- [Scripts — npm Docs](https://docs.npmjs.com/cli/v11/using-npm/scripts/) — official, MEDIUM confidence
-- [npm-ci — npm Docs](https://docs.npmjs.com/cli/v11/commands/npm-ci/) — official, MEDIUM confidence
-- [Fixing "husky: not found" as a devDependency in the CI — Medium](https://medium.com/@albertodeagostini.dev/fixing-husky-not-found-as-a-devdependency-in-the-ci-ec438cf73aa0) — practitioner, corroborated by typicode/husky issues #1356 and #920, MEDIUM confidence
-- [typicode/husky issue #1356 — Cannot run CI compatible install script](https://github.com/typicode/husky/issues/1356) — primary source repo issue, MEDIUM confidence
-- [typicode/husky issue #920 — Skip installing hooks on CI](https://github.com/typicode/husky/issues/920) — primary source repo issue, MEDIUM confidence
-- [BFG & git-filter-repo: Cleaning Leaked Secrets from Git History](https://www.elegantsoftwaresolutions.com/blog/bfg-git-filter-repo-cleaning-leaked-secrets-from-history) — practitioner, cross-checked, MEDIUM confidence
-- [Rewriting a Git repo to remove secrets from the history — Simon Willison's TILs](https://til.simonwillison.net/git/rewrite-repo-remove-secrets) — practitioner, well-known source, MEDIUM confidence
-- [Secret scanning — GitHub Docs](https://docs.github.com/code-security/secret-scanning/about-secret-scanning) — official, MEDIUM confidence
-- [npm Unpublish Policy — npm Docs](https://docs.npmjs.com/policies/unpublish/) — official, MEDIUM confidence per classification tier
-- [npm-version — npm Docs](https://docs.npmjs.com/cli/v11/commands/npm-version/) — official, MEDIUM confidence
-- [Command Line Interface Guidelines — clig.dev](https://clig.dev/) — widely-cited community standard, MEDIUM confidence
-- [fix: print warnings to stderr — pnpm/pnpm PR #8342](https://github.com/pnpm/pnpm/pull/8342) — real-world precedent of a sibling tool fixing exactly this stdout/stderr conflation, MEDIUM confidence
-- No first-party source found for tag-pushed/publish-failed recovery semantics or retroactive-version-backfill guidance — both synthesized from adjacent npm policy (unpublish rules, publish atomicity) and general CI idempotency practice; flagged LOW confidence, treat as reasoned inference rather than documented convention
+- [semver.org — Semantic Versioning 2.0.0](https://semver.org/) — prerelease ordering rules, 0.y.z "anything may change" clause. Confidence: MEDIUM (primary spec).
+- [npm semver package / npm docs semver reference](https://docs.npmjs.com/cli/v6/using-npm/semver/) — prerelease range-matching surprises (a prerelease only satisfies ranges sharing its [major,minor,patch] tuple with a prerelease comparator). Confidence: LOW (single web synthesis, not independently cross-checked for this specific claim).
+- [HashiCorp Terraform — Version Constraints (Configuration Language)](https://developer.hashicorp.com/terraform/language/expressions/version-constraints) and [Manage Terraform versions tutorial](https://developer.hashicorp.com/terraform/tutorials/configuration-language/versions) — direction-aware "too new/too old" constraint error design; pessimistic-constraint (`~>`) best practice. Confidence: MEDIUM (official HashiCorp docs, corroborated by independent community write-ups on constraint-error UX confusion, e.g. hashicorp/terraform issues #26631, #21424).
+- [anthropics/claude-code GitHub issues #72616, #61954, #16866, #69020, #17361, #37670, #13799](https://github.com/anthropics/claude-code/issues/72616) — confirmed, currently-open, independently-filed reports of stale marketplace/plugin cache surviving `claude plugin update`, specific to directory/path-source marketplaces (Motto's own distribution shape). Confidence: MEDIUM (7 independent first-party-repo issue reports, cross-checked against each other; no first-party fix confirmed yet, so treat as an ongoing platform limitation rather than a resolved-with-version-X fact).
+- General schema/config-versioning practice (missing-version-field-means-oldest-version pattern; incremental v1→v2→v3 migration functions) — synthesized from general software-engineering literature on config schema versioning. Confidence: LOW (single web synthesis, not Motto- or Claude-Code-specific, not independently cross-checked).
+- General brittle-test anti-pattern (hardcoded dynamic-value assertions) — synthesized from general testing-practice sources. Confidence: LOW (single web synthesis; the version-specific application is this document's own inference, not sourced directly).
+- `.planning/PROJECT.md` (this repo) — v0.0.7 scope, standing upgrade-path constraint, prior never-throw violation history (v0.0.2, Phase 10, 15, 18, 20), v0.0.3 self-hosted marketplace decision. Confidence: HIGH (first-party project record).
+- User memory note "Motto never-throw invariant" — 5 historical tests-green-but-broken escapes, adversarial-tests-mandatory standing rule. Confidence: HIGH (first-party project record).
 
 ---
-*Pitfalls research for: Motto v0.0.6 "Prove & Publish" (CI + automated npm publish + repo-public gate + CLI output flags)*
-*Researched: 2026-07-03*
+*Pitfalls research for: version stamping + skew detection retrofit onto a shipped CLI with existing unstamped consumer projects*
+*Researched: 2026-07-06*
