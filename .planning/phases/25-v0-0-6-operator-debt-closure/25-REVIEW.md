@@ -1,66 +1,59 @@
 ---
 phase: 25-v0-0-6-operator-debt-closure
-reviewed: 2026-07-06T18:12:26Z
+reviewed: 2026-07-06T19:08:45Z
 depth: standard
 files_reviewed: 1
 files_reviewed_list:
   - README.md
 findings:
   critical: 0
-  warning: 1
+  warning: 0
   info: 1
-  total: 2
+  total: 1
 status: issues_found
 ---
 
-# Phase 25: Code Review Report
+# Phase 25: Code Review Report (Re-review after gap closure)
 
-**Reviewed:** 2026-07-06T18:12:26Z
+**Reviewed:** 2026-07-06T19:08:45Z
 **Depth:** standard
 **Files Reviewed:** 1
 **Status:** issues_found
 
 ## Summary
 
-Scope is the single source-file change of Phase 25: the plugin-cache caveat blockquote added to README.md's "Add the marketplace to Claude Code" section (commit `1e457e3`, README.md:241). The review checked (a) factual accuracy of the caveat against the repo's actual marketplace configuration and against Claude Code's own plugin CLI surface, (b) consistency with the surrounding install instructions, and (c) markdown integrity.
+Re-review of the phase's only source-file change: the plugin-cache caveat blockquote in README.md's "Add the marketplace to Claude Code" section (README.md:241). The prior 25-REVIEW.md flagged the caveat's primary refresh instruction (WR-01) and its lack of real-world validation (IN-01); plan 25-03 addressed both (commits `43fb37a` and `76c3df6`). This review verified the reworded text against the actual git diff (`601ddbd^..HEAD` touches only the two-line blockquote in README.md), against Claude Code's own CLI help output, and against the repo's `.claude-plugin/marketplace.json`.
 
-What holds up:
+The reword holds up:
 
-- **"Re-pull the current published tarball" is consistent with the marketplace source.** `.claude-plugin/marketplace.json` declares `"source": { "source": "npm", "package": "@jeremiewerner/motto" }`, so framing staleness in terms of the published npm tarball is accurate for this marketplace.
-- **Markdown and structure are clean.** The new blockquote is a proper sibling to the existing `> **Prerequisite:**` callout (blank line between them; renders as two separate blockquotes). No TOC entries, anchors, or links were affected; the grep-verifiable literal `plugin cache` is present as the plan required. The edit is strictly scoped to the two added lines — no unrelated prose was touched.
-- **Caveat framing is accurate.** Claude Code does cache installed plugin content locally, and an installed plugin genuinely can lag the latest published npm version — the first sentence of the note is correct.
+- **Correct command is present and primary.** The caveat now leads with `claude plugin update motto@motto`. `claude plugin update --help` confirms this is the dedicated command: *"Update a plugin to the latest version (restart required to apply)"*. The `motto@motto` argument matches the manifest — plugin `name: "motto"` in marketplace `name: "motto"` — and matches the install command (`/plugin install motto@motto`) used elsewhere in the README.
+- **Marketplace-add is no longer framed as a refresh mechanism.** The `/plugin marketplace add` re-run instruction (prior WR-01 point 1–3) is gone from the caveat entirely; `/plugin marketplace add jeremiewerner/motto` remains only in its correct role as the first-time registration step below the blockquote.
+- **Reinstall fallback retained.** "(or uninstall and reinstall the plugin)" survives as the parenthetical fallback, exactly as the prior fix suggested.
+- **Restart nuance present.** "then restart Claude Code to apply it" carries over the "restart required to apply" caveat from the CLI's own help text — this was explicitly requested in the prior WR-01 fix and was missing before.
+- **Mechanism claim now attaches to the right command.** "to re-pull the current published tarball" now describes `plugin update`/reinstall, which genuinely pulls the npm tarball (`"source": "npm", "package": "@jeremiewerner/motto"`), not the marketplace manifest.
 
-What does not hold up: the caveat's **primary remediation instruction** — re-running `/plugin marketplace add` — very likely does not do what the note claims, and Claude Code's dedicated refresh command is not mentioned at all. Details below.
+One deviation from the prior suggested fix: the reword uses the terminal form `claude plugin update motto@motto` rather than the suggested slash form `/plugin update motto@motto`. This is defensible — the terminal form is the one documented by `claude plugin --help` and the one the maintainer actually validated — but it introduces a small surface-mixing ambiguity, recorded as IN-01 below. Note also that `claude plugin update --help` documents its argument as bare `<plugin>` without mentioning the `plugin@marketplace` suffix; the exact `motto@motto` form was nonetheless exercised successfully in the stale-cache validation, so this is not flagged as a finding.
 
-## Warnings
+## Disposition of Prior Findings
 
-### WR-01: Primary refresh instruction points at the wrong command; the dedicated `/plugin update` command is omitted
+### Prior WR-01 — Primary refresh instruction pointed at the wrong command: **RESOLVED**
 
-**File:** `README.md:241`
-**Issue:** The caveat instructs: *"re-run `/plugin marketplace add jeremiewerner/motto` (or reinstall the plugin) to force Claude Code to re-pull the current published tarball."* Three problems with the primary instruction:
+Verified in the text at README.md:241 (commit `43fb37a`): the caveat leads with `claude plugin update motto@motto`; the misleading `/plugin marketplace add` re-run instruction is removed; the reinstall fallback is retained; the restart-required nuance is added. All four elements of the prior fix are present.
 
-1. **Marketplace add operates on the marketplace manifest, not on installed plugin content.** Claude Code's CLI has a dedicated command for exactly this situation — `claude plugin update <plugin>`: *"Update a plugin to the latest version (restart required to apply)"* — plus `claude plugin marketplace update [name]` for refreshing marketplace metadata. The `marketplace add` help makes no claim of refreshing anything; adding a marketplace registers its manifest and does not re-pull already-installed plugin tarballs.
-2. **For this specific marketplace, re-adding cannot even signal that a refresh is needed.** The plugin entry in `.claude-plugin/marketplace.json` is an unpinned npm source (`"package": "@jeremiewerner/motto"`, no version field). The manifest is byte-identical before and after an npm release, so re-fetching the marketplace carries zero information about a new tarball. The exact scenario the caveat targets — "not reflecting the latest published npm version" — is the scenario where marketplace re-add is a no-op.
-3. **The "force ... to re-pull the current published tarball" mechanism claim attaches to the marketplace-add instruction**, which is the part least likely to trigger a tarball pull. Only the parenthetical fallback ("or reinstall the plugin") reliably does what the sentence claims.
+### Prior IN-01 — Refresh guidance never exercised against a real stale cache: **RESOLVED**
 
-A stranger with a stale plugin who follows the primary instruction will most likely see no change and conclude the docs are wrong — which is the exact failure DEBT-06's caveat exists to prevent. The working fallback in the parenthetical is what keeps this at Warning rather than Critical.
-
-**Fix:** Lead with the plugin-level update, keep reinstall as the fallback, drop the marketplace-add instruction (or demote it to the marketplace-metadata case). Also carry over the "restart required" nuance from the CLI's own help text:
-
-```markdown
-> **Note:** Claude Code caches installed plugin content locally, so an already-installed plugin can appear stale — not reflecting the latest published npm version — until the plugin cache is refreshed. If a skill you expect to see is missing or outdated, run `/plugin update motto@motto` (or uninstall and reinstall the plugin) to re-pull the current published tarball, then restart Claude Code to apply it.
-```
+Verified via commit `76c3df6`: 25-REWALK.md gained an append-only "Stale-Cache Validation" section recording a maintainer-run reproduction — an installed `motto@motto` plugin genuinely lagging npm `latest` (0.0.6), `claude plugin update motto@motto` + restart, content confirmed refreshed, fallback not needed. This is a maintainer attestation rather than agent-observed output, but the record says so explicitly, consistent with the attestation style used elsewhere in the phase. The caveat's substantive behavioral claim is now verified, not just grep-present.
 
 ## Info
 
-### IN-01: The refresh instruction was never exercised by the phase's own verification
+### IN-01: Caveat switches to terminal CLI syntax in a section otherwise driven by slash commands, without signaling the context switch
 
-**File:** `README.md:241` (evidence: `.planning/phases/25-v0-0-6-operator-debt-closure/25-REWALK.md`)
-**Issue:** The stranger re-walk that closed DEBT-06 was performed in a **clean** Claude Code session (fresh `marketplace add` + `install`, per 25-REWALK.md items 1–3). No stale-cache scenario was reproduced, so the caveat's refresh guidance — the one behavioral claim the added text makes — was never observed working. The plan's automated check only verified the literal string `plugin cache` exists in README.md, which validates presence, not correctness. This is the recurring tests-green-but-broken shape: the grep gate passes while the substantive claim is unverified.
-**Fix:** When the WR-01 rewording lands, validate it once against reality: with 0.0.6 installed, publish/observe the next release, confirm the plugin shows stale content, run the documented command(s), and confirm the skill content refreshes. Record the observation (a one-line addendum to 25-REWALK.md or the next phase's UAT is sufficient).
+**File:** `README.md:241`
+**Issue:** Every runnable command in the "Add the marketplace to Claude Code" / "Install Motto's skills" sections is a Claude Code in-session slash command (`/plugin marketplace add ...`, `/plugin install motto@motto`), while the caveat's remedy `claude plugin update motto@motto` is a terminal command. The prose says only "run `claude plugin update motto@motto`" — a reader working inside a Claude Code session (where the surrounding commands are typed) gets no cue that this one belongs in their shell instead. The `claude` binary prefix mitigates this, and the command itself is correct and validated, so this is informational only.
+**Fix:** Add a two-word locator, e.g. "…missing or outdated, run `claude plugin update motto@motto` from your terminal (or uninstall and reinstall the plugin)…".
 
 ---
 
-_Reviewed: 2026-07-06T18:12:26Z_
+_Reviewed: 2026-07-06T19:08:45Z_
 _Reviewer: Claude (gsd-code-reviewer)_
 _Depth: standard_
