@@ -1,6 +1,6 @@
 ---
 name: release
-description: Maintainer release checklist for Motto — run tests, bump version, dogfood lint and build, and hand off to CI for publish. Use this skill when releasing a new Motto version.
+description: Maintainer release checklist for Motto — run tests, pass the UPGRADING.md ledger gate, bump version, dogfood lint and build, and hand off to CI for publish. Use this skill when releasing a new Motto version.
 audience: private
 template: procedure
 allowed-tools:
@@ -13,7 +13,7 @@ allowed-tools:
 # Releasing Motto
 
 <role>
-You are the Motto release assistant for the maintainer. Guide through each locally-run release step in order: tests, version bump, dogfood sanity check, then hand off to CI with `git push --follow-tags`. After the push, guide verifying that CI actually published the release, and — if it didn't — walk the never-re-tag recovery runbook.
+You are the Motto release assistant for the maintainer. Guide through each locally-run release step in order: tests, ledger gate, version bump, dogfood sanity check, then hand off to CI with `git push --follow-tags`. After the push, guide verifying that CI actually published the release, and — if it didn't — walk the never-re-tag recovery runbook.
 </role>
 
 <process>
@@ -28,7 +28,26 @@ node --test
 
 Expected output: `# pass 75` (or higher) and `# fail 0`. If any test fails, stop. Fix the failure before proceeding.
 
-## Step 2 — Version Bump
+## Step 2 — Ledger Gate
+
+Diff schema-bearing files since the last release tag (this step runs **before** the version bump, so `git describe --tags --abbrev=0` still resolves to the *previous* release tag — running it after the bump would diff against the just-created tag, an always-empty range):
+
+```
+git diff $(git describe --tags --abbrev=0)..HEAD -- src/schema.js src/templates.js src/config.js src/init.js
+```
+
+This file list (`src/schema.js`, `src/templates.js`, `src/config.js`, `src/init.js`) is the current home of schema logic — it is a snapshot, not a dynamically derived list. Do NOT replace it with something like `git ls-files src/`, which would over-trigger on every commit including test/doc-only ones. A future maintainer adding a new schema-adjacent file should add it to this list here; the human/agent verdict below is the real backstop against a stale list, not the list alone.
+
+If this diff is non-empty, do NOT proceed to the Version Bump step until either:
+
+1. A new entry for this version has been added to `UPGRADING.md`, or
+2. An explicit "not breaking, no entry needed" verdict has been recorded in this release conversation — silence is not a verdict, state it out loud.
+
+Scope: this gate concerns behavior-defined breaking changes — a change that makes a previously-passing project fail lint/build, or that requires editing project files (`motto.yaml` keys, SKILL.md structure, dist layout consumers depend on). New warnings, wording changes, or new flags do not trigger an entry. Pre-1.0 norm: a hard break plus a ledger entry is sufficient and is the norm; dual-accept compatibility windows stay case-by-case, not mandated.
+
+When in doubt, write the entry — entries are cheap; the v0.0.5 `<role>` migration, stranded before this policy existed, is the cautionary tale.
+
+## Step 3 — Version Bump
 
 Starting from a **clean working tree** (no uncommitted changes — `git status` must be empty):
 
@@ -47,7 +66,7 @@ The husky pre-commit hook re-runs all tests during this commit — if they fail 
 
 **Note on v0.0.3:** The very first release using this script is v0.0.4 onward. v0.0.3's version was drift-corrected manually in Phase 7 (committed 451f92e) and first published to npm on 2026-07-01; its `v0.0.3` git tag was created retroactively at that first publish, not by this script. From v0.0.4 on, `npm version` creates the tag as part of the flow.
 
-## Step 3 — Dogfood Check (local pre-push sanity check)
+## Step 4 — Dogfood Check (local pre-push sanity check)
 
 Run Motto against its own skill tree, as a local sanity check before handing off to CI:
 
@@ -60,25 +79,6 @@ Expected:
 - `motto build` → exits 0; `dist/public/` and `dist/private/` are populated
 
 If lint fails, fix the skill content before pushing. The skill tree must pass clean on the version being released. CI's `dogfood` job re-runs the equivalent check against the tagged commit — this local run is a fast fail-early check, not the sole gate.
-
-## Step 4 — Ledger Gate
-
-Diff schema-bearing files since the last tag:
-
-```
-git diff $(git describe --tags --abbrev=0)..HEAD -- src/schema.js src/templates.js src/config.js src/init.js
-```
-
-This file list (`src/schema.js`, `src/templates.js`, `src/config.js`, `src/init.js`) is the current home of schema logic — it is a snapshot, not a dynamically derived list. Do NOT replace it with something like `git ls-files src/`, which would over-trigger on every commit including test/doc-only ones. A future maintainer adding a new schema-adjacent file should add it to this list here; the human/agent verdict below is the real backstop against a stale list, not the list alone.
-
-If this diff is non-empty, do NOT proceed to the Push step until either:
-
-1. A new entry for this version has been added to `UPGRADING.md`, or
-2. An explicit "not breaking, no entry needed" verdict has been recorded in this release conversation — silence is not a verdict, state it out loud.
-
-Scope: this gate concerns behavior-defined breaking changes — a change that makes a previously-passing project fail lint/build, or that requires editing project files (`motto.yaml` keys, SKILL.md structure, dist layout consumers depend on). New warnings, wording changes, or new flags do not trigger an entry. Pre-1.0 norm: a hard break plus a ledger entry is sufficient and is the norm; dual-accept compatibility windows stay case-by-case, not mandated.
-
-When in doubt, write the entry — entries are cheap; the v0.0.5 `<role>` migration, stranded before this policy existed, is the cautionary tale.
 
 ## Step 5 — Push (hand off to CI)
 
@@ -118,7 +118,7 @@ Before doing anything else, confirm all three of the following:
    gh release view vX.Y.Z
    ```
 
-Only proceed to Step 8 (Post-Release Housekeeping) once all three confirm. Do not assume "tag pushed" means "published" — this project has previously drifted (npm stuck at an old version while git tags advanced) precisely because that assumption went unchecked.
+Only proceed to Step 9 (Post-Release Housekeeping) once all three confirm. Do not assume "tag pushed" means "published" — this project has previously drifted (npm stuck at an old version while git tags advanced) precisely because that assumption went unchecked.
 
 ## Step 8 — If CI Publish Fails
 
@@ -180,7 +180,7 @@ Run this step **once** — the first time a tag-triggered publish succeeds via O
 - All tests pass (`node --test` reports zero failures) before the version bump.
 - `package.json`, `motto.yaml`, and `package-lock.json` are bumped to the same version and committed in a single release commit with a `vX.Y.Z` tag.
 - `motto lint` and `motto build` both succeed locally against the release version with no errors, as a pre-push sanity check.
-- The Ledger Gate blocks tag/push on a non-empty diff of schema-bearing files (`src/schema.js`, `src/templates.js`, `src/config.js`, `src/init.js`) since the last tag, pending either a new `UPGRADING.md` entry or a recorded "not breaking, no entry needed" verdict.
+- The Ledger Gate runs before the version bump — while `git describe --tags --abbrev=0` still resolves to the previous release tag — and blocks tag creation and push on a non-empty diff of schema-bearing files (`src/schema.js`, `src/templates.js`, `src/config.js`, `src/init.js`) since that tag, pending either a new `UPGRADING.md` entry or a recorded "not breaking, no entry needed" verdict.
 - The local flow ends at `git push --follow-tags` — no local `npm publish`, no local registry-auth check.
 - CI performs the publish: the tag-triggered Actions run passes `test`/`dogfood`/`pack-install-e2e` (including the D-05 tarball-leak assertion), then the `publish` job runs `npm publish` and `gh release create --generate-notes`, each independently guarded against re-running on an already-published version/release.
 - The maintainer verifies the Actions run is green, the registry has the new version (`npm view`), and the GitHub Release exists (`gh release view`) before doing any Post-Release Housekeeping.
