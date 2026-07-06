@@ -16,7 +16,9 @@ Adopting the stamp turns the skew check on for your project.
 **Steps:**
 1. Open your project's `motto.yaml`.
 2. Add a `mottoVersion` key set to the version of `motto` you currently have
-   installed (check with `motto --version` or `npm ls @jeremiewerner/motto`).
+   installed (check with `npm ls -g @jeremiewerner/motto` for a global
+   install, or `npm ls @jeremiewerner/motto` if installed locally to the
+   project).
 3. Place it near the existing `version` key — they are distinct fields
    (`version` is your project's own version; `mottoVersion` is the tool
    version your project was last verified against).
