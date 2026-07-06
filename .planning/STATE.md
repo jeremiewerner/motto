@@ -3,18 +3,18 @@ gsd_state_version: 1.0
 milestone: v0.0.7
 milestone_name: Version Awareness
 current_phase: 25
-current_phase_name: v0.0.6 Operator Debt Closure
+current_phase_name: v0-0-6-operator-debt-closure
 status: executing
 stopped_at: Phase 25 context gathered
-last_updated: "2026-07-06T17:08:29.855Z"
+last_updated: "2026-07-06T17:52:58.047Z"
 last_activity: 2026-07-06
-last_activity_desc: Phase 24 complete, transitioned to Phase 25
+last_activity_desc: Phase 25 execution started
 progress:
   total_phases: 3
   completed_phases: 2
-  total_plans: 6
-  completed_plans: 6
-  percent: 67
+  total_plans: 8
+  completed_plans: 7
+  percent: 88
 ---
 
 # Project State
@@ -24,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-05 after v0.0.6 milestone)
 
 **Core value:** A strict schema + linter that guarantees authored skills conform before they ship, then packages them into self-contained standard Agent Skill plugins.
-**Current focus:** Phase 24 — upgrade-path-ledger-policy
+**Current focus:** Phase 25 — v0-0-6-operator-debt-closure
 
 ## Current Position
 
-Phase: 25 — v0.0.6 Operator Debt Closure
-Plan: Not started
+Phase: 25 (v0-0-6-operator-debt-closure) — EXECUTING
+Plan: 2 of 2
 Status: Ready to execute
-Last activity: 2026-07-06 — Phase 24 complete, transitioned to Phase 25
+Last activity: 2026-07-06 — Phase 25 execution started
 
 ## Performance Metrics
 
@@ -97,6 +97,7 @@ Last activity: 2026-07-06 — Phase 24 complete, transitioned to Phase 25
 | Phase 23 P04 | 13min | 3 tasks | 7 files |
 | Phase 24 P01 | 12min | 3 tasks | 7 files |
 | Phase 24 P02 | 25min | 3 tasks | 3 files |
+| Phase 25 P01 | 6min | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -180,6 +181,8 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 24-02] Ledger Gate inserted as clean Step 4 in skills/release/SKILL.md, mirroring Step 1's blocking idiom (D-01); file-list rationale documented inline, human/agent verdict is the real backstop (D-02)
 - [Phase ?]: [Phase 24-02] CLAUDE.md Constraints sync is a one-time catch-up of a stale GSD-managed derived copy; PROJECT.md line 142 stays untouched source of truth (D-03)
 - [Phase ?]: [Phase 24-02] Checkpoint verdict: approved with friction -- magma stamp adoption succeeded from UPGRADING.md prose alone; corrected v0.0.7 Step 2 to remove nonexistent 'motto --version' and use 'npm ls -g @jeremiewerner/motto' as primary version-discovery command
+- [Phase 25-01]: Task 1 recorded NPM_TOKEN absence rather than deleting (already absent, gh secret list returned zero entries)
+- [Phase 25-01]: Task 2's DEBT-07/DEBT-08 closure relies on maintainer attestation (no CLI/API surface for npmjs.com token revocation or publishing-access lock), corroborated by an agent-run npm view provenance cross-check
 
 ### Pending Todos
 
@@ -216,7 +219,7 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-06T13:48:15.728Z
+Last session: 2026-07-06T17:52:30.450Z
 Stopped at: Phase 25 context gathered
 Resume file: .planning/phases/25-v0-0-6-operator-debt-closure/25-CONTEXT.md
 
