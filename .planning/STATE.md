@@ -3,17 +3,17 @@ gsd_state_version: 1.0
 milestone: v0.0.7
 milestone_name: Version Awareness
 current_phase: 24
-current_phase_name: Upgrade-Path Ledger & Policy
+current_phase_name: upgrade-path-ledger-policy
 status: executing
-stopped_at: Phase 24 context gathered
-last_updated: "2026-07-06T11:32:48.603Z"
+stopped_at: Completed 24-01-PLAN.md
+last_updated: "2026-07-06T11:39:19.371Z"
 last_activity: 2026-07-06
-last_activity_desc: Phase 23 complete, transitioned to Phase 24
+last_activity_desc: Phase 24 execution started
 progress:
   total_phases: 3
   completed_phases: 1
-  total_plans: 4
-  completed_plans: 4
+  total_plans: 6
+  completed_plans: 5
   percent: 33
 ---
 
@@ -24,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-05 after v0.0.6 milestone)
 
 **Core value:** A strict schema + linter that guarantees authored skills conform before they ship, then packages them into self-contained standard Agent Skill plugins.
-**Current focus:** Phase 23 — version-stamping-skew-detection
+**Current focus:** Phase 24 — upgrade-path-ledger-policy
 
 ## Current Position
 
-Phase: 24 — Upgrade-Path Ledger & Policy
-Plan: Not started
+Phase: 24 (upgrade-path-ledger-policy) — EXECUTING
+Plan: 2 of 2
 Status: Ready to execute
-Last activity: 2026-07-06 — Phase 23 complete, transitioned to Phase 24
+Last activity: 2026-07-06 — Phase 24 execution started
 
 ## Performance Metrics
 
@@ -94,6 +94,7 @@ Last activity: 2026-07-06 — Phase 23 complete, transitioned to Phase 24
 | Phase 23 P02 | 12min | 2 tasks | 2 files |
 | Phase 23 P03 | 10min | 2 tasks | 2 files |
 | Phase 23 P04 | 13min | 3 tasks | 7 files |
+| Phase 24 P01 | 12min | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -171,6 +172,9 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 23-04] Skew check gated on parseVersion(config?.mottoVersion) truthy -- a malformed mottoVersion is reported exactly once, as an errors[] entry, never also as a skew warning
 - [Phase ?]: [Phase 23-04] renderResult's warning loop runs in text mode only, unconditional relative to ok/quiet, absent from --format json (already serializes warnings verbatim)
 - [Phase ?]: [Phase 23-04] This repo's own motto.yaml stays unstamped through Phase 23 (D-R4) -- dogfood.test.js asserts zero skew warnings on the live REPO_ROOT tree
+- [Phase ?]: [Phase 24-01] UPGRADING.md placed at repo root (sibling to README.md), not under docs/ -- no docs/ dir exists, single-file doc sprawl avoided (D-04/D-05)
+- [Phase ?]: [Phase 24-01] checkSkew() older-than-tool remedy names UPGRADING.md explicitly -- resolved Open Question 1 in favor of concrete discoverability
+- [Phase ?]: [Phase 24-01] upgrading-ledger.test.js backstop scoped to existence + heading-presence only, no source-text parity, no git-tag parsing -- future-entry judgment stays human/agent-side (D-01)
 
 ### Pending Todos
 
@@ -207,9 +211,9 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-06T09:57:34.743Z
-Stopped at: Phase 24 context gathered
-Resume file: .planning/phases/24-upgrade-path-ledger-policy/24-CONTEXT.md
+Last session: 2026-07-06T11:39:19.366Z
+Stopped at: Completed 24-01-PLAN.md
+Resume file: None
 
 ## Operator Next Steps
 

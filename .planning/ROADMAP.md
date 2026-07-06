@@ -96,10 +96,10 @@ Full phase details: [milestones/v0.0.6-ROADMAP.md](milestones/v0.0.6-ROADMAP.md)
   2. A reader can find the v0.0.5 `<role>` migration in the ledger with the steps an existing project needed to cross it.
   3. The standing upgrade-path constraint is operational — a documented process requires every future structure/schema change to add a ledger entry before ship, discoverable where a contributor plans a change.
 
-**Plans**: 2 plans
+**Plans**: 1/2 plans executed
 **Wave 1**
 
-- [ ] 24-01-PLAN.md — Author UPGRADING.md (two seed entries), point the skew warning at it, add a backstop test (UPG-01)
+- [x] 24-01-PLAN.md — Author UPGRADING.md (two seed entries), point the skew warning at it, add a backstop test (UPG-01)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -132,7 +132,7 @@ Full phase details: [milestones/v0.0.6-ROADMAP.md](milestones/v0.0.6-ROADMAP.md)
 | 21. Publish Automation & Release Rewrite | v0.0.6 | 4/4 | Complete | 2026-07-04 |
 | 22. Public Flip & Token Hardening | v0.0.6 | 5/5 | Complete | 2026-07-05 |
 | 23. Version Stamping & Skew Detection | v0.0.7 | 4/4 | Complete    | 2026-07-06 |
-| 24. Upgrade-Path Ledger & Policy | v0.0.7 | 0/? | Not started | - |
+| 24. Upgrade-Path Ledger & Policy | v0.0.7 | 1/2 | In Progress|  |
 | 25. v0.0.6 Operator Debt Closure | v0.0.7 | 0/? | Not started | - |
 
 ## Backlog
