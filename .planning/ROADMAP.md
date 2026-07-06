@@ -54,7 +54,7 @@ Full phase details: [milestones/v0.0.6-ROADMAP.md](milestones/v0.0.6-ROADMAP.md)
 
 - [x] **Phase 23: Version Stamping & Skew Detection** - `motto init` stamps the tool version; `lint`/`build` detect and report skew as a never-throw advisory (completed 2026-07-06)
 - [x] **Phase 24: Upgrade-Path Ledger & Policy** - a breaking-change ledger with per-version upgrade steps, plus the standing process that keeps it current (completed 2026-07-06)
-- [ ] **Phase 25: v0.0.6 Operator Debt Closure** - marketplace stranger re-walk, npm token revoke, trusted-publisher lock (2/2 plans executed; verification gaps open)
+- [x] **Phase 25: v0.0.6 Operator Debt Closure** - marketplace stranger re-walk, npm token revoke, trusted-publisher lock (3/3 plans complete; all verification gaps closed) (completed 2026-07-06)
 
 ## Phase Details
 
@@ -116,7 +116,7 @@ Full phase details: [milestones/v0.0.6-ROADMAP.md](milestones/v0.0.6-ROADMAP.md)
   2. The granular npm token is revoked on npmjs.com and `NPM_TOKEN` is deleted from the repo's GitHub secrets, confirmed absent.
   3. npm publishing for `@jeremiewerner/motto` is locked to trusted-publisher-only on npmjs.com, so a stolen token alone can no longer publish.
 
-**Plans**: 3 plans (2 executed; 1 gap-closure plan pending)
+**Plans**: 3/3 plans complete
 
 **Wave 1**
 
@@ -128,7 +128,7 @@ Full phase details: [milestones/v0.0.6-ROADMAP.md](milestones/v0.0.6-ROADMAP.md)
 
 **Wave 3** *(gap closure — verification found the README caveat's refresh command factually wrong, WR-01/IN-01)*
 
-- [ ] 25-03-PLAN.md — Reword README plugin-cache caveat to lead with `claude plugin update motto@motto` + validate against a real stale-cache scenario (DEBT-06)
+- [x] 25-03-PLAN.md — Reword README plugin-cache caveat to lead with `claude plugin update motto@motto` + validate against a real stale-cache scenario (DEBT-06)
 
 ## Progress
 
@@ -145,7 +145,7 @@ Full phase details: [milestones/v0.0.6-ROADMAP.md](milestones/v0.0.6-ROADMAP.md)
 | 22. Public Flip & Token Hardening | v0.0.6 | 5/5 | Complete | 2026-07-05 |
 | 23. Version Stamping & Skew Detection | v0.0.7 | 4/4 | Complete    | 2026-07-06 |
 | 24. Upgrade-Path Ledger & Policy | v0.0.7 | 2/2 | Complete    | 2026-07-06 |
-| 25. v0.0.6 Operator Debt Closure | v0.0.7 | 2/2 | Complete   | 2026-07-06 |
+| 25. v0.0.6 Operator Debt Closure | v0.0.7 | 3/3 | Complete   | 2026-07-06 |
 
 ## Backlog
 
