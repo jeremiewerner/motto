@@ -24,7 +24,7 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 ### Debt Closure (DEBT — continues from v0.0.4's DEBT-05)
 
-- [ ] **DEBT-06**: Marketplace stranger re-walk passes against npm `latest` = 0.0.6 (`/plugin marketplace add jeremiewerner/motto` → install → build-skill visible); Claude Code plugin-cache caveat documented
+- [x] **DEBT-06**: Marketplace stranger re-walk passes against npm `latest` = 0.0.6 (`/plugin marketplace add jeremiewerner/motto` → install → build-skill visible); Claude Code plugin-cache caveat documented
 - [x] **DEBT-07**: npm granular token revoked on npmjs.com + `gh secret delete NPM_TOKEN` (release Step 9 follow-through)
 - [x] **DEBT-08**: npm publishing locked to trusted-publisher-only on npmjs.com
 
@@ -67,7 +67,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | VER-06 | Phase 23 | Complete |
 | UPG-01 | Phase 24 | Complete |
 | UPG-02 | Phase 24 | Complete |
-| DEBT-06 | Phase 25 | Pending |
+| DEBT-06 | Phase 25 | Complete |
 | DEBT-07 | Phase 25 | Complete |
 | DEBT-08 | Phase 25 | Complete |
 

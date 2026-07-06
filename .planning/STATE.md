@@ -4,17 +4,17 @@ milestone: v0.0.7
 milestone_name: Version Awareness
 current_phase: 25
 current_phase_name: v0-0-6-operator-debt-closure
-status: executing
-stopped_at: Phase 25 context gathered
-last_updated: "2026-07-06T17:52:58.047Z"
+status: verifying
+stopped_at: Completed 25-02-PLAN.md
+last_updated: "2026-07-06T18:08:50.834Z"
 last_activity: 2026-07-06
 last_activity_desc: Phase 25 execution started
 progress:
   total_phases: 3
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 8
-  completed_plans: 7
-  percent: 88
+  completed_plans: 8
+  percent: 100
 ---
 
 # Project State
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-07-05 after v0.0.6 milestone)
 
 Phase: 25 (v0-0-6-operator-debt-closure) — EXECUTING
 Plan: 2 of 2
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-07-06 — Phase 25 execution started
 
 ## Performance Metrics
@@ -98,6 +98,7 @@ Last activity: 2026-07-06 — Phase 25 execution started
 | Phase 24 P01 | 12min | 3 tasks | 7 files |
 | Phase 24 P02 | 25min | 3 tasks | 3 files |
 | Phase 25 P01 | 6min | 2 tasks | 1 files |
+| Phase 25 P02 | 9min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -183,6 +184,8 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 24-02] Checkpoint verdict: approved with friction -- magma stamp adoption succeeded from UPGRADING.md prose alone; corrected v0.0.7 Step 2 to remove nonexistent 'motto --version' and use 'npm ls -g @jeremiewerner/motto' as primary version-discovery command
 - [Phase 25-01]: Task 1 recorded NPM_TOKEN absence rather than deleting (already absent, gh secret list returned zero entries)
 - [Phase 25-01]: Task 2's DEBT-07/DEBT-08 closure relies on maintainer attestation (no CLI/API surface for npmjs.com token revocation or publishing-access lock), corroborated by an agent-run npm view provenance cross-check
+- [Phase ?]: [Phase 25-02]: Task 2's checklist items required a genuinely stranger-like environment (logged-out browser, clean shell) not agent-simulatable -- recorded as maintainer attestation, mirroring 25-TOKEN-LOCKDOWN.md's attestation style
+- [Phase ?]: [Phase 25-02]: Cache status alone was explicitly not accepted as proof for DEBT-06 -- the pass condition is the content diff of the installed plugin directory against dist/public rebuilt from the released v0.0.6 tag, which matched with no defect found and no patch release required
 
 ### Pending Todos
 
@@ -192,7 +195,7 @@ None yet.
 
 - **Phase 15 gate override (plan-phase 13a):** decision-coverage gate returned `could-not-parse` (15-CONTEXT.md decisions use bold-category bullets, not `- **D-NN:**` form; zero uncovered). Operator chose "Proceed anyway" after plan-checker Dimension 7 verified all context decisions honored in plans. Verify-phase should re-check decision compliance manually, not via the mechanical gate.
 - **Phase 16 gate override (plan-phase 13a):** decision-coverage gate returned `could-not-parse` (16-CONTEXT.md decisions use category bullets, not `- **D-NN:**` form; zero uncovered). Operator chose "Proceed anyway" after planner and plan-checker both verified all locked decisions honored in the plan. Verify-phase should re-check decision compliance manually, not via the mechanical gate.
-- ~~[Phase 22] Deferred to ship: first OIDC publish~~ — DONE 2026-07-05: v0.0.6 published via tag-push OIDC (run 28751135062); provenance attestation verified on the registry (SLSA v1, 1 signature). **Remaining Step 9 operator items:** (1) revoke the granular npm token on npmjs.com + `gh secret delete NPM_TOKEN` (secret still present, confirmed 2026-07-05); (2) lock npm publishing to trusted-publisher-only on npmjs.com; (3) marketplace stranger re-walk (`/plugin marketplace add jeremiewerner/motto` → install → build-skill visible) now that npm `latest` = 0.0.6.
+- ~~[Phase 22] Deferred to ship: first OIDC publish~~ — DONE 2026-07-05: v0.0.6 published via tag-push OIDC (run 28751135062); provenance attestation verified on the registry (SLSA v1, 1 signature). **Step 9 operator items — all resolved by Phase 25:** (1) NPM_TOKEN confirmed absent + granular npm token revoked (DEBT-07, 25-01); (2) npm publishing locked to trusted-publisher-only (DEBT-08, 25-01); (3) marketplace stranger re-walk passed with build-skill visible and content-diff match against dist/public rebuilt from v0.0.6 (DEBT-06, 25-02).
 - ~~Carried from prior milestones: no CI; repo still private~~ — both resolved: CI live (Phase 20), repo public (Phase 22).
 
 ### Quick Tasks Completed
@@ -219,9 +222,9 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-06T17:52:30.450Z
-Stopped at: Phase 25 context gathered
-Resume file: .planning/phases/25-v0-0-6-operator-debt-closure/25-CONTEXT.md
+Last session: 2026-07-06T18:08:50.830Z
+Stopped at: Completed 25-02-PLAN.md
+Resume file: None
 
 ## Operator Next Steps
 

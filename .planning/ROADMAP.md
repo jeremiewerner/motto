@@ -54,7 +54,7 @@ Full phase details: [milestones/v0.0.6-ROADMAP.md](milestones/v0.0.6-ROADMAP.md)
 
 - [x] **Phase 23: Version Stamping & Skew Detection** - `motto init` stamps the tool version; `lint`/`build` detect and report skew as a never-throw advisory (completed 2026-07-06)
 - [x] **Phase 24: Upgrade-Path Ledger & Policy** - a breaking-change ledger with per-version upgrade steps, plus the standing process that keeps it current (completed 2026-07-06)
-- [ ] **Phase 25: v0.0.6 Operator Debt Closure** - marketplace stranger re-walk, npm token revoke, trusted-publisher lock
+- [x] **Phase 25: v0.0.6 Operator Debt Closure** - marketplace stranger re-walk, npm token revoke, trusted-publisher lock (completed 2026-07-06)
 
 ## Phase Details
 
@@ -116,7 +116,7 @@ Full phase details: [milestones/v0.0.6-ROADMAP.md](milestones/v0.0.6-ROADMAP.md)
   2. The granular npm token is revoked on npmjs.com and `NPM_TOKEN` is deleted from the repo's GitHub secrets, confirmed absent.
   3. npm publishing for `@jeremiewerner/motto` is locked to trusted-publisher-only on npmjs.com, so a stolen token alone can no longer publish.
 
-**Plans**: 1/2 plans executed
+**Plans**: 2/2 plans complete
 
 **Wave 1**
 
@@ -124,7 +124,7 @@ Full phase details: [milestones/v0.0.6-ROADMAP.md](milestones/v0.0.6-ROADMAP.md)
 
 **Wave 2** *(blocked on Wave 1 — lock-first per D-03)*
 
-- [ ] 25-02-PLAN.md — Stranger re-walk with installed-content diff + README plugin-cache caveat; patch-release contingency (DEBT-06)
+- [x] 25-02-PLAN.md — Stranger re-walk with installed-content diff + README plugin-cache caveat; patch-release contingency (DEBT-06)
 
 ## Progress
 
@@ -141,7 +141,7 @@ Full phase details: [milestones/v0.0.6-ROADMAP.md](milestones/v0.0.6-ROADMAP.md)
 | 22. Public Flip & Token Hardening | v0.0.6 | 5/5 | Complete | 2026-07-05 |
 | 23. Version Stamping & Skew Detection | v0.0.7 | 4/4 | Complete    | 2026-07-06 |
 | 24. Upgrade-Path Ledger & Policy | v0.0.7 | 2/2 | Complete    | 2026-07-06 |
-| 25. v0.0.6 Operator Debt Closure | v0.0.7 | 1/2 | In Progress|  |
+| 25. v0.0.6 Operator Debt Closure | v0.0.7 | 2/2 | Complete   | 2026-07-06 |
 
 ## Backlog
 
