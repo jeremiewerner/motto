@@ -22,7 +22,7 @@ The **strict schema + linter**. Skills that always conform to one rigid-yet-crea
 
 **Goal:** A Motto project knows which Motto version it was scaffolded/built with, version skew is detected and reported — the foundation every future upgrade path stands on — and the v0.0.6 operator loose ends are closed.
 
-**Progress:** Phase 23 complete (2026-07-06) — Version Stamping & Skew Detection: `motto init` stamps `mottoVersion`, lint/build emit a direction-aware non-blocking skew advisory via additive `warnings[]`, malformed stamps are single clean errors (adversarial matrix), pre-stamp trees stay silent, never-rewrite guarded by byte-identity test. VER-01…VER-06 verified 11/11, 292 tests. Code review flagged 2 pre-existing `buildProject` throw paths (CR-01/CR-02, from phase 03-01) for follow-up.
+**Progress:** Phase 24 complete (2026-07-06) — Upgrade-Path Ledger & Policy: `UPGRADING.md` at repo root seeds the v0.0.5 `<role>` and v0.0.7 `mottoVersion` entries; skew warning names the file; release skill gained a blocking Ledger Gate (before the version bump, diffing schema-bearing files since the previous tag); upgrade-path constraint synced into CLAUDE.md. Live-validated by stamping magma from the docs alone (walkthrough caught and fixed a bogus `motto --version` reference). UPG-01/UPG-02 verified 8/8, 293 tests.
 
 **Target features:**
 - `motto.yaml` records the motto version (stamped at `init`)
@@ -185,4 +185,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-06 — phase 23 (Version Stamping & Skew Detection) complete*
+*Last updated: 2026-07-06 — phase 24 (Upgrade-Path Ledger & Policy) complete*
