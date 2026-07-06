@@ -33,10 +33,10 @@ Expected output: `# pass 75` (or higher) and `# fail 0`. If any test fails, stop
 Diff schema-bearing files since the last release tag (this step runs **before** the version bump, so `git describe --tags --abbrev=0` still resolves to the *previous* release tag — running it after the bump would diff against the just-created tag, an always-empty range):
 
 ```
-git diff $(git describe --tags --abbrev=0)..HEAD -- src/schema.js src/templates.js src/config.js src/init.js
+git diff $(git describe --tags --abbrev=0)..HEAD -- src/schema.js src/templates.js src/config.js src/init.js src/build.js src/frontmatter.js
 ```
 
-This file list (`src/schema.js`, `src/templates.js`, `src/config.js`, `src/init.js`) is the current home of schema logic — it is a snapshot, not a dynamically derived list. Do NOT replace it with something like `git ls-files src/`, which would over-trigger on every commit including test/doc-only ones. A future maintainer adding a new schema-adjacent file should add it to this list here; the human/agent verdict below is the real backstop against a stale list, not the list alone.
+This file list (`src/schema.js`, `src/templates.js`, `src/config.js`, `src/init.js`, `src/build.js`, `src/frontmatter.js`) covers the current homes of the behaviors in the gate's scope — schema/template validation, `motto.yaml` config keys, scaffold output, dist layout (`src/build.js`), and lint-relevant frontmatter extraction (`src/frontmatter.js`). It is a snapshot, not a dynamically derived list. Do NOT replace it with something like `git ls-files src/`, which would over-trigger on every commit including test/doc-only ones. A future maintainer adding a new schema-adjacent file should add it to this list here; the human/agent verdict below is the real backstop against a stale list, not the list alone.
 
 If this diff is non-empty, do NOT proceed to the Version Bump step until either:
 
@@ -180,7 +180,7 @@ Run this step **once** — the first time a tag-triggered publish succeeds via O
 - All tests pass (`node --test` reports zero failures) before the version bump.
 - `package.json`, `motto.yaml`, and `package-lock.json` are bumped to the same version and committed in a single release commit with a `vX.Y.Z` tag.
 - `motto lint` and `motto build` both succeed locally against the release version with no errors, as a pre-push sanity check.
-- The Ledger Gate runs before the version bump — while `git describe --tags --abbrev=0` still resolves to the previous release tag — and blocks tag creation and push on a non-empty diff of schema-bearing files (`src/schema.js`, `src/templates.js`, `src/config.js`, `src/init.js`) since that tag, pending either a new `UPGRADING.md` entry or a recorded "not breaking, no entry needed" verdict.
+- The Ledger Gate runs before the version bump — while `git describe --tags --abbrev=0` still resolves to the previous release tag — and blocks tag creation and push on a non-empty diff of schema-bearing files (`src/schema.js`, `src/templates.js`, `src/config.js`, `src/init.js`, `src/build.js`, `src/frontmatter.js`) since that tag, pending either a new `UPGRADING.md` entry or a recorded "not breaking, no entry needed" verdict.
 - The local flow ends at `git push --follow-tags` — no local `npm publish`, no local registry-auth check.
 - CI performs the publish: the tag-triggered Actions run passes `test`/`dogfood`/`pack-install-e2e` (including the D-05 tarball-leak assertion), then the `publish` job runs `npm publish` and `gh release create --generate-notes`, each independently guarded against re-running on an already-published version/release.
 - The maintainer verifies the Actions run is green, the registry has the new version (`npm view`), and the GitHub Release exists (`gh release view`) before doing any Post-Release Housekeeping.
