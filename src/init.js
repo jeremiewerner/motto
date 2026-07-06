@@ -29,6 +29,11 @@ import { execFileSync } from 'node:child_process';
 // or imported from config.js here.
 import { NAME_KEBAB } from './schema.js';
 
+// getOwnVersion is the sole source of the running tool's version (23-01) —
+// used here to stamp NEW scaffolds only (D-R4: this repo's own root
+// motto.yaml is never touched by this module).
+import { getOwnVersion } from './version.js';
+
 // ---------------------------------------------------------------------------
 // Scaffold templates
 // ---------------------------------------------------------------------------
@@ -144,9 +149,16 @@ async function writeScaffold(targetDir, { name, owner }) {
 
   // motto.yaml — name and plugins.public derive from the SAME validated
   // `name` value (Pitfall 2). plugins.private intentionally omitted.
+  // mottoVersion (VER-01, D-01) stamps the RUNNING TOOL's version — distinct
+  // from the project `version` field above. getOwnVersion() never throws;
+  // when it returns null (defensive fallback), the line is omitted entirely
+  // rather than writing `mottoVersion: null` or an empty string (matches the
+  // "absence is valid" contract src/config.js now enforces).
+  const toolVersion = getOwnVersion();
+  const mottoVersionLine = typeof toolVersion === 'string' ? `mottoVersion: "${toolVersion}"\n` : '';
   await writeFile(
     join(targetDir, 'motto.yaml'),
-    `name: ${name}\nversion: "0.1.0"\ndescription: ${SCAFFOLD_DESCRIPTION}\nplugins:\n  public: ${name}\n`,
+    `name: ${name}\nversion: "0.1.0"\n${mottoVersionLine}description: ${SCAFFOLD_DESCRIPTION}\nplugins:\n  public: ${name}\n`,
   );
   created.push('motto.yaml');
 
