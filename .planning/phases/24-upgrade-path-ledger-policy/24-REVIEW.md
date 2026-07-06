@@ -19,6 +19,8 @@ findings:
   info: 2
   total: 5
 status: issues_found
+fix_status: all_fixed
+fixed_at: 2026-07-06T12:00:12Z
 ---
 
 # Phase 24: Code Review Report
@@ -45,6 +47,7 @@ However, the phase's headline deliverable — the **blocking** Ledger Gate — i
 
 ### CR-01: Ledger Gate diff is always empty — the gate can never block
 
+**Status:** fixed (51ddacf) — Ledger Gate reordered to Step 2, before the version bump; diff base is now the previous release tag.
 **File:** `skills/release/SKILL.md:64-81` (interacts with `skills/release/SKILL.md:31-48`)
 **Issue:** Step 4 (Ledger Gate) instructs:
 
@@ -68,12 +71,14 @@ git diff $(git describe --tags --abbrev=0 HEAD^)..HEAD -- src/schema.js src/temp
 
 ### WR-01: Stale step reference — "Step 8 (Post-Release Housekeeping)" now points at the failure runbook
 
+**Status:** fixed (51ddacf) — reference corrected to Step 9; full step-number sweep done as part of the CR-01 reorder.
 **File:** `skills/release/SKILL.md:121`
 **Issue:** Step 7 ends with "Only proceed to Step 8 (Post-Release Housekeeping) once all three confirm." After the Ledger Gate insertion renumbered Steps 4-9 to 5-10, Post-Release Housekeeping is **Step 9**; Step 8 is now "If CI Publish Fails". Every other cross-reference was updated in lockstep (lines 102, 131, 150, 159, 189) — this one was missed. An agent executing the skill literally is told to proceed to the failure-recovery runbook after a successful release; the parenthetical contradicts the number, and conflicting instructions in a procedure skill are exactly what the renumbering was supposed to prevent.
 **Fix:** Change line 121 to: `Only proceed to Step 9 (Post-Release Housekeeping) once all three confirm.`
 
 ### WR-02: Ledger Gate file list omits `src/build.js` — dist-layout breaks (explicitly in the gate's scope) never trigger the diff
 
+**Status:** fixed (fe0628b) — `src/build.js` and `src/frontmatter.js` added to the pathspec, snapshot-list rationale, and success_criteria.
 **File:** `skills/release/SKILL.md:69-72,79`
 **Issue:** The gate's scope statement (line 79) includes "dist layout consumers depend on" as a breaking-change category, and "a change that makes a previously-passing project fail lint/build." But the diff pathspec covers only `src/schema.js src/templates.js src/config.js src/init.js`. Dist layout is produced by `src/build.js`, and lint-relevant frontmatter extraction lives in `src/frontmatter.js` — neither is in the list, so a breaking change in either produces an empty gate diff and never prompts the ledger verdict. The doc defends the list against *future* drift ("a future maintainer adding a new schema-adjacent file should add it"), but this is a day-one gap: files already in scope per the gate's own definition are missing from the mechanical trigger. The human-verdict backstop mitigates, but the mechanical check is the reason the gate exists.
 **Fix:** Extend the pathspec to cover the files that define the in-scope behaviors:
@@ -88,12 +93,14 @@ and update the snapshot-list sentence on line 72 and `success_criteria` line 183
 
 ### IN-01: CLAUDE.md constraint bullet drifts from its PROJECT.md source — regeneration would lose the Ledger Gate pointer
 
+**Status:** fixed (dbc6dfd) — PROJECT.md source updated to canonical wording (with Ledger Gate pointer); CLAUDE.md managed-block bullet now byte-identical.
 **File:** `.claude/CLAUDE.md:17` (vs `.planning/PROJECT.md:142`)
 **Issue:** The bullet sits inside the GSD-managed block (before `<!-- GSD:project-end -->`), but its wording differs from the PROJECT.md constraint it mirrors: CLAUDE.md says "any change ... breaking changes need an `UPGRADING.md` entry — see the release skill's Ledger Gate"; PROJECT.md says "every change ... Hard breaks without a path — like v0.0.5's `<role>` migration — are no longer acceptable now that real consumer projects (magma) exist." If GSD regenerates the managed block from PROJECT.md, the UPGRADING.md/Ledger Gate pointer silently disappears.
 **Fix:** Align the two — add the "breaking changes need an `UPGRADING.md` entry — see the release skill's Ledger Gate" clause to PROJECT.md's constraint bullet so a block regeneration is lossless.
 
 ### IN-02: "crosses both entries below on its way to 0.0.6+" is imprecise
 
+**Status:** fixed (7741cb0) — intro now says the v0.0.5 entry applies on the way to 0.0.6 and the v0.0.7 entry when moving to 0.0.7+.
 **File:** `UPGRADING.md:5-7`
 **Issue:** A project upgrading from 0.0.3 to exactly 0.0.6 crosses only the v0.0.5 entry; the v0.0.7 `mottoVersion` entry applies from 0.0.7 onward. "Both entries ... on its way to 0.0.6+" overstates it for the 0.0.6 target. Low stakes since the v0.0.7 entry is explicitly opt-in ("Nothing breaks"), but the intro is the ledger's navigation aid and should be exact.
 **Fix:** Reword to e.g. "…so a project coming from 0.0.3 crosses the v0.0.5 entry on its way to 0.0.6, and the v0.0.7 entry when it moves to 0.0.7+."
