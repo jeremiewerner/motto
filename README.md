@@ -238,6 +238,8 @@ motto build
 
 > **Prerequisite:** the `jeremiewerner/motto` repository must be public for the GitHub-form add to resolve.
 
+> **Note:** Claude Code caches installed plugin content locally, so an already-installed plugin can appear stale — not reflecting the latest published npm version — until the plugin cache is refreshed. If a skill you expect to see is missing or outdated, re-run `/plugin marketplace add jeremiewerner/motto` (or reinstall the plugin) to force Claude Code to re-pull the current published tarball.
+
 ```
 /plugin marketplace add jeremiewerner/motto
 ```
