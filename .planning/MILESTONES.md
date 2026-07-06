@@ -1,5 +1,24 @@
 # Motto — Milestones
 
+## v0.0.7 Version Awareness (Shipped: 2026-07-06)
+
+**Shipped:** 2026-07-06 · **Closeout:** override (3/3 phases verified passed, 11/11 requirements complete, milestone audit passed — Known verification overrides: 1 (Phase 24 UAT: 2 human sign-off scenarios, substance agent-verified; see STATE.md Deferred Items))
+
+A Motto project now knows which Motto version scaffolded it, and every future schema break has a documented crossing: `motto init` stamps `mottoVersion` into `motto.yaml`, `lint`/`build` report version skew as a direction-aware never-throw advisory, `UPGRADING.md` seeds the breaking-change ledger (retroactive v0.0.5 `<role>` entry + v0.0.7 stamp adoption), a blocking Ledger Gate in the release skill keeps it current, and the v0.0.6 operator debt (token revoke, trusted-publisher lock, marketplace re-walk) is closed. Triggered by magma — the first real consumer project.
+
+**Phases completed:** 3 (23–25) · **Plans:** 9 · **Tasks:** 17 · **Commits:** 70 · **Tests:** 293 (was 243)
+
+**Key accomplishments:**
+
+- New pure `src/version.js` (`getOwnVersion`/`parseVersion`/`checkSkew`) — memoized live package.json read, ~10-line semver-free version compare, direction-aware skew verdicts; `motto init` stamps `mottoVersion` into scaffolded `motto.yaml`, distinct from the project `version` field.
+- `lint`/`build` surface skew as a non-blocking additive `warnings[]` advisory rendered to stderr — never flips `ok`/exit code, never double-reports a malformed stamp, never rewrites `motto.yaml` (guarded by test); unstamped projects (magma pre-adoption, Motto's own tree) stay silent.
+- Malformed stamps never throw: `loadConfig()` gained a 7-case adversarial matrix (number/array/object/boolean/null/empty/garbage) producing clean `errors[]` entries, proven with `assert.doesNotThrow`.
+- `UPGRADING.md` breaking-change ledger seeded with the v0.0.5 `<role>` migration and the v0.0.7 stamp-adoption entry; the skew warning names it by filename; live-validated by stamping magma from the prose alone (walkthrough exposed and fixed two broken version-discovery commands).
+- Standing upgrade-path policy operational: blocking Ledger Gate inserted as release-skill Step 4, constraint synced into CLAUDE.md — hard breaks without a documented path are no longer shippable.
+- v0.0.6 operator debt closed: `NPM_TOKEN` confirmed absent + granular npm token revoked, npm publishing locked trusted-publisher-only (leak-safe evidence, zero credential values), marketplace stranger re-walk passed with installed-content diff against source-built-from-tag; README plugin-cache caveat corrected to the working `claude plugin update motto@motto` and validated against a real stale cache.
+
+---
+
 ## v0.0.6 Prove & Publish (Shipped: 2026-07-05)
 
 **Shipped:** 2026-07-05 · **Closeout:** verified (4/4 phases verified passed, 17/17 requirements complete, open-artifact audit clear — Phase 21's deferred live-publish check closed by this release itself; retro-wrote the v0.0.5 carry-over `260630-vzh-review-fixes` SUMMARY)

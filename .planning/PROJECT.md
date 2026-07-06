@@ -10,29 +10,30 @@ The **strict schema + linter**. Skills that always conform to one rigid-yet-crea
 
 ## Current State
 
-**Shipped: v0.0.6 (2026-07-05)** — Prove & Publish complete. Motto's ship path is automated and trustworthy: `.github/workflows/ci.yml` gates every push/PR (Node 20/22/24 matrix, `--quiet` dogfood, pack-install E2E, never-red npm-drift advisory); pushing a `v*` tag publishes to npm and creates a GitHub Release with zero long-lived tokens (`version_guard` tag/version cross-check → idempotent npm/gh guards → OIDC trusted publishing with `--provenance`); the repo is **public** (two clean full-history gitleaks scans, PII sweep, branch protection with 5 required checks); CLI gained `--quiet`/`--format json` with a stdout/stderr split; build-skill proven live on `skills/changelog`. Proven end-to-end at close: v0.0.6 itself shipped purely by tag push (npm `latest` = 0.0.6, GitHub Release live). 17/17 requirements, 243 tests, ~2,450 LOC (src+bin+scripts), single dep `yaml`. See `milestones/v0.0.6-ROADMAP.md`.
+**Shipped: v0.0.7 (2026-07-06)** — Version Awareness complete. A Motto project knows which Motto version scaffolded it and every future schema break has a documented crossing: `motto init` stamps `mottoVersion` into `motto.yaml` (new pure `src/version.js`: `getOwnVersion`/`parseVersion`/`checkSkew`, no semver dep); `lint`/`build` report skew as a direction-aware, non-blocking, never-throw `warnings[]` advisory on stderr (tool newer → "check UPGRADING.md"; project newer → "upgrade motto"), with malformed stamps covered by a 7-case adversarial matrix and a never-rewrite guarantee guarded by test; `UPGRADING.md` seeds the breaking-change ledger (retroactive v0.0.5 `<role>` entry + v0.0.7 stamp adoption), live-validated by stamping magma from the prose alone; a blocking Ledger Gate in the release skill plus a standing CLAUDE.md/PROJECT.md constraint make upgrade paths mandatory for every future structure/schema change; v0.0.6 operator debt closed (npm token revoked + `NPM_TOKEN` absent, trusted-publisher-only lock, marketplace stranger re-walk with content diff, README plugin-cache caveat fixed to `claude plugin update motto@motto`). 11/11 requirements, 293 tests, ~2,700 LOC (src+bin+scripts), single dep `yaml`. See `milestones/v0.0.7-ROADMAP.md`.
 
-**Prior v0.0.5 (2026-07-03)** — Skill Builder complete. A user describes a procedure in any form and Motto structures it into a validated, conforming, distributable skill: the `template:` mechanism enforces real rules from the pure-data `src/templates.js` registry (`procedure` ships, fence-aware section matching); `outputs:`/`dependencies:`/`allowed-tools` are validated with integrity guards (path-safety + symlink-escape, resolution + self-dep + audience-direction, format-only), all never-throw; the `build-skill` Agent Skill ingests any input, gap-fills, generates, and self-verifies against the real linter (`author-skill` retired); `skill-schema.md` matches the live validator with a doc-sync test that breaks the suite on drift; and the base spine migrated from `**Role:**` bold-lines to a registry-driven `<role>…</role>` section tag (hard break, two distinct lint errors). 19/19 requirements + Phase 18's 9-decision contract, 213 tests, 1,964 LOC, single dep `yaml`. See `milestones/v0.0.5-ROADMAP.md`.
+**Prior v0.0.6 (2026-07-05)** — Prove & Publish complete. Motto's ship path is automated and trustworthy: `.github/workflows/ci.yml` gates every push/PR (Node 20/22/24 matrix, `--quiet` dogfood, pack-install E2E, never-red npm-drift advisory); pushing a `v*` tag publishes to npm and creates a GitHub Release with zero long-lived tokens (`version_guard` tag/version cross-check → idempotent npm/gh guards → OIDC trusted publishing with `--provenance`); the repo is **public** (two clean full-history gitleaks scans, PII sweep, branch protection with 5 required checks); CLI gained `--quiet`/`--format json` with a stdout/stderr split; build-skill proven live on `skills/changelog`. Proven end-to-end at close: v0.0.6 itself shipped purely by tag push (npm `latest` = 0.0.6, GitHub Release live). 17/17 requirements, 243 tests, ~2,450 LOC (src+bin+scripts), single dep `yaml`. See `milestones/v0.0.6-ROADMAP.md`.
 
-**Earlier:** v0.0.4 (2026-07-02) — project bootstrap: `motto init`, `--help`/`[path]` ergonomics, README ship flow, setup-project retired (10 reqs, 131 tests). · v0.0.3 (2026-07-01) — installable + distributable: npm `@jeremiewerner/motto`, self-hosted marketplace, real `release` publish flow (13 reqs). · v0.0.2 (2026-07-01) — Motto self-hosts: own `skills/` tree + dogfood guard + spec-complete `validateSkill` (10 reqs). · v0.0.1 (2026-06-30) — core `motto lint` + `motto build` CLI (22 reqs). Archives in `milestones/`.
+**Earlier:** v0.0.5 (2026-07-03) — Skill Builder: data-driven `template:` enforcement, `outputs:`/`dependencies:`/`allowed-tools` integrity guards, `build-skill` Agent Skill (author-skill retired), doc-sync drift test, `<role>` section-tag spine (19 reqs, 213 tests). · v0.0.4 (2026-07-02) — project bootstrap: `motto init`, `--help`/`[path]` ergonomics, README ship flow, setup-project retired (10 reqs, 131 tests). · v0.0.3 (2026-07-01) — installable + distributable: npm `@jeremiewerner/motto`, self-hosted marketplace, real `release` publish flow (13 reqs). · v0.0.2 (2026-07-01) — Motto self-hosts: own `skills/` tree + dogfood guard + spec-complete `validateSkill` (10 reqs). · v0.0.1 (2026-06-30) — core `motto lint` + `motto build` CLI (22 reqs). Archives in `milestones/`.
 
 **Hardening note:** post-v0.0.2 `/code-review high` caught 3 D-01 never-throw violations the milestone tests missed; fixed + guarded. v0.0.4 continued the pattern (adversarial scaffold-path tests). v0.0.5 made it structural: phase 18's review caught a Critical never-throw registry-shape crash (CR-01) *before* verification instead of after ship, and the twice-deferred WR-04 shape guard was closed at milestone close — zero known never-throw gaps at ship for the first time.
 
-## Current Milestone: v0.0.7 Version Awareness
+## Next Milestone Goals
 
-**Goal:** A Motto project knows which Motto version it was scaffolded/built with, version skew is detected and reported — the foundation every future upgrade path stands on — and the v0.0.6 operator loose ends are closed.
-
-**Progress:** Phase 25 complete (2026-07-06) — v0.0.6 Operator Debt Closure, the milestone's final phase: granular npm token revoked + `NPM_TOKEN` deleted from GitHub secrets (agent-confirmed absent), npm publishing locked to trusted-publisher-only (DEBT-07/08); marketplace stranger re-walk proven against npm `latest` = 0.0.6 with build-skill visible and installed content diffed against source (DEBT-06); README plugin-cache caveat corrected after review caught its refresh instruction was a no-op — now leads with `claude plugin update motto@motto`, validated against a real stale-cache scenario. Re-verified 5/5. Prior: Phase 24 (2026-07-06) — Upgrade-Path Ledger & Policy: `UPGRADING.md` seeds the v0.0.5 `<role>` and v0.0.7 `mottoVersion` entries; skew warning names the file; release skill gained a blocking Ledger Gate; upgrade-path constraint synced into CLAUDE.md; live-validated by stamping magma from the docs alone. UPG-01/UPG-02 verified 8/8, 293 tests. **All v0.0.7 phases complete — milestone ready for `/gsd-complete-milestone`.**
-
-**Target features:**
-- `motto.yaml` records the motto version (stamped at `init`)
-- `lint`/`build` detect version skew (project vs tool) with an explicit, actionable, never-throw message
-- Standing constraint locked: every structure/schema change from now on ships with a documented upgrade path
-- v0.0.6 debt closed: marketplace stranger re-walk (npm `latest` = 0.0.6), npm token revoke + trusted-publisher lock (release Step 9)
-
-**Context:** Triggered by **magma** — the first real end-user project scaffolded with `motto init magma`. Magma stays a separate project; friction found there becomes Motto requirements. The upgrade *command* is deliberately deferred (YAGNI) until the first real schema break demands it — version awareness is the detection layer that makes that future command possible.
+Not yet defined — run `/gsd-new-milestone`. Candidate threads from the Backlog: Node 20 EOL `engines` decision, `--format json` structured skew field (VER-F1, gated on magma validating the prose message), `motto upgrade` command (UPG-F1, gated on the first real post-stamp schema break), `motto ship` (SHIP-01, gated on real friction).
 
 **Standing principles (every step):** heavy research; design for unknown purpose; lightweight (readable code/md, no doc sprawl); agentic best practice (skills + agents + subagents + API/MCP are first-class); simple to adapt, creativity free; rigor in a small easy spine.
+
+<details>
+<summary>Shipped: v0.0.7 — Version Awareness (2026-07-06)</summary>
+
+**Goal:** A Motto project knows which Motto version it was scaffolded/built with, version skew is detected and reported — the foundation every future upgrade path stands on — and the v0.0.6 operator loose ends are closed. ✅ Shipped — see `milestones/v0.0.7-ROADMAP.md`.
+
+**Delivered:** `mottoVersion` stamped at `init` (pure `src/version.js`, no semver dep); direction-aware never-throw skew advisory in `lint`/`build` (non-blocking `warnings[]`, stderr, malformed-stamp adversarial matrix, never-rewrite guard); `UPGRADING.md` ledger seeded (v0.0.5 `<role>` + v0.0.7 stamp adoption), live-validated on magma; blocking Ledger Gate in release skill + standing upgrade-path constraint; v0.0.6 operator debt closed (token revoke, trusted-publisher lock, marketplace re-walk, plugin-cache caveat fix).
+
+**Context:** Triggered by **magma** — the first real end-user project scaffolded with `motto init magma`. The upgrade *command* stays deferred (YAGNI) until the first real post-stamp schema break; this milestone is its detection layer.
+
+</details>
 
 <details>
 <summary>Shipped: v0.0.6 — Prove & Publish (2026-07-05)</summary>
@@ -111,10 +112,14 @@ The **strict schema + linter**. Skills that always conform to one rigid-yet-crea
 - [x] CI gates every push/PR: Node 20/22/24 matrix, dogfood, pack-install E2E, npm-drift advisory, git-less prepare guard — v0.0.6 (CIW-01..05)
 - [x] Tag push publishes to npm idempotently + creates a GitHub Release; local release flow = bump+tag+push; D-05 tarball assertion in CI — v0.0.6 (PUB-01..04, live-proven by the v0.0.6 release itself)
 - [x] Repo public behind explicit gates: clean full-history gitleaks scans, recorded `.planning/` visibility decision, stranger-usable README/npm path, OIDC trusted publishing with zero long-lived tokens — v0.0.6 (OPEN-01..03, PUB-05)
+- [x] `motto init` stamps `mottoVersion` into scaffolded `motto.yaml`, distinct from the project `version` field — v0.0.7 (VER-01)
+- [x] `lint`/`build` report version skew as a direction-aware, non-blocking, never-throw advisory; no stamp → silent; malformed stamp → clean error, never a throw; `lint`/`build` never rewrite `motto.yaml` — v0.0.7 (VER-02..06)
+- [x] `UPGRADING.md` breaking-change ledger seeded (v0.0.5 `<role>` + v0.0.7 stamp adoption) with a standing before-ship Ledger Gate in the release skill — v0.0.7 (UPG-01..02, live-validated on magma)
+- [x] v0.0.6 operator debt closed: marketplace stranger re-walk against npm `latest`, npm token revoked + `NPM_TOKEN` absent, trusted-publisher-only lock — v0.0.7 (DEBT-06..08)
 
 ### Active
 
-v0.0.7 requirements being defined — see `.planning/REQUIREMENTS.md` once written.
+v0.0.8 requirements not yet defined — run `/gsd-new-milestone`.
 
 ### Out of Scope
 
@@ -130,8 +135,9 @@ v0.0.7 requirements being defined — see `.planning/REQUIREMENTS.md` once writt
 - Output is **standard Agent Skills** (`SKILL.md` + frontmatter + `references/`). The tooling is Claude-Code-specific; the output is portable.
 - A full design spec and a 6-task TDD implementation plan already exist: `.planning/superpowers/specs/2026-06-29-motto-design.md` and `.planning/superpowers/plans/2026-06-30-motto-core-cli.md`.
 - Repo layout for a Motto project: `skills/<name>/` (SKILL.md, references/, scripts/) + `shared/references/` → generated `dist/{public,private}/`.
-- Codebase state at v0.0.6 ship: plain ESM JS (`bin/` + `src/` + `scripts/`, ~2,450 LOC), 243-test `node --test` suite, single dep `yaml`, husky pre-commit full-suite hook, CI live (`.github/workflows/ci.yml`: Node 20/22/24 matrix + dogfood + pack-install E2E + OIDC publish-on-tag + npm-drift advisory). Repo **public** (flipped 2026-07-05 after two clean gitleaks scans). npm `latest` = 0.0.6 (published via tag-push automation 2026-07-05). Three live skills (`release`, `build-skill`, `changelog`), doc-sync test pins `skill-schema.md` to the validator source.
-- Known debt: marketplace/skill-list stranger walkthrough still unverified against a current npm `latest` (was blocked on 0.0.3 staleness, unblocked at v0.0.6 ship — re-walk queued in ROADMAP Backlog); 1 info-level build-skill prose gap (see `milestones/v0.0.5-MILESTONE-AUDIT.md` tech_debt); versions 0.0.4/0.0.5 intentionally never published to npm (0.0.3 → 0.0.6 jump).
+- Codebase state at v0.0.7 ship: plain ESM JS (`bin/` + `src/` + `scripts/`, ~2,700 LOC), 293-test `node --test` suite, single dep `yaml`, husky pre-commit full-suite hook, CI live (`.github/workflows/ci.yml`: Node 20/22/24 matrix + dogfood + pack-install E2E + OIDC publish-on-tag + npm-drift advisory). Repo **public**; npm publishing trusted-publisher-only. Three live skills (`release`, `build-skill`, `changelog`), doc-sync test pins `skill-schema.md` to the validator source, `UPGRADING.md` ledger at repo root with a backstop test.
+- Known debt: pre-existing `src/build.js` CR-01/CR-02 I/O findings from phase 03-01 (surfaced in phase 23 review, out of v0.0.7 scope — candidate hardening phase); Phase 24 UAT 2 human sign-off scenarios deferred (substance agent-verified); Phase 25 DEBT-07/08 + stranger-env checks rest on maintainer attestation (no agent-falsifiable surface); 1 info-level build-skill prose gap (see `milestones/v0.0.5-MILESTONE-AUDIT.md` tech_debt); versions 0.0.4/0.0.5 intentionally never published to npm (0.0.3 → 0.0.6 jump).
+- magma (`~/Projects/magma`) is the first real consumer project — stamped `mottoVersion` live during Phase 24 from UPGRADING.md prose alone; friction found there becomes Motto requirements.
 
 ## Constraints
 
@@ -165,6 +171,9 @@ v0.0.7 requirements being defined — see `.planning/REQUIREMENTS.md` once writt
 | No `motto ship` command | After init + build, shipping is two git commands; marketplace.json already scaffolded | ✅ v0.0.4 (backlog SHIP-01 until real friction) |
 | Publish auth = OIDC trusted publishing, zero stored tokens | Short-lived workflow-scoped OIDC token replaces the standing `NPM_TOKEN` credential; exact org/repo/workflow match on npmjs.com; residual secret revoked at ship (release Step 9) | ✓ Phase 22 — token-free publish path live in ci.yml, structural test guards it |
 | `version_guard` cross-checks tag vs package.json before any publish side effect | A mismatched tag must abort before npm/gh guards — closes the phantom-green-release drift path (Phase 21 CR-01) | ✓ v0.0.6 — proven live: guard passed silently on the real v0.0.6 publish; abort path proven by executed bash spot-checks |
+| Version awareness = stamp + advisory, no auto-restamp, no semver dep, no `check-version` verb | Stamp carries a "verified against" signal auto-rewrite would destroy (Rails/Terraform prior art); ~10-line regex covers one first-party compare; skew must surface for free in commands users already run | ✓ v0.0.7 — magma stamped live, advisory proven direction-aware and never-throw (7-case adversarial matrix) |
+| Skew is a `warnings[]` advisory, never an error — exit code and `ok` untouched | Motto lints markdown, not infrastructure; crying wolf on patch bumps trains users to ignore the warning (npm lockfileVersion fatigue) | ✓ v0.0.7 — VER-02/04 verified; severity-by-semver-distance deferred (VER-F2) until a second real break calibrates it |
+| Upgrade path is a standing constraint (UPGRADING.md ledger + release-skill Ledger Gate), not a `motto upgrade` command | Real consumer (magma) makes hard breaks unacceptable, but the command is YAGNI until the first post-stamp schema break; docs + a blocking gate cover today's need | ✓ v0.0.7 — ledger followed live to stamp magma; gate blocks release Step 4 |
 | `.planning/` ships public as-is (no history rewrite) | 2026-07-05: Tags stay valid, history stays honest, the planning record is a feature for a dev-tooling repo (D-01). Accepted with informed knowledge of the PII sweep's commit-metadata-email finding — `jeremie@studiometa.fr` is the git-config author/committer email on the large majority of commits and is invisible to gitleaks (which scans diff content, not commit headers); D-06 already forbids purging it via history rewrite, so this exposure is knowingly accepted, not a silent default (see `.planning/phases/22-public-flip-token-hardening/22-SECRETS-SCAN.md` PII Sweep section) | ✓ Accepted — Phase 22 |
 
 ## Evolution
@@ -185,4 +194,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-06 — phase 25 (v0.0.6 Operator Debt Closure) complete; all v0.0.7 phases done*
+*Last updated: 2026-07-06 after v0.0.7 milestone*
