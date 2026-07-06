@@ -783,3 +783,113 @@ describe('lintProject — never-throw on non-ENOENT fs errors (phase-15 review C
     assert.deepStrictEqual(skillErrors, []);
   });
 });
+
+// ---------------------------------------------------------------------------
+// mottoVersion skew warnings[] (VER-02, VER-04) — Task 1 wiring
+// ---------------------------------------------------------------------------
+// warnings[] is an additive field on lintProject's return; skew is computed
+// via checkSkew(config.mottoVersion, getOwnVersion()) and gated on a
+// well-formed stamp (parseVersion truthy) so a malformed value — already
+// reported as an errors[] entry by config.js — is never double-reported
+// here as a warning (D-R1, Issue 1).
+
+function makeConfigWithMottoVersion(mottoVersion) {
+  return [
+    'name: my-project',
+    'version: 1.0.0',
+    'description: My skills collection',
+    `mottoVersion: "${mottoVersion}"`,
+    'plugins:',
+    '  public: my-plugin',
+    '',
+  ].join('\n');
+}
+
+describe('lintProject — warnings[] additive field (VER-02/VER-04 wiring)', () => {
+  it('every return path includes a warnings field', async () => {
+    // "no skills found" early-return path
+    const emptyRoot = await mkdtemp(join(tmpdir(), 'motto-lint-warn-'));
+    try {
+      await writeFile(join(emptyRoot, 'motto.yaml'), VALID_CONFIG);
+      const result = await lintProject(emptyRoot);
+      assert.ok(Array.isArray(result.warnings), 'warnings must be an array even on early return');
+    } finally {
+      await rm(emptyRoot, { recursive: true, force: true });
+    }
+  });
+
+  it('a project with NO mottoVersion returns warnings: [] (VER-04), ok unchanged, no throw', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'motto-lint-warn-'));
+    try {
+      await mkdir(join(root, 'skills', 'my-skill'), { recursive: true });
+      await writeFile(join(root, 'motto.yaml'), VALID_CONFIG);
+      await writeFile(join(root, 'skills', 'my-skill', 'SKILL.md'), makeSkillMd('my-skill'));
+      let result;
+      await assert.doesNotReject(async () => {
+        result = await lintProject(root);
+      });
+      assert.strictEqual(result.ok, true);
+      assert.deepStrictEqual(result.warnings, []);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it('a project whose mottoVersion is OLDER than the live tool warns "check the upgrade ledger"', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'motto-lint-warn-'));
+    try {
+      await mkdir(join(root, 'skills', 'my-skill'), { recursive: true });
+      await writeFile(join(root, 'motto.yaml'), makeConfigWithMottoVersion('0.0.1'));
+      await writeFile(join(root, 'skills', 'my-skill', 'SKILL.md'), makeSkillMd('my-skill'));
+      const result = await lintProject(root);
+      assert.strictEqual(result.ok, true, `expected ok:true, errors: ${JSON.stringify(result.errors)}`);
+      assert.strictEqual(result.warnings.length, 1);
+      assert.match(result.warnings[0].message, /check the upgrade ledger/);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it('a project whose mottoVersion is NEWER than the live tool warns "upgrade motto"', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'motto-lint-warn-'));
+    try {
+      await mkdir(join(root, 'skills', 'my-skill'), { recursive: true });
+      await writeFile(join(root, 'motto.yaml'), makeConfigWithMottoVersion('99.0.0'));
+      await writeFile(join(root, 'skills', 'my-skill', 'SKILL.md'), makeSkillMd('my-skill'));
+      const result = await lintProject(root);
+      assert.strictEqual(result.ok, true, `expected ok:true, errors: ${JSON.stringify(result.errors)}`);
+      assert.strictEqual(result.warnings.length, 1);
+      assert.match(result.warnings[0].message, /upgrade motto/);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it('a malformed mottoVersion is reported once as an error, never also as a skew warning', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'motto-lint-warn-'));
+    try {
+      await mkdir(join(root, 'skills', 'my-skill'), { recursive: true });
+      const badConfig = [
+        'name: my-project',
+        'version: 1.0.0',
+        'description: My skills collection',
+        'mottoVersion: 7',
+        'plugins:',
+        '  public: my-plugin',
+        '',
+      ].join('\n');
+      await writeFile(join(root, 'motto.yaml'), badConfig);
+      await writeFile(join(root, 'skills', 'my-skill', 'SKILL.md'), makeSkillMd('my-skill'));
+      const result = await lintProject(root);
+      assert.strictEqual(result.ok, false);
+      const mottoErrors = result.errors.filter((e) => /mottoVersion/i.test(e.message));
+      assert.strictEqual(mottoErrors.length, 1, `expected exactly 1 mottoVersion error, got: ${JSON.stringify(result.errors)}`);
+      const skewWarnings = (result.warnings ?? []).filter(
+        (w) => /check the upgrade ledger/.test(w.message) || /upgrade motto/.test(w.message),
+      );
+      assert.deepStrictEqual(skewWarnings, [], 'a malformed stamp must never also produce a skew warning');
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+});

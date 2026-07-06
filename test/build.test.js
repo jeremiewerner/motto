@@ -491,3 +491,70 @@ describe('buildProject — Task 3: private bucket routing', () => {
     }
   });
 });
+
+// ---------------------------------------------------------------------------
+// mottoVersion skew warnings[] (VER-02, VER-04) — Task 1 wiring
+// ---------------------------------------------------------------------------
+
+function makeMottoYamlWithVersion(mottoVersion) {
+  return [
+    'name: my-project',
+    'version: 1.0.0',
+    'description: My project description',
+    `mottoVersion: "${mottoVersion}"`,
+    'plugins:',
+    '  public: my-project',
+    '',
+  ].join('\n');
+}
+
+describe('buildProject — warnings[] additive field (VER-02/VER-04 wiring)', () => {
+  it('a project with no mottoVersion returns warnings: [] on the success return', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'motto-build-warn-'));
+    try {
+      await scaffoldPublicProject(root);
+      const result = await buildProject(root);
+      assert.strictEqual(result.ok, true, `build failed: ${JSON.stringify(result.errors)}`);
+      assert.deepStrictEqual(result.warnings, []);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it('the lint-fail early return still includes a warnings field', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'motto-build-warn-'));
+    try {
+      // Invalid config (missing required fields) forces the lint gate to fail.
+      await mkdir(join(root, 'skills', 'my-skill'), { recursive: true });
+      await writeFile(join(root, 'motto.yaml'), 'name: my-project\n');
+      await writeFile(join(root, 'skills', 'my-skill', 'SKILL.md'), makeSkillMd('my-skill'));
+      const result = await buildProject(root);
+      assert.strictEqual(result.ok, false);
+      assert.ok(Array.isArray(result.warnings), 'warnings must be present even on the lint-fail path');
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it('a skewed-but-otherwise-valid project builds ok:true with a skew warning; plugin.json version is config.version', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'motto-build-warn-'));
+    try {
+      await mkdir(join(root, 'skills', 'my-skill'), { recursive: true });
+      await writeFile(join(root, 'motto.yaml'), makeMottoYamlWithVersion('0.0.1'));
+      await writeFile(join(root, 'skills', 'my-skill', 'SKILL.md'), makeSkillMd('my-skill'));
+      const result = await buildProject(root);
+      assert.strictEqual(result.ok, true, `build failed: ${JSON.stringify(result.errors)}`);
+      assert.strictEqual(result.warnings.length, 1);
+      assert.match(result.warnings[0].message, /check the upgrade ledger/);
+
+      const manifestRaw = await readFile(
+        join(root, 'dist', 'public', '.claude-plugin', 'plugin.json'),
+        'utf8',
+      );
+      const manifest = JSON.parse(manifestRaw);
+      assert.strictEqual(manifest.version, '1.0.0', 'plugin.json version must equal config.version, never mottoVersion');
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+});

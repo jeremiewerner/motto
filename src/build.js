@@ -15,7 +15,14 @@
  *   7. Return result
  *
  * Return shape:
- *   { ok, outDir, errors, skillCount, bucketCount }
+ *   { ok, outDir, errors, skillCount, bucketCount, warnings }
+ *
+ * warnings — additive, non-blocking advisories (VER-02); currently populated
+ * only by a mottoVersion/tool skew check (VER-03), computed directly from
+ * the already lint-validated config at STEP 2 (config.mottoVersion is
+ * guaranteed well-formed or absent by the time the lint gate has passed —
+ * a malformed value would already have failed lint). Always present on
+ * every return path, defaults to [].
  *
  * Exit code: callers set process.exitCode (never process.exit(1)) to avoid
  * truncating buffered stdout (Phase 2 Pitfall 7).
@@ -27,6 +34,7 @@ import { join } from 'node:path';
 import { lintProject } from './lint.js';
 import { loadConfig } from './config.js';
 import { parseFrontmatter } from './frontmatter.js';
+import { checkSkew, getOwnVersion } from './version.js';
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -83,7 +91,8 @@ async function loadSkillData(skillsDir, skillName) {
  *   outDir: string|null,
  *   errors: Array<{skill: string, message: string}>,
  *   skillCount: number,
- *   bucketCount: number
+ *   bucketCount: number,
+ *   warnings: Array<{skill: string, message: string}>
  * }>}
  */
 export async function buildProject(projectRoot) {
@@ -91,12 +100,28 @@ export async function buildProject(projectRoot) {
   // The gate runs BEFORE any mutation. A failing lint means zero writes to dist/.
   const lintResult = await lintProject(projectRoot);
   if (!lintResult.ok) {
-    return { ok: false, outDir: null, errors: lintResult.errors, skillCount: 0, bucketCount: 0 };
+    return {
+      ok: false,
+      outDir: null,
+      errors: lintResult.errors,
+      skillCount: 0,
+      bucketCount: 0,
+      warnings: lintResult.warnings ?? [],
+    };
   }
 
   // ── STEP 2: Load config + skill data (Option A — re-read, RESEARCH §Reuse) ─
   const configText = await readFile(join(projectRoot, 'motto.yaml'), 'utf8');
   const { config } = loadConfig(configText); // lint passed → config is valid
+
+  // Skew check (VER-02/VER-03) — computed directly here, NOT re-derived from
+  // lintResult's internals, to avoid coupling to lint.js's internal naming.
+  // config.mottoVersion is guaranteed well-formed-or-absent by the lint gate
+  // above (a malformed value would already have failed lint — D-R1), so no
+  // extra parseVersion gate is needed here; checkSkew itself null-guards.
+  const warnings = [];
+  const skewWarning = checkSkew(config.mottoVersion, getOwnVersion());
+  if (skewWarning) warnings.push(skewWarning);
 
   const skillsDir = join(projectRoot, 'skills');
   const skillNames = await discoverSkillNames(skillsDir);
@@ -142,7 +167,14 @@ export async function buildProject(projectRoot) {
 
   // Return early on any pre-pack errors — BEFORE the wipe (D3-02 extended)
   if (buildErrors.length > 0) {
-    return { ok: false, outDir: null, errors: buildErrors, skillCount: 0, bucketCount: 0 };
+    return {
+      ok: false,
+      outDir: null,
+      errors: buildErrors,
+      skillCount: 0,
+      bucketCount: 0,
+      warnings,
+    };
   }
 
   // ── STEP 4: Wipe dist/ (D3-03) — only after ALL checks pass ──────────────
@@ -210,5 +242,6 @@ export async function buildProject(projectRoot) {
     errors: [],
     skillCount: skills.length,
     bucketCount: bucketsUsed.size,
+    warnings,
   };
 }
