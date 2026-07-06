@@ -54,7 +54,7 @@ Full phase details: [milestones/v0.0.6-ROADMAP.md](milestones/v0.0.6-ROADMAP.md)
 
 - [x] **Phase 23: Version Stamping & Skew Detection** - `motto init` stamps the tool version; `lint`/`build` detect and report skew as a never-throw advisory (completed 2026-07-06)
 - [x] **Phase 24: Upgrade-Path Ledger & Policy** - a breaking-change ledger with per-version upgrade steps, plus the standing process that keeps it current (completed 2026-07-06)
-- [x] **Phase 25: v0.0.6 Operator Debt Closure** - marketplace stranger re-walk, npm token revoke, trusted-publisher lock (completed 2026-07-06)
+- [ ] **Phase 25: v0.0.6 Operator Debt Closure** - marketplace stranger re-walk, npm token revoke, trusted-publisher lock (2/2 plans executed; verification gaps open)
 
 ## Phase Details
 
