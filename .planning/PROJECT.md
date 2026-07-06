@@ -22,7 +22,7 @@ The **strict schema + linter**. Skills that always conform to one rigid-yet-crea
 
 **Goal:** A Motto project knows which Motto version it was scaffolded/built with, version skew is detected and reported — the foundation every future upgrade path stands on — and the v0.0.6 operator loose ends are closed.
 
-**Progress:** Phase 24 complete (2026-07-06) — Upgrade-Path Ledger & Policy: `UPGRADING.md` at repo root seeds the v0.0.5 `<role>` and v0.0.7 `mottoVersion` entries; skew warning names the file; release skill gained a blocking Ledger Gate (before the version bump, diffing schema-bearing files since the previous tag); upgrade-path constraint synced into CLAUDE.md. Live-validated by stamping magma from the docs alone (walkthrough caught and fixed a bogus `motto --version` reference). UPG-01/UPG-02 verified 8/8, 293 tests.
+**Progress:** Phase 25 complete (2026-07-06) — v0.0.6 Operator Debt Closure, the milestone's final phase: granular npm token revoked + `NPM_TOKEN` deleted from GitHub secrets (agent-confirmed absent), npm publishing locked to trusted-publisher-only (DEBT-07/08); marketplace stranger re-walk proven against npm `latest` = 0.0.6 with build-skill visible and installed content diffed against source (DEBT-06); README plugin-cache caveat corrected after review caught its refresh instruction was a no-op — now leads with `claude plugin update motto@motto`, validated against a real stale-cache scenario. Re-verified 5/5. Prior: Phase 24 (2026-07-06) — Upgrade-Path Ledger & Policy: `UPGRADING.md` seeds the v0.0.5 `<role>` and v0.0.7 `mottoVersion` entries; skew warning names the file; release skill gained a blocking Ledger Gate; upgrade-path constraint synced into CLAUDE.md; live-validated by stamping magma from the docs alone. UPG-01/UPG-02 verified 8/8, 293 tests. **All v0.0.7 phases complete — milestone ready for `/gsd-complete-milestone`.**
 
 **Target features:**
 - `motto.yaml` records the motto version (stamped at `init`)
@@ -185,4 +185,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-06 — phase 24 (Upgrade-Path Ledger & Policy) complete*
+*Last updated: 2026-07-06 — phase 25 (v0.0.6 Operator Debt Closure) complete; all v0.0.7 phases done*
