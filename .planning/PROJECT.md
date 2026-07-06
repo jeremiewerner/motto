@@ -139,7 +139,7 @@ v0.0.7 requirements being defined — see `.planning/REQUIREMENTS.md` once writt
 - **Portability**: built skills must be standard Agent Skills, loadable with no Motto present.
 - **Philosophy**: mechanism over features; YAGNI ruthlessly; iterate slowly. Accuracy, portability, extensibility, maintenance are the fundamentals.
 - **No content stripping**: `SKILL.md` is copied verbatim to dist (unknown frontmatter keys are harmless).
-- **Upgrade path (standing, since v0.0.7)**: every change to project structure or an existing feature ships with a way for existing Motto projects to upgrade (documented steps at minimum). Hard breaks without a path — like v0.0.5's `<role>` migration — are no longer acceptable now that real consumer projects (magma) exist.
+- **Upgrade path (standing, since v0.0.7)**: every change to project structure or an existing feature ships with a way for existing Motto projects to upgrade (documented steps at minimum); breaking changes need an `UPGRADING.md` entry — see the release skill's Ledger Gate. Hard breaks without a path — like v0.0.5's `<role>` migration — are no longer acceptable now that real consumer projects (magma) exist.
 
 ## Key Decisions
 
