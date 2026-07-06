@@ -41,6 +41,16 @@ describe('dogfood lint (DOG-03)', () => {
     );
     assert.strictEqual(result.count, 3, `expected 3 skills, got ${result.count}`);
     assert.deepStrictEqual(result.errors, []);
+    // Success criterion 3 (VER-04, D-R4): this repo's own tree stays
+    // unstamped through Phase 23 — lintProject(REPO_ROOT) must carry no
+    // skew warning and never throw. This is the live-tree proof,
+    // complementing the dedicated temp-dir no-stamp fixture in
+    // test/lint.test.js.
+    assert.strictEqual(
+      (result.warnings ?? []).length,
+      0,
+      `expected no skew warning on Motto's own unstamped tree, got: ${JSON.stringify(result.warnings)}`,
+    );
   });
 });
 

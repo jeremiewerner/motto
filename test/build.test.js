@@ -558,3 +558,24 @@ describe('buildProject — warnings[] additive field (VER-02/VER-04 wiring)', ()
     }
   });
 });
+
+// ---------------------------------------------------------------------------
+// Never-rewrite guard (VER-06, D-01/D-06) — mirrors test/lint.test.js
+// ---------------------------------------------------------------------------
+
+describe('lint/build never rewrite motto.yaml (VER-06, D-01/D-06)', () => {
+  it('buildProject does not modify motto.yaml content', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'motto-build-norestamp-'));
+    try {
+      await scaffoldPublicProject(root);
+      const configPath = join(root, 'motto.yaml');
+      const before = await readFile(configPath, 'utf8');
+      const result = await buildProject(root);
+      assert.strictEqual(result.ok, true, `build failed: ${JSON.stringify(result.errors)}`);
+      const after = await readFile(configPath, 'utf8');
+      assert.strictEqual(after, before, 'buildProject must never modify motto.yaml');
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+});

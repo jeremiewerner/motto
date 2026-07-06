@@ -1,10 +1,11 @@
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, rm, writeFile, symlink } from 'node:fs/promises';
+import { mkdtemp, mkdir, rm, writeFile, symlink, readFile } from 'node:fs/promises';
 import { join, basename } from 'node:path';
 import { tmpdir } from 'node:os';
 
 import { lintProject } from '../src/lint.js';
+import { scaffoldProject } from '../src/init.js';
 
 // ---------------------------------------------------------------------------
 // Fixture helpers
@@ -890,6 +891,56 @@ describe('lintProject — warnings[] additive field (VER-02/VER-04 wiring)', () 
       assert.deepStrictEqual(skewWarnings, [], 'a malformed stamp must never also produce a skew warning');
     } finally {
       await rm(root, { recursive: true, force: true });
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Dedicated no-stamp scaffold fixture (VER-04, D-R4) + never-rewrite (VER-06)
+// ---------------------------------------------------------------------------
+
+describe('lintProject — dedicated no-stamp fixture (VER-04, D-R4)', () => {
+  it('a scaffolded project with mottoVersion stripped lints clean, warnings [], no throw', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'motto-lint-nostamp-'));
+    try {
+      const scaffoldResult = await scaffoldProject(root, { name: 'no-stamp-proj' });
+      assert.strictEqual(scaffoldResult.ok, true, `scaffold failed: ${JSON.stringify(scaffoldResult.errors)}`);
+
+      // Strip the mottoVersion line to simulate a genuinely pre-v0.0.7 project
+      // (D-R4 — a dedicated temp-dir fixture, not relying on REPO_ROOT).
+      const configPath = join(root, 'motto.yaml');
+      const before = await readFile(configPath, 'utf8');
+      const stripped = before
+        .split('\n')
+        .filter((line) => !line.startsWith('mottoVersion:'))
+        .join('\n');
+      await writeFile(configPath, stripped);
+
+      let result;
+      await assert.doesNotReject(async () => {
+        result = await lintProject(root);
+      });
+      assert.strictEqual(result.ok, true, `expected ok:true, errors: ${JSON.stringify(result.errors)}`);
+      assert.deepStrictEqual(result.warnings ?? [], []);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('lint/build never rewrite motto.yaml (VER-06, D-01/D-06)', () => {
+  it('lintProject does not modify motto.yaml content', async () => {
+    const tempDir = await mkdtemp(join(tmpdir(), 'motto-lint-norestamp-'));
+    try {
+      const scaffoldResult = await scaffoldProject(tempDir, { name: 'norestamp-proj' });
+      assert.strictEqual(scaffoldResult.ok, true, `scaffold failed: ${JSON.stringify(scaffoldResult.errors)}`);
+      const configPath = join(tempDir, 'motto.yaml');
+      const before = await readFile(configPath, 'utf8');
+      await lintProject(tempDir);
+      const after = await readFile(configPath, 'utf8');
+      assert.strictEqual(after, before, 'lintProject must never modify motto.yaml');
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
     }
   });
 });
