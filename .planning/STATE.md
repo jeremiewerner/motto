@@ -2,9 +2,13 @@
 gsd_state_version: 1.0
 milestone: v0.0.7
 milestone_name: Version Awareness
+current_phase: 23
+current_phase_name: Version Stamping & Skew Detection
 status: planning
-last_updated: "2026-07-06T05:15:00.000Z"
+stopped_at: Phase 23 context gathered
+last_updated: "2026-07-06T05:30:08.389Z"
 last_activity: 2026-07-06
+last_activity_desc: v0.0.7 roadmap created (Phases 23-25, 11/11 reqs mapped)
 progress:
   total_phases: 3
   completed_phases: 0
@@ -187,9 +191,9 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-06
-Stopped at: v0.0.7 roadmap created (Phases 23-25, 11/11 reqs mapped). Ready for /gsd-plan-phase 23. The v0.0.6 Step 9 operator items (token revoke, trusted-publisher lock, marketplace re-walk) are now scheduled as Phase 25 (DEBT-06..08).
-Resume file: None
+Last session: 2026-07-06T05:30:08.385Z
+Stopped at: Phase 23 context gathered
+Resume file: .planning/phases/23-version-stamping-skew-detection/23-CONTEXT.md
 
 ## Operator Next Steps
 
