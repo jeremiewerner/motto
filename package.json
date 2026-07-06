@@ -1,6 +1,6 @@
 {
   "name": "@jeremiewerner/motto",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "type": "module",
   "description": "Framework for authoring, validating, and packaging Claude Code Agent Skills",
   "author": "Jérémie Werner",
