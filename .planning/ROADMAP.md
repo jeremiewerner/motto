@@ -124,7 +124,7 @@ Full phase details: [milestones/v0.0.6-ROADMAP.md](milestones/v0.0.6-ROADMAP.md)
 | 20. CI Workflow | v0.0.6 | 3/3 | Complete | 2026-07-03 |
 | 21. Publish Automation & Release Rewrite | v0.0.6 | 4/4 | Complete | 2026-07-04 |
 | 22. Public Flip & Token Hardening | v0.0.6 | 5/5 | Complete | 2026-07-05 |
-| 23. Version Stamping & Skew Detection | v0.0.7 | 4/4 | Complete   | 2026-07-06 |
+| 23. Version Stamping & Skew Detection | v0.0.7 | 4/4 | Complete    | 2026-07-06 |
 | 24. Upgrade-Path Ledger & Policy | v0.0.7 | 0/? | Not started | - |
 | 25. v0.0.6 Operator Debt Closure | v0.0.7 | 0/? | Not started | - |
 
