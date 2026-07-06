@@ -20,12 +20,37 @@ metadata (command run, verification result interpreted as present/absent, date).
 
 **npmjs.com granular access token — registry-side half:**
 
-- **Status:** Pending maintainer attestation (Task 2 checkpoint). This section will be
-  updated with the attestation once the maintainer confirms the token is revoked on
-  npmjs.com's Access Tokens page.
+- **Action:** Maintainer revoked the granular npm access token (the one previously used
+  as the `NPM_TOKEN` GitHub Actions secret fallback) on npmjs.com's Access Tokens page.
+- **Verification:** Maintainer confirmed the token no longer appears on the Access
+  Tokens page after reload.
+- **Attestation:** Maintainer response "1. done 2. done" (2026-07-06) confirms this
+  action complete and verified. No token value was shared or recorded, per the leak-safe
+  discipline stated above.
+- **Date:** 2026-07-06
 
 ## DEBT-08 — Trusted-Publisher-Only Lock
 
-**Status:** Pending maintainer attestation (Task 2 checkpoint). This section will be
-added once the maintainer confirms `@jeremiewerner/motto`'s publishing access is set to
-trusted-publisher-only on npmjs.com.
+- **Action:** Maintainer set publishing access for `@jeremiewerner/motto` to
+  trusted-publisher-only (tokens disallowed) on npmjs.com, at package
+  `@jeremiewerner/motto` -> Settings -> Publishing access.
+- **Verification:** Maintainer confirmed the Publishing access setting shows
+  trusted-publisher-only after reload, and that only the configured GitHub Actions
+  Trusted Publisher (org `jeremiewerner`, repo `motto`, workflow `ci.yml`) can publish.
+- **Attestation:** Maintainer response "1. done 2. done" (2026-07-06) confirms this
+  action complete and verified.
+- **Date:** 2026-07-06
+
+**Agent-verifiable cross-check (Step 10 item 3 — provenance via the registry):**
+
+- **Command run:** `npm view @jeremiewerner/motto --json`
+- **Result:** The published `0.0.6` version carries a provenance attestation
+  (`dist.attestations.provenance.predicateType`: `https://slsa.dev/provenance/v1`) and
+  was published by npm user `GitHub Actions <npm-oidc-no-reply@github.com>` — consistent
+  with an OIDC/Trusted-Publisher-originated publish, not a personal-token publish. This
+  reconfirms (does not replace) the provenance verification already recorded on
+  2026-07-05.
+- **Date:** 2026-07-06
+
+**No replacement `NPM_TOKEN` was minted or referenced anywhere in this record**, per
+D-04/Step 8 item 4.
