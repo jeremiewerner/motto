@@ -5,8 +5,8 @@ milestone_name: Version Awareness
 current_phase: 25
 current_phase_name: v0.0.6 Operator Debt Closure
 status: verifying
-stopped_at: Completed 24-02-PLAN.md
-last_updated: "2026-07-06T12:03:49.116Z"
+stopped_at: Phase 25 context gathered
+last_updated: "2026-07-06T13:48:15.733Z"
 last_activity: 2026-07-06
 last_activity_desc: Phase 24 complete, transitioned to Phase 25
 progress:
@@ -216,9 +216,9 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-06T11:48:21.964Z
-Stopped at: Completed 24-02-PLAN.md
-Resume file: None
+Last session: 2026-07-06T13:48:15.728Z
+Stopped at: Phase 25 context gathered
+Resume file: .planning/phases/25-v0-0-6-operator-debt-closure/25-CONTEXT.md
 
 ## Operator Next Steps
 
