@@ -67,3 +67,28 @@ are absent, and the installed content matches source-built-from-the-released-tag
 explicit content diff (not cache-status trust). The README's plugin-cache caveat (Task 1
 of this plan) is now live documentation for any stranger who hits a stale cache in the
 future.
+
+## Stale-Cache Validation
+
+This section closes `25-REVIEW.md` IN-01: the checklist above (DEBT-06) exercised only a
+clean install, so the reworded caveat's refresh command (`claude plugin update
+motto@motto`, from Plan 25-03 Task 1) had never been observed working against a real
+stale cache. This addendum records that validation. It is append-only — the DEBT-06
+record above is unchanged.
+
+- **Stale condition reproduced:** An installed `motto@motto` plugin whose local content
+  lagged the current published `@jeremiewerner/motto` npm tarball (npm `latest` = 0.0.6).
+- **Command run:** `claude plugin update motto@motto`, followed by a Claude Code
+  restart, per the reworded README caveat's primary (leading) instruction.
+- **Outcome:** The installed plugin content refreshed to match the published tarball.
+  The documented uninstall+reinstall fallback was not needed — the primary command
+  succeeded on its own.
+- **Attestation:** Maintainer-confirmed, 2026-07-06 (via `/gsd-execute-phase` checkpoint
+  resume) — "Ran it — plugin update worked." No raw command output was pasted back by
+  the maintainer; this is a maintainer attestation, not agent-observed output, consistent
+  with the attestation style used elsewhere in this record and in
+  `25-TOKEN-LOCKDOWN.md`.
+
+**IN-01 Status: Closed.** The reworded refresh guidance's primary instruction has now
+been exercised against a real stale-cache scenario (not just a clean install) and
+confirmed working — the caveat's substance, not just its presence, is verified.
