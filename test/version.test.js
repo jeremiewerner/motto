@@ -99,11 +99,11 @@ describe("checkSkew direction (VER-03)", () => {
     assert.equal(checkSkew("1.2.3", null), null);
   });
 
-  it("project older than tool -> 'check the upgrade ledger' remedy, names both versions", () => {
+  it("project older than tool -> 'check UPGRADING.md' remedy, names both versions", () => {
     const warning = checkSkew("1.2.3", "1.3.0");
     assert.ok(warning);
     assert.equal(warning.skill, "motto.yaml");
-    assert.match(warning.message, /check the upgrade ledger/);
+    assert.match(warning.message, /check UPGRADING\.md/);
     assert.match(warning.message, /1\.2\.3/);
     assert.match(warning.message, /1\.3\.0/);
   });
@@ -119,7 +119,7 @@ describe("checkSkew direction (VER-03)", () => {
 
   it("differs only at minor segment -> still direction-aware", () => {
     const warning = checkSkew("1.2.0", "1.3.0");
-    assert.match(warning.message, /check the upgrade ledger/);
+    assert.match(warning.message, /check UPGRADING\.md/);
   });
 
   it("differs only at major segment -> still direction-aware", () => {

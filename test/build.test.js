@@ -545,7 +545,7 @@ describe('buildProject — warnings[] additive field (VER-02/VER-04 wiring)', ()
       const result = await buildProject(root);
       assert.strictEqual(result.ok, true, `build failed: ${JSON.stringify(result.errors)}`);
       assert.strictEqual(result.warnings.length, 1);
-      assert.match(result.warnings[0].message, /check the upgrade ledger/);
+      assert.match(result.warnings[0].message, /check UPGRADING\.md/);
 
       const manifestRaw = await readFile(
         join(root, 'dist', 'public', '.claude-plugin', 'plugin.json'),

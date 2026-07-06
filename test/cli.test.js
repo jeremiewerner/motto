@@ -463,7 +463,7 @@ describe('CLI skew warning is non-blocking (VER-02)', () => {
       await makeSkewedOlderFixture(dir);
       const r = runCli(['lint'], { cwd: dir });
       assert.strictEqual(r.status, 0, `stderr: ${r.stderr}`);
-      assert.match(r.stderr, /⚠.*check the upgrade ledger/);
+      assert.match(r.stderr, /⚠.*check UPGRADING\.md/);
     } finally {
       await rm(dir, { recursive: true, force: true });
     }
@@ -475,7 +475,7 @@ describe('CLI skew warning is non-blocking (VER-02)', () => {
       await makeSkewedOlderFixture(dir);
       const r = runCli(['build'], { cwd: dir });
       assert.strictEqual(r.status, 0, `stderr: ${r.stderr}`);
-      assert.match(r.stderr, /⚠.*check the upgrade ledger/);
+      assert.match(r.stderr, /⚠.*check UPGRADING\.md/);
     } finally {
       await rm(dir, { recursive: true, force: true });
     }

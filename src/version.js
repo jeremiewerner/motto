@@ -98,7 +98,7 @@ export function checkSkew(stampedVersion, toolVersion) {
   if (cmp < 0) {
     return {
       skill: "motto.yaml",
-      message: `project was scaffolded with motto ${stampedVersion}; you are running ${toolVersion} — check the upgrade ledger for changes since ${stampedVersion}`,
+      message: `project was scaffolded with motto ${stampedVersion}; you are running ${toolVersion} — check UPGRADING.md for changes since ${stampedVersion}`,
     };
   }
   return {

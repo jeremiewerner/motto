@@ -836,7 +836,7 @@ describe('lintProject — warnings[] additive field (VER-02/VER-04 wiring)', () 
     }
   });
 
-  it('a project whose mottoVersion is OLDER than the live tool warns "check the upgrade ledger"', async () => {
+  it('a project whose mottoVersion is OLDER than the live tool warns "check UPGRADING.md"', async () => {
     const root = await mkdtemp(join(tmpdir(), 'motto-lint-warn-'));
     try {
       await mkdir(join(root, 'skills', 'my-skill'), { recursive: true });
@@ -845,7 +845,7 @@ describe('lintProject — warnings[] additive field (VER-02/VER-04 wiring)', () 
       const result = await lintProject(root);
       assert.strictEqual(result.ok, true, `expected ok:true, errors: ${JSON.stringify(result.errors)}`);
       assert.strictEqual(result.warnings.length, 1);
-      assert.match(result.warnings[0].message, /check the upgrade ledger/);
+      assert.match(result.warnings[0].message, /check UPGRADING\.md/);
     } finally {
       await rm(root, { recursive: true, force: true });
     }
@@ -886,7 +886,7 @@ describe('lintProject — warnings[] additive field (VER-02/VER-04 wiring)', () 
       const mottoErrors = result.errors.filter((e) => /mottoVersion/i.test(e.message));
       assert.strictEqual(mottoErrors.length, 1, `expected exactly 1 mottoVersion error, got: ${JSON.stringify(result.errors)}`);
       const skewWarnings = (result.warnings ?? []).filter(
-        (w) => /check the upgrade ledger/.test(w.message) || /upgrade motto/.test(w.message),
+        (w) => /check UPGRADING\.md/.test(w.message) || /upgrade motto/.test(w.message),
       );
       assert.deepStrictEqual(skewWarnings, [], 'a malformed stamp must never also produce a skew warning');
     } finally {
