@@ -1,20 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v0.0.6
-milestone_name: Prove & Publish
-current_phase: 0.6
-status: Awaiting next milestone
-stopped_at: v0.0.6 shipped + closed (verified closeout, live publish proven) — Step 9 operator items open, next milestone not yet defined
-last_updated: "2026-07-05T18:51:02.144Z"
-last_activity: 2026-07-05
-last_activity_desc: Milestone v0.0.6 completed and archived
+milestone: v0.0.7
+milestone_name: Version Awareness
+status: planning
+last_updated: "2026-07-06T04:47:04.852Z"
+last_activity: 2026-07-06
 progress:
-  total_phases: 4
-  completed_phases: 4
-  total_plans: 14
-  completed_plans: 14
-  percent: 100
-current_phase_name: public-flip-token-hardening
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -28,10 +24,10 @@ See: .planning/PROJECT.md (updated 2026-07-05 after v0.0.6 milestone)
 
 ## Current Position
 
-Phase: Milestone v0.0.6 complete
+Phase: Not started (defining requirements)
 Plan: —
-Status: Awaiting next milestone
-Last activity: 2026-07-05 — Milestone v0.0.6 completed and archived
+Status: Defining requirements
+Last activity: 2026-07-06 — Milestone v0.0.7 started
 
 ## Performance Metrics
 

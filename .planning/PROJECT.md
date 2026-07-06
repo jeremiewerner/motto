@@ -18,9 +18,17 @@ The **strict schema + linter**. Skills that always conform to one rigid-yet-crea
 
 **Hardening note:** post-v0.0.2 `/code-review high` caught 3 D-01 never-throw violations the milestone tests missed; fixed + guarded. v0.0.4 continued the pattern (adversarial scaffold-path tests). v0.0.5 made it structural: phase 18's review caught a Critical never-throw registry-shape crash (CR-01) *before* verification instead of after ship, and the twice-deferred WR-04 shape guard was closed at milestone close — zero known never-throw gaps at ship for the first time.
 
-## Next Milestone Goals
+## Current Milestone: v0.0.7 Version Awareness
 
-Not yet defined — run `/gsd-new-milestone`. Backlog candidates in `ROADMAP.md ## Backlog` (motto ship, OS matrix, Node 20 EOL decision, design-ledger items, marketplace re-walk now that npm `latest` is current).
+**Goal:** A Motto project knows which Motto version it was scaffolded/built with, version skew is detected and reported — the foundation every future upgrade path stands on — and the v0.0.6 operator loose ends are closed.
+
+**Target features:**
+- `motto.yaml` records the motto version (stamped at `init`)
+- `lint`/`build` detect version skew (project vs tool) with an explicit, actionable, never-throw message
+- Standing constraint locked: every structure/schema change from now on ships with a documented upgrade path
+- v0.0.6 debt closed: marketplace stranger re-walk (npm `latest` = 0.0.6), npm token revoke + trusted-publisher lock (release Step 9)
+
+**Context:** Triggered by **magma** — the first real end-user project scaffolded with `motto init magma`. Magma stays a separate project; friction found there becomes Motto requirements. The upgrade *command* is deliberately deferred (YAGNI) until the first real schema break demands it — version awareness is the detection layer that makes that future command possible.
 
 **Standing principles (every step):** heavy research; design for unknown purpose; lightweight (readable code/md, no doc sprawl); agentic best practice (skills + agents + subagents + API/MCP are first-class); simple to adapt, creativity free; rigor in a small easy spine.
 
@@ -104,7 +112,7 @@ Not yet defined — run `/gsd-new-milestone`. Backlog candidates in `ROADMAP.md 
 
 ### Active
 
-(None — next milestone requirements defined via `/gsd-new-milestone`.)
+v0.0.7 requirements being defined — see `.planning/REQUIREMENTS.md` once written.
 
 ### Out of Scope
 
@@ -129,6 +137,7 @@ Not yet defined — run `/gsd-new-milestone`. Backlog candidates in `ROADMAP.md 
 - **Portability**: built skills must be standard Agent Skills, loadable with no Motto present.
 - **Philosophy**: mechanism over features; YAGNI ruthlessly; iterate slowly. Accuracy, portability, extensibility, maintenance are the fundamentals.
 - **No content stripping**: `SKILL.md` is copied verbatim to dist (unknown frontmatter keys are harmless).
+- **Upgrade path (standing, since v0.0.7)**: every change to project structure or an existing feature ships with a way for existing Motto projects to upgrade (documented steps at minimum). Hard breaks without a path — like v0.0.5's `<role>` migration — are no longer acceptable now that real consumer projects (magma) exist.
 
 ## Key Decisions
 
@@ -174,4 +183,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-05 after v0.0.6 milestone (shipped + live-proven publish; next milestone not yet defined)*
+*Last updated: 2026-07-06 — milestone v0.0.7 Version Awareness started*
