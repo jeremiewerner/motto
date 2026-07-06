@@ -116,7 +116,15 @@ Full phase details: [milestones/v0.0.6-ROADMAP.md](milestones/v0.0.6-ROADMAP.md)
   2. The granular npm token is revoked on npmjs.com and `NPM_TOKEN` is deleted from the repo's GitHub secrets, confirmed absent.
   3. npm publishing for `@jeremiewerner/motto` is locked to trusted-publisher-only on npmjs.com, so a stolen token alone can no longer publish.
 
-**Plans**: TBD
+**Plans**: 2 plans
+
+**Wave 1**
+
+- [ ] 25-01-PLAN.md — Token lockdown: delete NPM_TOKEN secret + revoke npm token + trusted-publisher-only lock, leak-safe record (DEBT-07, DEBT-08)
+
+**Wave 2** *(blocked on Wave 1 — lock-first per D-03)*
+
+- [ ] 25-02-PLAN.md — Stranger re-walk with installed-content diff + README plugin-cache caveat; patch-release contingency (DEBT-06)
 
 ## Progress
 
@@ -133,7 +141,7 @@ Full phase details: [milestones/v0.0.6-ROADMAP.md](milestones/v0.0.6-ROADMAP.md)
 | 22. Public Flip & Token Hardening | v0.0.6 | 5/5 | Complete | 2026-07-05 |
 | 23. Version Stamping & Skew Detection | v0.0.7 | 4/4 | Complete    | 2026-07-06 |
 | 24. Upgrade-Path Ledger & Policy | v0.0.7 | 2/2 | Complete    | 2026-07-06 |
-| 25. v0.0.6 Operator Debt Closure | v0.0.7 | 0/? | Not started | - |
+| 25. v0.0.6 Operator Debt Closure | v0.0.7 | 0/2 | Not started | - |
 
 ## Backlog
 
