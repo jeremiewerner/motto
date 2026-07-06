@@ -59,39 +59,56 @@ Full phase details: [milestones/v0.0.6-ROADMAP.md](milestones/v0.0.6-ROADMAP.md)
 ## Phase Details
 
 ### Phase 23: Version Stamping & Skew Detection
+
 **Goal**: A Motto project records which Motto version scaffolded it, and `lint`/`build` surface any skew between that stamp and the running tool as an explicit, direction-aware, never-throw advisory — pre-stamp projects stay clean.
 **Depends on**: Nothing (first phase of the milestone; builds on shipped v0.0.6 CLI)
 **Requirements**: VER-01, VER-02, VER-03, VER-04, VER-05, VER-06
 **Success Criteria** (what must be TRUE):
+
   1. Running `motto init <name>` produces a `motto.yaml` containing a `mottoVersion` field set to the running tool's version, distinct from the project `version` field.
   2. Running `motto lint` or `motto build` on a project whose stamp differs from the tool prints a warning that names both versions and gives a direction-specific remedy (tool newer → check the upgrade ledger; project newer → upgrade motto), while exit code and `ok` stay unchanged.
   3. Running `motto lint`/`motto build` on a project with no stamp (Motto's own tree, magma) completes with no skew warning and no crash.
   4. Feeding a malformed stamp (number, array, object, boolean, null, empty string, garbage string) produces a clean error entry rather than a throw, proven by adversarial tests.
   5. Running `motto lint`/`motto build` never rewrites `motto.yaml` — only `motto init` writes the stamp, guarded by a test.
+
 **Plans**: 4 plans
+**Wave 1**
+
 - [ ] 23-01-PLAN.md — src/version.js pure module: getOwnVersion, parseVersion, direction-aware checkSkew (VER-03)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 23-02-PLAN.md — config.js optional mottoVersion validation + adversarial malformed matrix → errors[] (VER-05, D-R1)
 - [ ] 23-03-PLAN.md — init.js stamps mottoVersion into new scaffolds at live tool version (VER-01)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 23-04-PLAN.md — lint/build warnings[] + renderResult ⚠ stderr + no-stamp/never-rewrite/non-blocking tests (VER-02, VER-04, VER-06)
 
 ### Phase 24: Upgrade-Path Ledger & Policy
+
 **Goal**: Every existing Motto project has documented steps to cross any breaking change, and a standing process guarantees future structure/schema changes ship with an upgrade entry — the skew warning's "check the upgrade ledger" remedy resolves to something real.
 **Depends on**: Phase 23 (the skew message references the ledger; ledger content is validated against the real v0.0.5 break and the v0.0.7 stamp adoption)
 **Requirements**: UPG-01, UPG-02
 **Success Criteria** (what must be TRUE):
+
   1. A reader following the ledger can adopt the `mottoVersion` stamp in a pre-v0.0.7 project (magma, Motto's own tree) from documented steps alone.
   2. A reader can find the v0.0.5 `<role>` migration in the ledger with the steps an existing project needed to cross it.
   3. The standing upgrade-path constraint is operational — a documented process requires every future structure/schema change to add a ledger entry before ship, discoverable where a contributor plans a change.
+
 **Plans**: TBD
 
 ### Phase 25: v0.0.6 Operator Debt Closure
+
 **Goal**: The v0.0.6 ship's deferred operator loose ends are closed and verified against reality — the marketplace install path works for a stranger against the current npm `latest`, and the publish credential surface is reduced to trusted-publisher-only.
 **Depends on**: Nothing code-wise (independent operator checkpoint; can run in parallel with 23/24, sequenced last for milestone-close cleanliness)
 **Requirements**: DEBT-06, DEBT-07, DEBT-08
 **Success Criteria** (what must be TRUE):
+
   1. A stranger following `/plugin marketplace add jeremiewerner/motto` → install can see and load `build-skill` from the plugin, verified by diffing actual installed plugin content against source (not trusting cache status), with the Claude Code plugin-cache caveat documented.
   2. The granular npm token is revoked on npmjs.com and `NPM_TOKEN` is deleted from the repo's GitHub secrets, confirmed absent.
   3. npm publishing for `@jeremiewerner/motto` is locked to trusted-publisher-only on npmjs.com, so a stolen token alone can no longer publish.
+
 **Plans**: TBD
 
 ## Progress
