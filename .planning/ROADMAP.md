@@ -68,7 +68,11 @@ Full phase details: [milestones/v0.0.6-ROADMAP.md](milestones/v0.0.6-ROADMAP.md)
   3. Running `motto lint`/`motto build` on a project with no stamp (Motto's own tree, magma) completes with no skew warning and no crash.
   4. Feeding a malformed stamp (number, array, object, boolean, null, empty string, garbage string) produces a clean error entry rather than a throw, proven by adversarial tests.
   5. Running `motto lint`/`motto build` never rewrites `motto.yaml` — only `motto init` writes the stamp, guarded by a test.
-**Plans**: TBD
+**Plans**: 4 plans
+- [ ] 23-01-PLAN.md — src/version.js pure module: getOwnVersion, parseVersion, direction-aware checkSkew (VER-03)
+- [ ] 23-02-PLAN.md — config.js optional mottoVersion validation + adversarial malformed matrix → errors[] (VER-05, D-R1)
+- [ ] 23-03-PLAN.md — init.js stamps mottoVersion into new scaffolds at live tool version (VER-01)
+- [ ] 23-04-PLAN.md — lint/build warnings[] + renderResult ⚠ stderr + no-stamp/never-rewrite/non-blocking tests (VER-02, VER-04, VER-06)
 
 ### Phase 24: Upgrade-Path Ledger & Policy
 **Goal**: Every existing Motto project has documented steps to cross any breaking change, and a standing process guarantees future structure/schema changes ship with an upgrade entry — the skew warning's "check the upgrade ledger" remedy resolves to something real.
