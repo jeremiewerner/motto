@@ -3,8 +3,8 @@
 This file lists breaking changes to Motto's project structure/schema and the
 steps an existing Motto-scaffolded project needs to cross each one. Entries
 are keyed by the version where the break landed. Versions 0.0.4 and 0.0.5
-never shipped to npm, so a project coming from 0.0.3 crosses both entries
-below on its way to 0.0.6+.
+never shipped to npm, so a project coming from 0.0.3 crosses the v0.0.5
+entry on its way to 0.0.6, and the v0.0.7 entry when it moves to 0.0.7+.
 
 ## v0.0.7 — Adopt the `mottoVersion` stamp
 
