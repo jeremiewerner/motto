@@ -59,23 +59,23 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| VER-01 | — | Pending |
-| VER-02 | — | Pending |
-| VER-03 | — | Pending |
-| VER-04 | — | Pending |
-| VER-05 | — | Pending |
-| VER-06 | — | Pending |
-| UPG-01 | — | Pending |
-| UPG-02 | — | Pending |
-| DEBT-06 | — | Pending |
-| DEBT-07 | — | Pending |
-| DEBT-08 | — | Pending |
+| VER-01 | Phase 23 | Pending |
+| VER-02 | Phase 23 | Pending |
+| VER-03 | Phase 23 | Pending |
+| VER-04 | Phase 23 | Pending |
+| VER-05 | Phase 23 | Pending |
+| VER-06 | Phase 23 | Pending |
+| UPG-01 | Phase 24 | Pending |
+| UPG-02 | Phase 24 | Pending |
+| DEBT-06 | Phase 25 | Pending |
+| DEBT-07 | Phase 25 | Pending |
+| DEBT-08 | Phase 25 | Pending |
 
 **Coverage:**
 - v0.0.7 requirements: 11 total
-- Mapped to phases: 0 (roadmap pending)
-- Unmapped: 11 ⚠️ (expected — roadmap not yet created)
+- Mapped to phases: 11 ✓ (Phase 23: VER-01..06 · Phase 24: UPG-01..02 · Phase 25: DEBT-06..08)
+- Unmapped: 0 — no orphans
 
 ---
 *Requirements defined: 2026-07-06*
-*Last updated: 2026-07-06 after initial definition*
+*Last updated: 2026-07-06 after roadmap creation — 11/11 requirements mapped to Phases 23-25*

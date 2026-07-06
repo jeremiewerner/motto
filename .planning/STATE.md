@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v0.0.7
 milestone_name: Version Awareness
 status: planning
-last_updated: "2026-07-06T04:47:04.852Z"
+last_updated: "2026-07-06T05:15:00.000Z"
 last_activity: 2026-07-06
 progress:
-  total_phases: 0
+  total_phases: 3
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -20,14 +20,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-05 after v0.0.6 milestone)
 
 **Core value:** A strict schema + linter that guarantees authored skills conform before they ship, then packages them into self-contained standard Agent Skill plugins.
-**Current focus:** Planning next milestone (/gsd-new-milestone)
+**Current focus:** v0.0.7 Version Awareness — roadmap created (Phases 23-25), ready to plan Phase 23
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 23 (Version Stamping & Skew Detection) — not started
 Plan: —
-Status: Defining requirements
-Last activity: 2026-07-06 — Milestone v0.0.7 started
+Status: Roadmap created — ready for /gsd-plan-phase 23
+Last activity: 2026-07-06 — v0.0.7 roadmap created (Phases 23-25, 11/11 reqs mapped)
 
 ## Performance Metrics
 
@@ -174,6 +174,7 @@ None yet.
 
 - v0.0.5 roadmap created: Phase 14 (Template Mechanism — TMPL-01..05), Phase 15 (Field Validation & Integrity Guards — VAL-01..06), Phase 16 (build-skill & author-skill Retirement — BSKL-01..06), Phase 17 (Docs Audit — DOC-06..07). Numbering continues from v0.0.4 (ended at Phase 13). Coarse granularity → 4 phases, matching research's locked ordering (mechanism → validators → build-skill dogfood → docs-last). 19/19 requirements mapped, no orphans.
 - Phase 18 added: Migrate base-spine **Role:** to <role> section tag
+- v0.0.7 roadmap created (2026-07-06): Phase 23 (Version Stamping & Skew Detection — VER-01..06), Phase 24 (Upgrade-Path Ledger & Policy — UPG-01..02), Phase 25 (v0.0.6 Operator Debt Closure — DEBT-06..08). Numbering continues from v0.0.6 (ended at Phase 22). Coarse granularity → 3 phases: research-locked single code phase (stamp+detect coupled sequentially), ledger phase coupling to the skew message's "check the upgrade ledger" remedy, operator-debt kept a distinct human-in-the-loop checkpoint rather than buried in code plans. 11/11 requirements mapped, no orphans.
 
 ## Deferred Items
 
@@ -186,11 +187,11 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-05
-Stopped at: v0.0.6 shipped + archived — live publish proven (npm 0.0.6 + GitHub Release via tag push), milestone closed verified. Step 9 operator items open (token revoke, trusted-publisher lock, marketplace re-walk).
+Last session: 2026-07-06
+Stopped at: v0.0.7 roadmap created (Phases 23-25, 11/11 reqs mapped). Ready for /gsd-plan-phase 23. The v0.0.6 Step 9 operator items (token revoke, trusted-publisher lock, marketplace re-walk) are now scheduled as Phase 25 (DEBT-06..08).
 Resume file: None
 
 ## Operator Next Steps
 
-- Release Step 9 zero-tokens follow-through (one-time): revoke npm granular token on npmjs.com + `gh secret delete NPM_TOKEN`; lock publishing to trusted-publisher-only; marketplace stranger re-walk (provenance already verified 2026-07-05)
-- Start the next milestone with /gsd-new-milestone
+- Plan Phase 23 with /gsd-plan-phase 23 (Version Stamping & Skew Detection — VER-01..06)
+- Phase 25 will close the v0.0.6 Step 9 operator debt (npm token revoke + `gh secret delete NPM_TOKEN`, trusted-publisher lock, marketplace stranger re-walk); provenance already verified 2026-07-05
