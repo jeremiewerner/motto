@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v0.0.7
 milestone_name: Version Awareness
-current_phase: 24
-current_phase_name: upgrade-path-ledger-policy
+current_phase: 25
+current_phase_name: v0.0.6 Operator Debt Closure
 status: verifying
 stopped_at: Completed 24-02-PLAN.md
-last_updated: "2026-07-06T11:48:21.968Z"
+last_updated: "2026-07-06T12:03:49.116Z"
 last_activity: 2026-07-06
-last_activity_desc: Phase 24 execution started
+last_activity_desc: Phase 24 complete, transitioned to Phase 25
 progress:
   total_phases: 3
   completed_phases: 2
@@ -28,16 +28,16 @@ See: .planning/PROJECT.md (updated 2026-07-05 after v0.0.6 milestone)
 
 ## Current Position
 
-Phase: 24 (upgrade-path-ledger-policy) — EXECUTING
-Plan: 2 of 2
+Phase: 25 — v0.0.6 Operator Debt Closure
+Plan: Not started
 Status: Phase complete — ready for verification
-Last activity: 2026-07-06 — Phase 24 execution started
+Last activity: 2026-07-06 — Phase 24 complete, transitioned to Phase 25
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 25
+- Total plans completed: 27
 - Average duration: -
 - Total execution time: 0 hours
 
@@ -58,6 +58,7 @@ Last activity: 2026-07-06 — Phase 24 execution started
 | 20 | 3 | - | - |
 | 22 | 5 | - | - |
 | 23 | 4 | - | - |
+| 24 | 2 | - | - |
 
 **Recent Trend:**
 
