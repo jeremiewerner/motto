@@ -5,8 +5,8 @@ milestone_name: Version Awareness
 current_phase: 24
 current_phase_name: Upgrade-Path Ledger & Policy
 status: verifying
-stopped_at: Completed 23-04-PLAN.md
-last_updated: "2026-07-06T06:50:41.297Z"
+stopped_at: Phase 24 context gathered
+last_updated: "2026-07-06T09:57:34.747Z"
 last_activity: 2026-07-06
 last_activity_desc: Phase 23 complete, transitioned to Phase 24
 progress:
@@ -207,9 +207,9 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-06T06:39:24.670Z
-Stopped at: Completed 23-04-PLAN.md
-Resume file: None
+Last session: 2026-07-06T09:57:34.743Z
+Stopped at: Phase 24 context gathered
+Resume file: .planning/phases/24-upgrade-path-ledger-policy/24-CONTEXT.md
 
 ## Operator Next Steps
 
