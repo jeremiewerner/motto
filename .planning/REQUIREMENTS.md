@@ -20,7 +20,7 @@ Requirements for this milestone. Each maps to roadmap phases.
 ### Upgrade-Path Policy (UPG)
 
 - [x] **UPG-01**: A breaking-change ledger exists with per-version upgrade steps, seeded retroactively with the v0.0.5 `<role>` migration and a v0.0.7 entry telling existing projects how to adopt the stamp
-- [ ] **UPG-02**: The standing upgrade-path constraint is operational — a documented process requires every future structure/schema change to add a ledger entry before ship
+- [x] **UPG-02**: The standing upgrade-path constraint is operational — a documented process requires every future structure/schema change to add a ledger entry before ship
 
 ### Debt Closure (DEBT — continues from v0.0.4's DEBT-05)
 
@@ -66,7 +66,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | VER-05 | Phase 23 | Complete |
 | VER-06 | Phase 23 | Complete |
 | UPG-01 | Phase 24 | Complete |
-| UPG-02 | Phase 24 | Pending |
+| UPG-02 | Phase 24 | Complete |
 | DEBT-06 | Phase 25 | Pending |
 | DEBT-07 | Phase 25 | Pending |
 | DEBT-08 | Phase 25 | Pending |

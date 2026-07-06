@@ -53,7 +53,7 @@ Full phase details: [milestones/v0.0.6-ROADMAP.md](milestones/v0.0.6-ROADMAP.md)
 ### v0.0.7 Version Awareness (Phases 23-25)
 
 - [x] **Phase 23: Version Stamping & Skew Detection** - `motto init` stamps the tool version; `lint`/`build` detect and report skew as a never-throw advisory (completed 2026-07-06)
-- [ ] **Phase 24: Upgrade-Path Ledger & Policy** - a breaking-change ledger with per-version upgrade steps, plus the standing process that keeps it current
+- [x] **Phase 24: Upgrade-Path Ledger & Policy** - a breaking-change ledger with per-version upgrade steps, plus the standing process that keeps it current (completed 2026-07-06)
 - [ ] **Phase 25: v0.0.6 Operator Debt Closure** - marketplace stranger re-walk, npm token revoke, trusted-publisher lock
 
 ## Phase Details
@@ -96,14 +96,14 @@ Full phase details: [milestones/v0.0.6-ROADMAP.md](milestones/v0.0.6-ROADMAP.md)
   2. A reader can find the v0.0.5 `<role>` migration in the ledger with the steps an existing project needed to cross it.
   3. The standing upgrade-path constraint is operational — a documented process requires every future structure/schema change to add a ledger entry before ship, discoverable where a contributor plans a change.
 
-**Plans**: 1/2 plans executed
+**Plans**: 2/2 plans complete
 **Wave 1**
 
 - [x] 24-01-PLAN.md — Author UPGRADING.md (two seed entries), point the skew warning at it, add a backstop test (UPG-01)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 24-02-PLAN.md — Insert the release-skill Ledger Gate, surface the plan-time rule in CLAUDE.md, live-validate the v0.0.7 entry on magma (UPG-02)
+- [x] 24-02-PLAN.md — Insert the release-skill Ledger Gate, surface the plan-time rule in CLAUDE.md, live-validate the v0.0.7 entry on magma (UPG-02)
 
 ### Phase 25: v0.0.6 Operator Debt Closure
 
@@ -132,7 +132,7 @@ Full phase details: [milestones/v0.0.6-ROADMAP.md](milestones/v0.0.6-ROADMAP.md)
 | 21. Publish Automation & Release Rewrite | v0.0.6 | 4/4 | Complete | 2026-07-04 |
 | 22. Public Flip & Token Hardening | v0.0.6 | 5/5 | Complete | 2026-07-05 |
 | 23. Version Stamping & Skew Detection | v0.0.7 | 4/4 | Complete    | 2026-07-06 |
-| 24. Upgrade-Path Ledger & Policy | v0.0.7 | 1/2 | In Progress|  |
+| 24. Upgrade-Path Ledger & Policy | v0.0.7 | 2/2 | Complete   | 2026-07-06 |
 | 25. v0.0.6 Operator Debt Closure | v0.0.7 | 0/? | Not started | - |
 
 ## Backlog

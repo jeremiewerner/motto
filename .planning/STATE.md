@@ -4,17 +4,17 @@ milestone: v0.0.7
 milestone_name: Version Awareness
 current_phase: 24
 current_phase_name: upgrade-path-ledger-policy
-status: executing
-stopped_at: Completed 24-01-PLAN.md
-last_updated: "2026-07-06T11:39:19.371Z"
+status: verifying
+stopped_at: Completed 24-02-PLAN.md
+last_updated: "2026-07-06T11:48:21.968Z"
 last_activity: 2026-07-06
 last_activity_desc: Phase 24 execution started
 progress:
   total_phases: 3
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 6
-  completed_plans: 5
-  percent: 33
+  completed_plans: 6
+  percent: 67
 ---
 
 # Project State
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-07-05 after v0.0.6 milestone)
 
 Phase: 24 (upgrade-path-ledger-policy) — EXECUTING
 Plan: 2 of 2
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-07-06 — Phase 24 execution started
 
 ## Performance Metrics
@@ -95,6 +95,7 @@ Last activity: 2026-07-06 — Phase 24 execution started
 | Phase 23 P03 | 10min | 2 tasks | 2 files |
 | Phase 23 P04 | 13min | 3 tasks | 7 files |
 | Phase 24 P01 | 12min | 3 tasks | 7 files |
+| Phase 24 P02 | 25min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -175,6 +176,9 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 24-01] UPGRADING.md placed at repo root (sibling to README.md), not under docs/ -- no docs/ dir exists, single-file doc sprawl avoided (D-04/D-05)
 - [Phase ?]: [Phase 24-01] checkSkew() older-than-tool remedy names UPGRADING.md explicitly -- resolved Open Question 1 in favor of concrete discoverability
 - [Phase ?]: [Phase 24-01] upgrading-ledger.test.js backstop scoped to existence + heading-presence only, no source-text parity, no git-tag parsing -- future-entry judgment stays human/agent-side (D-01)
+- [Phase ?]: [Phase 24-02] Ledger Gate inserted as clean Step 4 in skills/release/SKILL.md, mirroring Step 1's blocking idiom (D-01); file-list rationale documented inline, human/agent verdict is the real backstop (D-02)
+- [Phase ?]: [Phase 24-02] CLAUDE.md Constraints sync is a one-time catch-up of a stale GSD-managed derived copy; PROJECT.md line 142 stays untouched source of truth (D-03)
+- [Phase ?]: [Phase 24-02] Checkpoint verdict: approved with friction -- magma stamp adoption succeeded from UPGRADING.md prose alone; corrected v0.0.7 Step 2 to remove nonexistent 'motto --version' and use 'npm ls -g @jeremiewerner/motto' as primary version-discovery command
 
 ### Pending Todos
 
@@ -211,8 +215,8 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-06T11:39:19.366Z
-Stopped at: Completed 24-01-PLAN.md
+Last session: 2026-07-06T11:48:21.964Z
+Stopped at: Completed 24-02-PLAN.md
 Resume file: None
 
 ## Operator Next Steps

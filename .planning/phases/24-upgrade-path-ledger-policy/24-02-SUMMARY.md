@@ -140,3 +140,10 @@ None - no external service configuration required. (The magma stamp was applied 
 ---
 *Phase: 24-upgrade-path-ledger-policy*
 *Completed: 2026-07-06*
+
+## Self-Check: PASSED
+
+- FOUND: .planning/phases/24-upgrade-path-ledger-policy/24-02-SUMMARY.md
+- FOUND: 58d3f05 (Task 1 commit)
+- FOUND: 3466529 (Task 2 commit)
+- FOUND: 698d1e6 (checkpoint correction commit)
