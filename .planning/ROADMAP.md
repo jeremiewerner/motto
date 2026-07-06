@@ -52,7 +52,7 @@ Full phase details: [milestones/v0.0.6-ROADMAP.md](milestones/v0.0.6-ROADMAP.md)
 
 ### v0.0.7 Version Awareness (Phases 23-25)
 
-- [ ] **Phase 23: Version Stamping & Skew Detection** - `motto init` stamps the tool version; `lint`/`build` detect and report skew as a never-throw advisory
+- [x] **Phase 23: Version Stamping & Skew Detection** - `motto init` stamps the tool version; `lint`/`build` detect and report skew as a never-throw advisory (completed 2026-07-06)
 - [ ] **Phase 24: Upgrade-Path Ledger & Policy** - a breaking-change ledger with per-version upgrade steps, plus the standing process that keeps it current
 - [ ] **Phase 25: v0.0.6 Operator Debt Closure** - marketplace stranger re-walk, npm token revoke, trusted-publisher lock
 
@@ -71,7 +71,7 @@ Full phase details: [milestones/v0.0.6-ROADMAP.md](milestones/v0.0.6-ROADMAP.md)
   4. Feeding a malformed stamp (number, array, object, boolean, null, empty string, garbage string) produces a clean error entry rather than a throw, proven by adversarial tests.
   5. Running `motto lint`/`motto build` never rewrites `motto.yaml` — only `motto init` writes the stamp, guarded by a test.
 
-**Plans**: 3/4 plans executed
+**Plans**: 4/4 plans complete
 **Wave 1**
 
 - [x] 23-01-PLAN.md — src/version.js pure module: getOwnVersion, parseVersion, direction-aware checkSkew (VER-03)
@@ -83,7 +83,7 @@ Full phase details: [milestones/v0.0.6-ROADMAP.md](milestones/v0.0.6-ROADMAP.md)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 23-04-PLAN.md — lint/build warnings[] + renderResult ⚠ stderr + no-stamp/never-rewrite/non-blocking tests (VER-02, VER-04, VER-06)
+- [x] 23-04-PLAN.md — lint/build warnings[] + renderResult ⚠ stderr + no-stamp/never-rewrite/non-blocking tests (VER-02, VER-04, VER-06)
 
 ### Phase 24: Upgrade-Path Ledger & Policy
 
@@ -124,7 +124,7 @@ Full phase details: [milestones/v0.0.6-ROADMAP.md](milestones/v0.0.6-ROADMAP.md)
 | 20. CI Workflow | v0.0.6 | 3/3 | Complete | 2026-07-03 |
 | 21. Publish Automation & Release Rewrite | v0.0.6 | 4/4 | Complete | 2026-07-04 |
 | 22. Public Flip & Token Hardening | v0.0.6 | 5/5 | Complete | 2026-07-05 |
-| 23. Version Stamping & Skew Detection | v0.0.7 | 3/4 | In Progress|  |
+| 23. Version Stamping & Skew Detection | v0.0.7 | 4/4 | Complete   | 2026-07-06 |
 | 24. Upgrade-Path Ledger & Policy | v0.0.7 | 0/? | Not started | - |
 | 25. v0.0.6 Operator Debt Closure | v0.0.7 | 0/? | Not started | - |
 
