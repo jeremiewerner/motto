@@ -14,7 +14,7 @@ Requirements for this milestone. Each maps to roadmap phases.
 - [ ] **VER-02**: `motto lint`/`motto build` compare the project's stamped version to the running tool's version and report skew as a non-blocking warning (exit code and `ok` untouched)
 - [x] **VER-03**: The skew message is direction-aware — names both versions and gives a direction-specific remedy (tool newer than project → "check the upgrade ledger"; project newer than tool → "upgrade motto")
 - [ ] **VER-04**: A project with no stamp (pre-v0.0.7: magma, Motto's own tree) is treated as "unknown, assume compatible" — no warning, no crash
-- [ ] **VER-05**: Malformed stamp values (number, array, object, boolean, null, empty string, garbage string) produce clean error entries — never throw (adversarial tests mandatory per project never-throw invariant)
+- [x] **VER-05**: Malformed stamp values (number, array, object, boolean, null, empty string, garbage string) produce clean error entries — never throw (adversarial tests mandatory per project never-throw invariant)
 - [ ] **VER-06**: Only `init` writes the stamp — `lint`/`build` never modify `motto.yaml` (never-auto-restamp, guarded by test)
 
 ### Upgrade-Path Policy (UPG)
@@ -63,7 +63,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | VER-02 | Phase 23 | Pending |
 | VER-03 | Phase 23 | Complete |
 | VER-04 | Phase 23 | Pending |
-| VER-05 | Phase 23 | Pending |
+| VER-05 | Phase 23 | Complete |
 | VER-06 | Phase 23 | Pending |
 | UPG-01 | Phase 24 | Pending |
 | UPG-02 | Phase 24 | Pending |

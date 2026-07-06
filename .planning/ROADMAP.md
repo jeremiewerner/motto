@@ -71,14 +71,14 @@ Full phase details: [milestones/v0.0.6-ROADMAP.md](milestones/v0.0.6-ROADMAP.md)
   4. Feeding a malformed stamp (number, array, object, boolean, null, empty string, garbage string) produces a clean error entry rather than a throw, proven by adversarial tests.
   5. Running `motto lint`/`motto build` never rewrites `motto.yaml` — only `motto init` writes the stamp, guarded by a test.
 
-**Plans**: 1/4 plans executed
+**Plans**: 2/4 plans executed
 **Wave 1**
 
 - [x] 23-01-PLAN.md — src/version.js pure module: getOwnVersion, parseVersion, direction-aware checkSkew (VER-03)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 23-02-PLAN.md — config.js optional mottoVersion validation + adversarial malformed matrix → errors[] (VER-05, D-R1)
+- [x] 23-02-PLAN.md — config.js optional mottoVersion validation + adversarial malformed matrix → errors[] (VER-05, D-R1)
 - [ ] 23-03-PLAN.md — init.js stamps mottoVersion into new scaffolds at live tool version (VER-01)
 
 **Wave 3** *(blocked on Wave 2 completion)*
@@ -124,7 +124,7 @@ Full phase details: [milestones/v0.0.6-ROADMAP.md](milestones/v0.0.6-ROADMAP.md)
 | 20. CI Workflow | v0.0.6 | 3/3 | Complete | 2026-07-03 |
 | 21. Publish Automation & Release Rewrite | v0.0.6 | 4/4 | Complete | 2026-07-04 |
 | 22. Public Flip & Token Hardening | v0.0.6 | 5/5 | Complete | 2026-07-05 |
-| 23. Version Stamping & Skew Detection | v0.0.7 | 1/4 | In Progress|  |
+| 23. Version Stamping & Skew Detection | v0.0.7 | 2/4 | In Progress|  |
 | 24. Upgrade-Path Ledger & Policy | v0.0.7 | 0/? | Not started | - |
 | 25. v0.0.6 Operator Debt Closure | v0.0.7 | 0/? | Not started | - |
 
