@@ -22,6 +22,8 @@ The **strict schema + linter**. Skills that always conform to one rigid-yet-crea
 
 **Goal:** A Motto project knows which Motto version it was scaffolded/built with, version skew is detected and reported — the foundation every future upgrade path stands on — and the v0.0.6 operator loose ends are closed.
 
+**Progress:** Phase 23 complete (2026-07-06) — Version Stamping & Skew Detection: `motto init` stamps `mottoVersion`, lint/build emit a direction-aware non-blocking skew advisory via additive `warnings[]`, malformed stamps are single clean errors (adversarial matrix), pre-stamp trees stay silent, never-rewrite guarded by byte-identity test. VER-01…VER-06 verified 11/11, 292 tests. Code review flagged 2 pre-existing `buildProject` throw paths (CR-01/CR-02, from phase 03-01) for follow-up.
+
 **Target features:**
 - `motto.yaml` records the motto version (stamped at `init`)
 - `lint`/`build` detect version skew (project vs tool) with an explicit, actionable, never-throw message
@@ -183,4 +185,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-06 — milestone v0.0.7 Version Awareness started*
+*Last updated: 2026-07-06 — phase 23 (Version Stamping & Skew Detection) complete*
