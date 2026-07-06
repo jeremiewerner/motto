@@ -96,7 +96,9 @@ Full phase details: [milestones/v0.0.6-ROADMAP.md](milestones/v0.0.6-ROADMAP.md)
   2. A reader can find the v0.0.5 `<role>` migration in the ledger with the steps an existing project needed to cross it.
   3. The standing upgrade-path constraint is operational — a documented process requires every future structure/schema change to add a ledger entry before ship, discoverable where a contributor plans a change.
 
-**Plans**: TBD
+**Plans**: 2 plans
+- [ ] 24-01-PLAN.md — Author UPGRADING.md (two seed entries), point the skew warning at it, add a backstop test (UPG-01)
+- [ ] 24-02-PLAN.md — Insert the release-skill Ledger Gate, surface the plan-time rule in CLAUDE.md, live-validate the v0.0.7 entry on magma (UPG-02)
 
 ### Phase 25: v0.0.6 Operator Debt Closure
 
