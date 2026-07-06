@@ -13,10 +13,26 @@ import { safeToJS } from "./frontmatter.js";
 // src/schema.js is the sole source of NAME_KEBAB (REVIEW-11, D-16).
 // schema.js has no imports, so there is no circular dependency.
 import { NAME_KEBAB } from "./schema.js";
+// src/version.js is the sole source of parseVersion (single-source-of-truth
+// import edge, mirrors the NAME_KEBAB import above).
+import { parseVersion } from "./version.js";
 
 // Re-export so config.js's public surface is preserved — dogfood DOG-04 imports
 // NAME_KEBAB from config.js to assert reference identity with schema.js.
 export { NAME_KEBAB };
+
+/**
+ * Describe the JS type of a value for use in a validation error message.
+ * Pure, never throws. Distinguishes array/null from generic "object" since
+ * typeof collapses all three to "object".
+ * @param {unknown} v
+ * @returns {string}
+ */
+function describeType(v) {
+  if (v === null) return "null";
+  if (Array.isArray(v)) return "array";
+  return typeof v;
+}
 
 /**
  * Parse and validate a raw motto.yaml text string.
@@ -97,6 +113,28 @@ export function loadConfig(text) {
     if (!NAME_KEBAB.test(plugins.private)) {
       errors.push({
         message: `plugins.private "${plugins.private}" must be letter-start kebab-case (/^[a-z][a-z0-9]*(-[a-z0-9]+)*$/)`,
+      });
+    }
+  }
+
+  // ── mottoVersion (VER-05, D-R1) ────────────────────────────────────────────
+  // mottoVersion is OPTIONAL (VER-04/D-04) — its ABSENCE is never an error,
+  // mirroring plugins.private (CONF-03, D-17). Presence is validated for
+  // SHAPE only — malformed values are a clean error entry, never a throw.
+  // Use `!== undefined` (NOT `!= null` and NOT a falsy check) — an empty
+  // string is a real malformed case (Pitfall 1) that must NOT be swallowed
+  // by the absence gate.
+  if (config.mottoVersion !== undefined) {
+    if (
+      typeof config.mottoVersion !== "string" ||
+      config.mottoVersion.trim() === ""
+    ) {
+      errors.push({
+        message: `mottoVersion must be a version string like "0.0.7", got ${describeType(config.mottoVersion)}`,
+      });
+    } else if (!parseVersion(config.mottoVersion)) {
+      errors.push({
+        message: `mottoVersion "${config.mottoVersion}" is not a recognizable version string`,
       });
     }
   }
